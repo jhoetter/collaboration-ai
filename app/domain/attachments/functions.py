@@ -11,7 +11,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
+from ..shared.runtime import open_session
 
 from ..events.ids import make_uuid7, now_ms
 
@@ -66,33 +67,34 @@ def upload_finalise(
     width: int | None = None,
     height: int | None = None,
     actor_id: str,
-    session,
 ) -> dict[str, Any]:
     """Persist the attachment row and (TODO) enqueue thumbnail + virus scan."""
     from sqlalchemy import text
 
-    session.execute(
-        text(
-            """
-            INSERT INTO attachments (file_id, workspace_id, uploaded_by, object_key,
-                                     mime, size_bytes, width, height,
-                                     virus_scan_status, created_at)
-            VALUES (:file_id, :ws, :u, :k, :mime, :sz, :w, :h, 'pending', :ts)
-            """
-        ),
-        {
-            "file_id": file_id,
-            "ws": workspace_id,
-            "u": actor_id,
-            "k": object_key,
-            "mime": mime,
-            "sz": size_bytes,
-            "w": width,
-            "h": height,
-            "ts": now_ms(),
-        },
-    )
-    session.commit()
+    with open_session() as session:
+        session.execute(
+            text(
+                """
+                INSERT INTO attachments (id, file_id, workspace_id, uploaded_by, object_key,
+                                         mime, size_bytes, width, height,
+                                         virus_scan_status, created_at)
+                VALUES (gen_random_uuid(), :file_id, :ws, :u, :k, :mime, :sz, :w, :h,
+                        'pending', :ts)
+                """
+            ),
+            {
+                "file_id": file_id,
+                "ws": workspace_id,
+                "u": actor_id,
+                "k": object_key,
+                "mime": mime,
+                "sz": size_bytes,
+                "w": width,
+                "h": height,
+                "ts": now_ms(),
+            },
+        )
+        session.commit()
     return {
         "file_id": file_id,
         "object_key": object_key,

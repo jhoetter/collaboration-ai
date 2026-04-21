@@ -7,7 +7,11 @@ startup via ``get_command_bus()``.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from functools import lru_cache
+from typing import Iterator
+
+from sqlalchemy.orm import Session
 
 from ..events.projector import ProjectedState, project_event
 from .command_bus import CommandBus, Committer
@@ -16,7 +20,7 @@ from .handlers import register_default_handlers
 
 @lru_cache(maxsize=1)
 def get_command_bus() -> CommandBus:
-    from hof import get_session_factory  # noqa: WPS433
+    from hof.db.engine import get_session_factory  # noqa: WPS433
 
     from ..events.repository import PostgresCommitter, stream_events
 
@@ -64,6 +68,25 @@ def get_session_factory():
     Kept in this module so read endpoints in
     `app/domain/events/functions.py` don't have to import hof inline.
     """
-    from hof import get_session_factory as _get  # noqa: WPS433
+    from hof.db.engine import get_session_factory as _get  # noqa: WPS433
 
     return _get()
+
+
+@contextmanager
+def open_session() -> Iterator[Session]:
+    """Open a managed SQLAlchemy session for ad-hoc reads/writes.
+
+    hof-engine's `@function` HTTP layer treats every decorator parameter
+    as a request body field — it does **not** inject a SQLAlchemy
+    `Session` like a typical FastAPI dependency. Endpoints that need DB
+    access therefore acquire one via this helper instead of accepting a
+    `session` keyword argument (which would otherwise blow up with a 422
+    "Field required: session" before the function even runs).
+    """
+    factory = get_session_factory()
+    session = factory()
+    try:
+        yield session
+    finally:
+        session.close()

@@ -15,12 +15,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..shared.command_bus import Command
-from ..shared.runtime import get_command_bus
+from ..shared.runtime import get_command_bus, open_session
 
 DEMO_WORKSPACE_ID = "w_demo"
 SYSTEM_USER_ID = "u_system"
@@ -29,23 +29,27 @@ DEFAULT_LANDING_CHANNEL = "c_general"
 
 
 @function(name="demo:onboard", mcp_expose=False)
-def onboard(
-    user_id: str,
-    display_name: str,
-    *,
-    session: Session,
-) -> dict[str, Any]:
+def onboard(user_id: str, display_name: str) -> dict[str, Any]:
     """Make the caller a member of the demo workspace + default channels.
 
     Returns the IDs the UI needs to land directly in a usable channel.
     Idempotent: callers can re-invoke on every app boot without
     side effects.
     """
-    _upsert_user(session, user_id, display_name)
-
     bus = get_command_bus()
 
-    if not _is_workspace_member(session, DEMO_WORKSPACE_ID, user_id):
+    with open_session() as session:
+        _upsert_user(session, user_id, display_name)
+        needs_workspace_invite = not _is_workspace_member(
+            session, DEMO_WORKSPACE_ID, user_id
+        )
+        already_in_channels = {
+            channel_id
+            for channel_id in DEFAULT_CHANNEL_IDS
+            if _is_channel_member(session, channel_id, user_id)
+        }
+
+    if needs_workspace_invite:
         result = bus.dispatch(
             Command(
                 type="workspace:invite",
@@ -65,7 +69,7 @@ def onboard(
             }
 
     for channel_id in DEFAULT_CHANNEL_IDS:
-        if _is_channel_member(session, channel_id, user_id):
+        if channel_id in already_in_channels:
             continue
         bus.dispatch(
             Command(
@@ -90,8 +94,8 @@ def _upsert_user(session: Session, user_id: str, display_name: str) -> None:
     session.execute(
         text(
             """
-            INSERT INTO users (user_id, display_name, is_anonymous)
-            VALUES (:user_id, :display_name, TRUE)
+            INSERT INTO users (id, user_id, display_name, is_anonymous)
+            VALUES (gen_random_uuid(), :user_id, :display_name, TRUE)
             ON CONFLICT (user_id) DO UPDATE
               SET display_name = EXCLUDED.display_name
             """

@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
-from sqlalchemy.orm import Session
+from ..shared.decorators import function
+from ..shared.runtime import open_session
 
 from .repository import stream_events
 
@@ -21,8 +21,6 @@ def list_events(
     workspace_id: str,
     since_sequence: int = 0,
     limit: int = 200,
-    *,
-    session: Session,
 ) -> list[dict[str, Any]]:
     """Return up to ``limit`` events newer than ``since_sequence``.
 
@@ -30,18 +28,35 @@ def list_events(
     higher-level ``/api/sync`` route which adds presence and typing
     deltas on top of the raw events.
     """
-    return [evt.to_dict() for evt in stream_events(session, workspace_id=workspace_id, since_sequence=since_sequence, limit=limit)]
+    with open_session() as session:
+        return [
+            evt.to_dict()
+            for evt in stream_events(
+                session,
+                workspace_id=workspace_id,
+                since_sequence=since_sequence,
+                limit=limit,
+            )
+        ]
 
 
 @function(name="events:replay-state", mcp_expose=False)
-def replay_state(workspace_id: str, *, session: Session) -> dict[str, Any]:
+def replay_state(workspace_id: str) -> dict[str, Any]:
     """Replay the entire log for a workspace and return a summary of the
     projected state. Used by ``make replay-check`` to verify
     determinism.
     """
     from .projector import project_log
 
-    events = list(stream_events(session, workspace_id=workspace_id, since_sequence=0, limit=10_000_000))
+    with open_session() as session:
+        events = list(
+            stream_events(
+                session,
+                workspace_id=workspace_id,
+                since_sequence=0,
+                limit=10_000_000,
+            )
+        )
     state = project_log(events)
     return {
         "workspace_id": workspace_id,

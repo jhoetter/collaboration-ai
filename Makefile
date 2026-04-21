@@ -128,7 +128,8 @@ dev-api:
 dev-web:
 	$(PNPM) --filter @collabai/web dev --port $(WEB_PORT) --strictPort
 
-seed:
+seed: db-up
+	cd $(APP_DIR) && .venv/bin/hof db migrate
 	cd $(APP_DIR) && .venv/bin/python -m scripts.seed
 
 test: test-py test-js

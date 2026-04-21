@@ -12,6 +12,7 @@ skip" check, so re-running the script is safe.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -172,8 +173,8 @@ def _upsert_system_user(session) -> None:  # type: ignore[no-untyped-def]
     session.execute(
         text(
             """
-            INSERT INTO users (user_id, display_name, is_anonymous)
-            VALUES (:uid, :name, FALSE)
+            INSERT INTO users (id, user_id, display_name, is_anonymous)
+            VALUES (gen_random_uuid(), :uid, :name, FALSE)
             ON CONFLICT (user_id) DO UPDATE
               SET display_name = EXCLUDED.display_name,
                   is_anonymous = FALSE
@@ -213,9 +214,10 @@ def _upsert_agent(  # type: ignore[no-untyped-def]
     session.execute(
         text(
             """
-            INSERT INTO agents (agent_id, workspace_id, display_name, scopes,
+            INSERT INTO agents (id, agent_id, workspace_id, display_name, scopes,
                                 registered_at, registered_by)
-            VALUES (:aid, :wid, :name, :scopes, :ts, :sender)
+            VALUES (gen_random_uuid(), :aid, :wid, :name, CAST(:scopes AS jsonb),
+                    :ts, :sender)
             ON CONFLICT (agent_id) DO UPDATE
               SET display_name = EXCLUDED.display_name,
                   scopes = EXCLUDED.scopes
@@ -225,7 +227,7 @@ def _upsert_agent(  # type: ignore[no-untyped-def]
             "aid": agent_id,
             "wid": workspace_id,
             "name": display_name,
-            "scopes": scopes,
+            "scopes": json.dumps(list(scopes)),
             "ts": now_ms(),
             "sender": registered_by,
         },

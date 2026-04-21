@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from ..shared.command_bus import Command
-from ..shared.runtime import get_command_bus
+from ..shared.runtime import get_command_bus, open_session
 
 
 @function(name="chat:send-message", mcp_expose=True, mcp_scope="write:messages")
@@ -158,23 +157,22 @@ def list_messages(
     channel_id: str,
     since_sequence: int = 0,
     limit: int = 100,
-    *,
-    session: Session,
 ) -> list[dict[str, Any]]:
-    rows = session.execute(
-        text(
-            """
-            SELECT message_id, channel_id, thread_root, sender_id, sender_type, agent_id,
-                   content, mentions, attachments, edited_at, redacted, sequence, created_at
-            FROM messages
-            WHERE channel_id = :ch AND sequence > :s AND redacted = false
-            ORDER BY sequence
-            LIMIT :n
-            """
-        ),
-        {"ch": channel_id, "s": since_sequence, "n": min(limit, 500)},
-    ).mappings()
-    return [dict(r) for r in rows]
+    with open_session() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT message_id, channel_id, thread_root, sender_id, sender_type, agent_id,
+                       content, mentions, attachments, edited_at, redacted, sequence, created_at
+                FROM messages
+                WHERE channel_id = :ch AND sequence > :s AND redacted = false
+                ORDER BY sequence
+                LIMIT :n
+                """
+            ),
+            {"ch": channel_id, "s": since_sequence, "n": min(limit, 500)},
+        ).mappings()
+        return [dict(r) for r in rows]
 
 
 @function(name="chat:search", mcp_expose=True, mcp_scope="read:messages")
@@ -185,7 +183,6 @@ def search(
     channel_ids: list[str] | None = None,
     from_user: str | None = None,
     limit: int = 50,
-    session: Session,
 ) -> list[dict[str, Any]]:
     """Postgres tsvector search across the workspace."""
     sql = """
@@ -206,5 +203,6 @@ def search(
         sql += " AND m.sender_id = :u"
         params["u"] = from_user
     sql += " ORDER BY m.sequence DESC LIMIT :n"
-    rows = session.execute(text(sql), params).mappings()
-    return [dict(r) for r in rows]
+    with open_session() as session:
+        rows = session.execute(text(sql), params).mappings()
+        return [dict(r) for r in rows]

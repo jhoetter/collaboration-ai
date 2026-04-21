@@ -9,12 +9,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from ..shared.command_bus import Command
-from ..shared.runtime import get_command_bus
+from ..shared.runtime import get_command_bus, open_session
 
 
 @function(name="agent:propose-message", mcp_expose=True, mcp_scope="propose:message")
@@ -117,10 +116,8 @@ def edit_and_approve_proposal(
 @function(name="agent:list-proposals", mcp_expose=True, mcp_scope="read:proposals")
 def list_proposals(
     workspace_id: str,
-    *,
     channel_id: str | None = None,
     status: str = "pending",
-    session: Session,
 ) -> list[dict[str, Any]]:
     sql = "SELECT * FROM proposals WHERE workspace_id = :w AND status = :status"
     params: dict[str, Any] = {"w": workspace_id, "status": status}
@@ -128,5 +125,6 @@ def list_proposals(
         sql += " AND channel_id = :ch"
         params["ch"] = channel_id
     sql += " ORDER BY created_at DESC LIMIT 200"
-    rows = session.execute(text(sql), params).mappings()
-    return [dict(r) for r in rows]
+    with open_session() as session:
+        rows = session.execute(text(sql), params).mappings()
+        return [dict(r) for r in rows]

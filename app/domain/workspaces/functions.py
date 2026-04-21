@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
 
 from ..events.ids import make_workspace_id
 from ..shared.command_bus import Command

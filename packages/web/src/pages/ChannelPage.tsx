@@ -7,7 +7,7 @@ import { useSync } from "../state/sync.ts";
 
 interface SendMessageResponse {
   command_id: string;
-  status: "committed" | "rejected" | "staged";
+  status: "applied" | "staged" | "rejected" | "failed";
   events: Array<{
     event_id: string;
     sequence: number;
@@ -46,7 +46,7 @@ export function ChannelPage() {
         channel_id: channelId,
         content: text,
       });
-      if (result.status !== "committed" || result.events.length === 0) {
+      if (result.status !== "applied" || result.events.length === 0) {
         console.error("send rejected", result.error);
         return;
       }

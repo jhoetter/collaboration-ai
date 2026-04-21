@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from hof import Column, Table, types
+from sqlalchemy import BigInteger, UniqueConstraint
 
 
 class Channel(Table):
     __tablename__ = "channels"
 
-    channel_id = Column(types.Text, required=True, primary_key=True)
+    channel_id = Column(types.Text, required=True, unique=True)
     workspace_id = Column(types.Text, required=True, index=True)
     name = Column(types.Text, required=True)
     type = Column(types.String, required=True, default="public")
@@ -18,14 +19,17 @@ class Channel(Table):
     staging_policy = Column(types.String, required=True, default="agent-messages-require-approval")
     slow_mode_seconds = Column(types.Integer, required=True, default=0)
     archived = Column(types.Boolean, required=True, default=False)
-    created_at = Column(types.BigInteger, required=True)
+    created_at = Column(BigInteger, required=True)
     created_by = Column(types.Text, required=True)
 
 
 class ChannelMember(Table):
     __tablename__ = "channel_members"
+    __table_args__ = (
+        UniqueConstraint("channel_id", "user_id", name="ux_channel_members_cid_uid"),
+    )
 
-    channel_id = Column(types.Text, required=True, primary_key=True)
-    user_id = Column(types.Text, required=True, primary_key=True)
-    joined_at = Column(types.BigInteger, required=True)
+    channel_id = Column(types.Text, required=True, index=True)
+    user_id = Column(types.Text, required=True, index=True)
+    joined_at = Column(BigInteger, required=True)
     role = Column(types.String, default="member")

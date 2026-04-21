@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
 
 from ..shared.command_bus import Command
 from ..shared.runtime import get_command_bus

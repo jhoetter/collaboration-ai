@@ -3,23 +3,24 @@
 from __future__ import annotations
 
 from hof import Column, Table, types
+from sqlalchemy import BigInteger
 
 
 class Agent(Table):
     __tablename__ = "agents"
 
-    agent_id = Column(types.Text, required=True, primary_key=True)
+    agent_id = Column(types.Text, required=True, unique=True)
     workspace_id = Column(types.Text, required=True, index=True)
     display_name = Column(types.Text, required=True)
     scopes = Column(types.JSON, required=True, default=list)
-    registered_at = Column(types.BigInteger, required=True)
+    registered_at = Column(BigInteger, required=True)
     registered_by = Column(types.Text, required=True)
 
 
 class Proposal(Table):
     __tablename__ = "proposals"
 
-    proposal_id = Column(types.Text, required=True, primary_key=True)
+    proposal_id = Column(types.Text, required=True, unique=True)
     workspace_id = Column(types.Text, required=True, index=True)
     channel_id = Column(types.Text, required=True, index=True)
     agent_id = Column(types.Text, nullable=True)
@@ -27,8 +28,8 @@ class Proposal(Table):
     payload = Column(types.JSON, required=True)
     rationale = Column(types.Text, nullable=True)
     status = Column(types.String, required=True, default="pending")
-    created_at = Column(types.BigInteger, required=True)
-    resolved_at = Column(types.BigInteger, nullable=True)
+    created_at = Column(BigInteger, required=True)
+    resolved_at = Column(BigInteger, nullable=True)
     resolved_by = Column(types.Text, nullable=True)
     reject_reason = Column(types.Text, nullable=True)
     edited_payload = Column(types.JSON, nullable=True)

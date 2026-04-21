@@ -49,6 +49,11 @@ class PostgresCommitter:
                     out.append(row)
                     write_projection(session, row)
             session.commit()
+
+        # Publish to the process-wide fanout so WS subscribers see the
+        # event immediately. Errors here MUST NOT roll back the commit
+        # — the event is durable in Postgres regardless.
+        _publish_to_fanout(out)
         return out
 
     # ---- helpers --------------------------------------------------------
@@ -68,7 +73,10 @@ class PostgresCommitter:
         base = int(row[0]) if row else 0
         if row is None:
             session.execute(
-                text("INSERT INTO workspace_sequence (workspace_id, seq) VALUES (:w, :s)"),
+                text(
+                    "INSERT INTO workspace_sequence (id, workspace_id, seq) "
+                    "VALUES (gen_random_uuid(), :w, :s)"
+                ),
                 {"w": workspace_id, "s": count},
             )
         else:
@@ -79,6 +87,8 @@ class PostgresCommitter:
         return base
 
     def _insert_event(self, session, env: EventEnvelope, sequence: int, ts: int) -> Event:  # type: ignore[no-untyped-def]
+        import json
+
         from sqlalchemy import text
         from sqlalchemy.exc import IntegrityError
 
@@ -87,7 +97,10 @@ class PostgresCommitter:
             "sequence": sequence,
             "event_id": env.event_id,
             "type": env.type,
-            "content": env.content,
+            # CAST(:content AS jsonb) below: psycopg won't auto-adapt
+            # raw dicts through `text(...)` bindparams, so we serialise
+            # to JSON ourselves and let Postgres parse it.
+            "content": json.dumps(env.content),
             "room_id": env.room_id,
             "sender_id": env.sender_id,
             "sender_type": env.sender_type,
@@ -96,20 +109,21 @@ class PostgresCommitter:
             "relates_to_id": env.relates_to.event_id if env.relates_to else None,
             "relates_to_rel": env.relates_to.rel_type if env.relates_to else None,
             "idempotency_key": env.idempotency_key,
-            "origin": env.origin,
+            "origin": json.dumps(env.origin) if env.origin is not None else None,
         }
         try:
             session.execute(
                 text(
                     """
-                    INSERT INTO events (workspace_id, sequence, event_id, type, content,
+                    INSERT INTO events (id, workspace_id, sequence, event_id, type, content,
                                         room_id, sender_id, sender_type, agent_id,
                                         origin_ts, relates_to_id, relates_to_rel,
                                         idempotency_key, origin)
-                    VALUES (:workspace_id, :sequence, :event_id, :type, :content,
+                    VALUES (gen_random_uuid(), :workspace_id, :sequence, :event_id, :type,
+                            CAST(:content AS jsonb),
                             :room_id, :sender_id, :sender_type, :agent_id,
                             :origin_ts, :relates_to_id, :relates_to_rel,
-                            :idempotency_key, :origin)
+                            :idempotency_key, CAST(:origin AS jsonb))
                     """
                 ),
                 params,
@@ -168,6 +182,26 @@ def _row_to_event(row: dict) -> Event:
         idempotency_key=row.get("idempotency_key"),
         origin=row.get("origin"),
     )
+
+
+def _publish_to_fanout(events: list[Event]) -> None:
+    """Best-effort publish of newly-committed events to the in-process fanout.
+
+    The fanout module is imported lazily so this stays test-friendly:
+    suites that don't wire a fanout still get a working in-memory one.
+    """
+    if not events:
+        return
+    try:
+        from ..sync.bridge import get_fanout
+
+        fanout = get_fanout()
+        for event in events:
+            fanout.publish(event)
+    except Exception:  # noqa: BLE001 — fanout failures must not break commits
+        import logging
+
+        logging.getLogger(__name__).warning("fanout publish failed", exc_info=True)
 
 
 def stream_events(session, *, workspace_id: str, since_sequence: int, limit: int = 1_000) -> Iterable[Event]:  # type: ignore[no-untyped-def]

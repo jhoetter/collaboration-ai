@@ -1,32 +1,6 @@
-"""Re-export every Table for hof-engine's filesystem-based discovery.
+"""Table registration shim package.
 
-Each domain owns its tables under ``app/domain/<entity>/table.py``;
-this package keeps the top-level ``tables/`` directory hof-engine
-expects, just as a thin re-export.
+The actual domain re-exports live in ``register.py`` so hof-engine's
+discovery picks them up — its scanner skips any file whose name starts
+with ``_``, ``__init__.py`` included.
 """
-
-from domain.agents.table import Agent, Proposal
-from domain.attachments.table import Attachment
-from domain.channels.table import Channel, ChannelMember
-from domain.events.table import EventRow, WorkspaceSequence
-from domain.messages.table import Draft, Message, Pinned, ReadMarker, Reaction
-from domain.users.table import User
-from domain.workspaces.table import Workspace, WorkspaceMember
-
-__all__ = [
-    "Agent",
-    "Attachment",
-    "Channel",
-    "ChannelMember",
-    "Draft",
-    "EventRow",
-    "Message",
-    "Pinned",
-    "Proposal",
-    "ReadMarker",
-    "Reaction",
-    "User",
-    "Workspace",
-    "WorkspaceMember",
-    "WorkspaceSequence",
-]

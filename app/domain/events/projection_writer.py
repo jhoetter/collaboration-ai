@@ -24,12 +24,23 @@ handlers as new read endpoints land.
 
 from __future__ import annotations
 
-from typing import Callable
+import json
+from typing import Any, Callable
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .model import Event
+
+
+def _jsonify(value: Any) -> str:
+    """Serialise a Python value to a JSON string for `CAST(:p AS jsonb)`.
+
+    psycopg2/psycopg3 won't auto-adapt raw dicts/lists through SQLAlchemy
+    `text(...)` placeholders, so every projection write that targets a
+    JSONB column hands Postgres a string and casts on the SQL side.
+    """
+    return json.dumps(value if value is not None else None)
 
 
 def write_projection(session: Session, event: Event) -> None:
@@ -49,8 +60,8 @@ def _project_workspace_create(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO workspaces (workspace_id, name, slug, icon, created_at, created_by)
-            VALUES (:wid, :name, :slug, :icon, :ts, :sender)
+            INSERT INTO workspaces (id, workspace_id, name, slug, icon, created_at, created_by)
+            VALUES (gen_random_uuid(), :wid, :name, :slug, :icon, :ts, :sender)
             ON CONFLICT (workspace_id) DO UPDATE
               SET name = EXCLUDED.name,
                   slug = EXCLUDED.slug,
@@ -72,8 +83,8 @@ def _project_workspace_member_add(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO workspace_members (workspace_id, user_id, role, joined_at)
-            VALUES (:wid, :uid, :role, :ts)
+            INSERT INTO workspace_members (id, workspace_id, user_id, role, joined_at)
+            VALUES (gen_random_uuid(), :wid, :uid, :role, :ts)
             ON CONFLICT (workspace_id, user_id) DO UPDATE
               SET role = EXCLUDED.role
             """
@@ -104,10 +115,10 @@ def _project_channel_create(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO channels (channel_id, workspace_id, name, type, private, topic,
+            INSERT INTO channels (id, channel_id, workspace_id, name, type, private, topic,
                                   description, staging_policy, slow_mode_seconds, archived,
                                   created_at, created_by)
-            VALUES (:cid, :wid, :name, :type, :private, :topic, :description,
+            VALUES (gen_random_uuid(), :cid, :wid, :name, :type, :private, :topic, :description,
                     :staging, :slow, FALSE, :ts, :sender)
             ON CONFLICT (channel_id) DO UPDATE
               SET name = EXCLUDED.name,
@@ -139,8 +150,8 @@ def _project_channel_member_join(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO channel_members (channel_id, user_id, joined_at, role)
-            VALUES (:cid, :uid, :ts, 'member')
+            INSERT INTO channel_members (id, channel_id, user_id, joined_at, role)
+            VALUES (gen_random_uuid(), :cid, :uid, :ts, 'member')
             ON CONFLICT (channel_id, user_id) DO NOTHING
             """
         ),
@@ -153,8 +164,8 @@ def _project_channel_member_invite(s: Session, e: Event) -> None:
         s.execute(
             text(
                 """
-                INSERT INTO channel_members (channel_id, user_id, joined_at, role)
-                VALUES (:cid, :uid, :ts, 'member')
+                INSERT INTO channel_members (id, channel_id, user_id, joined_at, role)
+                VALUES (gen_random_uuid(), :cid, :uid, :ts, 'member')
                 ON CONFLICT (channel_id, user_id) DO NOTHING
                 """
             ),
@@ -173,11 +184,12 @@ def _project_message_send(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO messages (message_id, workspace_id, channel_id, thread_root,
+            INSERT INTO messages (id, message_id, workspace_id, channel_id, thread_root,
                                   sender_id, sender_type, agent_id, content, mentions,
                                   attachments, edited_at, redacted, sequence, created_at)
-            VALUES (:mid, :wid, :cid, :thread, :sender, :stype, :agent, :content, :mentions,
-                    :attachments, NULL, FALSE, :seq, :ts)
+            VALUES (gen_random_uuid(), :mid, :wid, :cid, :thread, :sender, :stype, :agent,
+                    :content, CAST(:mentions AS jsonb), CAST(:attachments AS jsonb),
+                    NULL, FALSE, :seq, :ts)
             ON CONFLICT (message_id) DO NOTHING
             """
         ),
@@ -190,8 +202,8 @@ def _project_message_send(s: Session, e: Event) -> None:
             "stype": e.sender_type,
             "agent": e.agent_id,
             "content": e.content.get("content", ""),
-            "mentions": list(e.content.get("mentions") or []),
-            "attachments": list(e.content.get("attachments") or []),
+            "mentions": _jsonify(list(e.content.get("mentions") or [])),
+            "attachments": _jsonify(list(e.content.get("attachments") or [])),
             "seq": e.sequence,
             "ts": e.origin_ts,
         },
@@ -222,9 +234,10 @@ def _project_proposal_create(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO proposals (proposal_id, workspace_id, channel_id, agent_id,
+            INSERT INTO proposals (id, proposal_id, workspace_id, channel_id, agent_id,
                                    command_type, payload, rationale, status, created_at)
-            VALUES (:pid, :wid, :cid, :agent, :ctype, :payload, :rationale, 'pending', :ts)
+            VALUES (gen_random_uuid(), :pid, :wid, :cid, :agent, :ctype,
+                    CAST(:payload AS jsonb), :rationale, 'pending', :ts)
             ON CONFLICT (proposal_id) DO NOTHING
             """
         ),
@@ -234,7 +247,7 @@ def _project_proposal_create(s: Session, e: Event) -> None:
             "cid": e.room_id,
             "agent": e.agent_id,
             "ctype": e.content.get("command_type"),
-            "payload": e.content.get("payload", {}),
+            "payload": _jsonify(e.content.get("payload", {})),
             "rationale": e.content.get("rationale"),
             "ts": e.origin_ts,
         },
@@ -279,9 +292,10 @@ def _project_agent_register(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            INSERT INTO agents (agent_id, workspace_id, display_name, scopes,
+            INSERT INTO agents (id, agent_id, workspace_id, display_name, scopes,
                                 registered_at, registered_by)
-            VALUES (:aid, :wid, :name, :scopes, :ts, :sender)
+            VALUES (gen_random_uuid(), :aid, :wid, :name, CAST(:scopes AS jsonb),
+                    :ts, :sender)
             ON CONFLICT (agent_id) DO UPDATE
               SET display_name = EXCLUDED.display_name,
                   scopes = EXCLUDED.scopes
@@ -291,7 +305,7 @@ def _project_agent_register(s: Session, e: Event) -> None:
             "aid": e.content["agent_id"],
             "wid": e.workspace_id,
             "name": e.content.get("display_name", e.content["agent_id"]),
-            "scopes": list(e.content.get("scopes", [])),
+            "scopes": _jsonify(list(e.content.get("scopes", []))),
             "ts": e.origin_ts,
             "sender": e.sender_id,
         },

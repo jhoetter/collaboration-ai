@@ -20,17 +20,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
+from ..shared.runtime import open_session
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 
 @function(name="users:upsert-anonymous", mcp_expose=False)
 def upsert_anonymous(
     user_id: str,
     display_name: str,
-    *,
-    session: Session,
 ) -> dict[str, Any]:
     """Idempotently register an anonymous browser identity.
 
@@ -38,46 +36,44 @@ def upsert_anonymous(
     place; a brand-new ``user_id`` is inserted as a fresh anonymous
     user. Either way the row's ``is_anonymous`` flag stays ``true``.
     """
-    session.execute(
-        text(
-            """
-            INSERT INTO users (user_id, display_name, is_anonymous)
-            VALUES (:user_id, :display_name, TRUE)
-            ON CONFLICT (user_id) DO UPDATE
-              SET display_name = EXCLUDED.display_name
-            """
-        ),
-        {"user_id": user_id, "display_name": display_name},
-    )
-    session.commit()
+    with open_session() as session:
+        session.execute(
+            text(
+                """
+                INSERT INTO users (id, user_id, display_name, is_anonymous)
+                VALUES (gen_random_uuid(), :user_id, :display_name, TRUE)
+                ON CONFLICT (user_id) DO UPDATE
+                  SET display_name = EXCLUDED.display_name
+                """
+            ),
+            {"user_id": user_id, "display_name": display_name},
+        )
+        session.commit()
     return {"user_id": user_id, "display_name": display_name, "is_anonymous": True}
 
 
 @function(name="users:list", mcp_expose=True, mcp_scope="read:users")
-def list_users(
-    workspace_id: str,
-    *,
-    session: Session,
-) -> list[dict[str, Any]]:
+def list_users(workspace_id: str) -> list[dict[str, Any]]:
     """Return every workspace member with their display name.
 
     Members without a row in the ``users`` table fall back to their
     ``user_id`` — that's the case for users created by the seed (e.g.
     ``u_system``) or by other workspaces' invites.
     """
-    rows = session.execute(
-        text(
-            """
-            SELECT wm.user_id,
-                   COALESCE(u.display_name, wm.user_id) AS display_name,
-                   COALESCE(u.is_anonymous, FALSE) AS is_anonymous,
-                   wm.role
-            FROM workspace_members wm
-            LEFT JOIN users u ON u.user_id = wm.user_id
-            WHERE wm.workspace_id = :w
-            ORDER BY display_name
-            """
-        ),
-        {"w": workspace_id},
-    ).mappings()
-    return [dict(r) for r in rows]
+    with open_session() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT wm.user_id,
+                       COALESCE(u.display_name, wm.user_id) AS display_name,
+                       COALESCE(u.is_anonymous, FALSE) AS is_anonymous,
+                       wm.role
+                FROM workspace_members wm
+                LEFT JOIN users u ON u.user_id = wm.user_id
+                WHERE wm.workspace_id = :w
+                ORDER BY display_name
+                """
+            ),
+            {"w": workspace_id},
+        ).mappings()
+        return [dict(r) for r in rows]

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from hof import function
+from ..shared.decorators import function
 
 from ..events.ids import make_channel_id
 from ..shared.command_bus import Command
-from ..shared.runtime import get_command_bus
+from ..shared.runtime import get_command_bus, open_session
 
 
 @function(name="channel:create", mcp_expose=True, mcp_scope="write:channels")
@@ -96,14 +96,17 @@ def set_topic(
 
 
 @function(name="channel:list", mcp_expose=True, mcp_scope="read:channels")
-def list_channels(workspace_id: str, *, session) -> list[dict[str, Any]]:  # type: ignore[no-untyped-def]
+def list_channels(workspace_id: str) -> list[dict[str, Any]]:
     """Return channels visible to the caller. Real ACL filtering lives in
     a separate ``permissions`` helper plugged in by the auth middleware.
     """
     from sqlalchemy import text
 
-    rows = session.execute(
-        text("SELECT * FROM channels WHERE workspace_id = :w AND archived = false ORDER BY name"),
-        {"w": workspace_id},
-    ).mappings()
-    return [dict(r) for r in rows]
+    with open_session() as session:
+        rows = session.execute(
+            text(
+                "SELECT * FROM channels WHERE workspace_id = :w AND archived = false ORDER BY name"
+            ),
+            {"w": workspace_id},
+        ).mappings()
+        return [dict(r) for r in rows]

@@ -13,6 +13,16 @@ import json
 import logging
 from typing import Any
 
+# `from __future__ import annotations` turns every type hint into a string
+# evaluated lazily via `typing.get_type_hints`. FastAPI resolves the annotations
+# of a websocket endpoint at registration time to decide which parameters are
+# WebSockets vs. query params; if `WebSocket` is only imported lazily inside
+# `build_router`, the resolver can't find it in module globals and silently
+# treats the `websocket` parameter as a *query* param. The handshake then
+# 403s because no real `websocket` query string is supplied. Importing
+# `WebSocket` at module scope keeps it in globals so the resolver sees it.
+from fastapi import WebSocket, WebSocketDisconnect
+
 from ..events.repository import stream_events
 from ..shared.sync_cursor import advance, decode_cursor, encode_cursor
 from .fanout import InProcessFanout
@@ -28,7 +38,7 @@ SYNC_LONG_POLL_TIMEOUT_S = 25
 def build_router(*, fanout: InProcessFanout, session_factory):  # type: ignore[no-untyped-def]
     """Create the FastAPI router. The session_factory is used by the
     long-poll path to stream missed events from Postgres."""
-    from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+    from fastapi import APIRouter, HTTPException, Query
 
     router = APIRouter()
 
@@ -85,7 +95,11 @@ def build_router(*, fanout: InProcessFanout, session_factory):  # type: ignore[n
         ).to_dict()
 
     @router.websocket("/ws/events")
-    async def ws_events(websocket: WebSocket, workspace_id: str = "") -> None:
+    async def ws_events(websocket: WebSocket) -> None:
+        # Reading the param manually (rather than via `Query(...)`) keeps
+        # the dependency tree empty; otherwise a parsing failure would
+        # close the handshake before the client gets a real close code.
+        workspace_id = websocket.query_params.get("workspace_id", "")
         await websocket.accept()
         if not workspace_id:
             await websocket.close(code=4400, reason="workspace_id required")
