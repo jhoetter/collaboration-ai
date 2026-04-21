@@ -14,6 +14,9 @@
 import { create } from "zustand";
 import { getOrCreateIdentity, type AnonymousIdentity } from "../lib/identity.ts";
 
+// NOTE: this file deliberately does NOT import from `lib/api.ts` to avoid a
+// circular dependency (api.ts reads the actor/workspace IDs from this
+// store). We hand-roll a tiny unwrapping fetcher for the bootstrap path.
 async function rawCall<T>(name: string, body: unknown): Promise<T> {
   const res = await fetch(`/api/functions/${encodeURIComponent(name)}`, {
     method: "POST",
@@ -24,7 +27,14 @@ async function rawCall<T>(name: string, body: unknown): Promise<T> {
     const text = await res.text();
     throw new Error(`call ${name} failed: ${res.status} ${text}`);
   }
-  return (await res.json()) as T;
+  const envelope = (await res.json()) as { result?: T; error?: unknown };
+  if (envelope && typeof envelope === "object" && envelope.error) {
+    const err = envelope.error as { message?: string; code?: string } | string;
+    const message =
+      typeof err === "string" ? err : err.message ?? err.code ?? "unknown error";
+    throw new Error(`call ${name} failed: ${message}`);
+  }
+  return envelope.result as T;
 }
 
 export type AuthStatus = "idle" | "joining" | "ready" | "error";

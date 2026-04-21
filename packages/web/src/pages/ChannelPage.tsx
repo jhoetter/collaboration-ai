@@ -3,7 +3,12 @@ import { Composer } from "../components/Composer.tsx";
 import { MessageList } from "../components/MessageList.tsx";
 import { callFunction } from "../lib/api.ts";
 import { useAuth } from "../state/auth.ts";
-import { useSync } from "../state/sync.ts";
+import { useSync, type Message } from "../state/sync.ts";
+
+// Stable empty fallback so the selector returns the same reference on every
+// render when the channel has no messages yet. Returning a fresh `[]`
+// literal makes Zustand think state changed and triggers an infinite loop.
+const EMPTY_MESSAGES: Message[] = [];
 
 interface SendMessageResponse {
   command_id: string;
@@ -23,7 +28,9 @@ interface SendMessageResponse {
 export function ChannelPage() {
   const { channelId } = useParams<{ channelId: string }>();
   const identity = useAuth((s) => s.identity);
-  const messages = useSync((s) => (channelId ? s.messagesByChannel[channelId] ?? [] : []));
+  const messages = useSync((s) =>
+    channelId ? s.messagesByChannel[channelId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES,
+  );
   const channel = useSync((s) => (channelId ? s.channels[channelId] : undefined));
   const applyOptimistic = useSync((s) => s.applyOptimistic);
   const reconcile = useSync((s) => s.reconcileOptimistic);

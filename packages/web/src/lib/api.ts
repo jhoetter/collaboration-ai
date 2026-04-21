@@ -11,6 +11,13 @@
  */
 import { useAuth } from "../state/auth.ts";
 
+interface FunctionEnvelope<T> {
+  result?: T;
+  error?: { message?: string; code?: string } | string;
+  duration_ms?: number;
+  function?: string;
+}
+
 export async function callFunctionRaw<T = unknown>(name: string, body: unknown): Promise<T> {
   const res = await fetch(`/api/functions/${encodeURIComponent(name)}`, {
     method: "POST",
@@ -21,7 +28,19 @@ export async function callFunctionRaw<T = unknown>(name: string, body: unknown):
     const text = await res.text();
     throw new Error(`call ${name} failed: ${res.status} ${text}`);
   }
-  return (await res.json()) as T;
+  // hof's @function HTTP layer wraps the handler's return value in
+  // `{result, duration_ms, function}`; unwrap so callers see only their
+  // own payload. Errors come back either as a non-2xx (handled above)
+  // or as `{error: ...}` on the envelope.
+  const envelope = (await res.json()) as FunctionEnvelope<T>;
+  if (envelope && typeof envelope === "object" && "error" in envelope && envelope.error) {
+    const message =
+      typeof envelope.error === "string"
+        ? envelope.error
+        : envelope.error.message ?? envelope.error.code ?? "unknown error";
+    throw new Error(`call ${name} failed: ${message}`);
+  }
+  return envelope.result as T;
 }
 
 export async function callFunction<T = unknown>(

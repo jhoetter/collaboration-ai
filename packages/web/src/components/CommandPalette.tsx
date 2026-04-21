@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useSync } from "../state/sync.ts";
 
@@ -10,7 +10,12 @@ import { useSync } from "../state/sync.ts";
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const channels = useSync((s) => Object.values(s.channels));
+  // Select the underlying record (stable reference across unrelated renders)
+  // and derive the array via useMemo. Returning Object.values directly from
+  // the selector would mint a new array every render and trigger React's
+  // "getSnapshot should be cached" infinite update loop.
+  const channelMap = useSync((s) => s.channels);
+  const channels = useMemo(() => Object.values(channelMap), [channelMap]);
   const params = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
 
