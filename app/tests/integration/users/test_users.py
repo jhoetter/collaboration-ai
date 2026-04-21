@@ -2,14 +2,19 @@
 
 These tests live at the unit level — they exercise the SQL the
 functions emit through a recording stub session (no real Postgres).
-The full DB-backed contract is covered by ``tests/integration/scripts/
+The functions acquire their own session via ``open_session``, so the
+tests monkeypatch that context manager to yield the stub. The full
+DB-backed contract is covered by ``tests/integration/scripts/
 test_seed.py`` which calls the seed end-to-end.
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
+
+import pytest
 
 from domain.users import functions as user_fns
 
@@ -41,12 +46,23 @@ class _StubSession:
         self.commits += 1
 
 
-def test_upsert_anonymous_runs_an_upsert_and_commits() -> None:
+def _patch_open_session(monkeypatch: pytest.MonkeyPatch, session: _StubSession) -> None:
+    """Make ``with open_session() as s:`` yield our stub inside the function."""
+
+    @contextmanager
+    def _fake_open_session():
+        yield session
+
+    monkeypatch.setattr("domain.users.functions.open_session", _fake_open_session)
+
+
+def test_upsert_anonymous_runs_an_upsert_and_commits(monkeypatch: pytest.MonkeyPatch) -> None:
     session = _StubSession()
+    _patch_open_session(monkeypatch, session)
+
     out = user_fns.upsert_anonymous(
         user_id="u_anon_abc",
         display_name="Anonymous Bear",
-        session=session,
     )
 
     assert out == {
@@ -63,7 +79,7 @@ def test_upsert_anonymous_runs_an_upsert_and_commits() -> None:
     assert params == {"user_id": "u_anon_abc", "display_name": "Anonymous Bear"}
 
 
-def test_list_users_joins_workspace_members_with_users() -> None:
+def test_list_users_joins_workspace_members_with_users(monkeypatch: pytest.MonkeyPatch) -> None:
     session = _StubSession(
         next_results=[
             [
@@ -82,8 +98,9 @@ def test_list_users_joins_workspace_members_with_users() -> None:
             ]
         ]
     )
+    _patch_open_session(monkeypatch, session)
 
-    out = user_fns.list_users(workspace_id="w_demo", session=session)
+    out = user_fns.list_users(workspace_id="w_demo")
 
     sql, params = session.executed[0]
     assert "FROM workspace_members wm" in sql

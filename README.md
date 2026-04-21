@@ -85,7 +85,6 @@ Override with `make dev WEB_PORT=4000 API_PORT=9000` when needed.
 3. **Chat features** — workspaces / channels / threads / DMs / reactions / files / search / unread / drafts / scheduled / reminders / roles.
 4. **Agent API + CLI + MCP** — every command exposed via the agent API; staging proposals; per-channel policies; agent budgets.
 5. **Web UI** — three-pane Notion-like surface, Lexical editor, command palette, agent inbox, auth.
-6. **Optional bridges** — read-only Slack export import + Matrix client-server poll into archive channels.
 
 See [`spec/shared/architecture.md`](spec/shared/architecture.md) for the full breakdown.
 

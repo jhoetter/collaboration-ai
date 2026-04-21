@@ -149,8 +149,6 @@ def upgrade() -> None:
     sa.Column('redact_reason', sa.Text(), nullable=True),
     sa.Column('sequence', sa.BigInteger(), nullable=False),
     sa.Column('created_at', sa.BigInteger(), nullable=False),
-    sa.Column('imported_from', sa.Text(), nullable=True),
-    sa.Column('original_author', sa.Text(), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('id'),

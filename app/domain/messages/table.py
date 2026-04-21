@@ -24,8 +24,6 @@ class Message(Table):
     redact_reason = Column(types.Text, nullable=True)
     sequence = Column(BigInteger, required=True, index=True)
     created_at = Column(BigInteger, required=True)
-    imported_from = Column(types.Text, nullable=True)
-    original_author = Column(types.Text, nullable=True)
 
 
 class Reaction(Table):

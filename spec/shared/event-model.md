@@ -18,7 +18,7 @@ class Event:
     agent_id: str | None
     relates_to: RelatesTo | None
     idempotency_key: str | None
-    origin: dict | None     # bridge provenance (Phase 6)
+    origin: dict | None     # free-form ingest provenance (optional)
 ```
 
 `relates_to` carries `m.replace` (edit), `m.reaction`, `m.thread`, or
@@ -38,7 +38,6 @@ groups:
 - **Drafts** — `draft.{set,clear}`
 - **User meta** — `user.status.set / .presence.set / .snooze.set`
 - **Agents** — `agent.identity.register / .proposal.{create,approve,reject,edit-and-approve}`
-- **Bridges** — `bridge.import.message`
 
 Adding a new event type is a four-step PR: add it to `EVENT_TYPES`,
 write its Pydantic payload schema, add a projection function, register

@@ -2,15 +2,17 @@
 
 We bootstrap an in-memory ``CommandBus`` shaped like the production
 runtime (``u_system`` owns ``w_demo`` and is a member of every default
-channel), then call ``demo.functions.onboard`` with a stub session that
-mirrors the projection table's "is this user already a member?" answer.
-The assertions cover both the happy path (a brand-new anonymous user
-joins workspace + every default channel) and idempotency (a returning
-user produces zero new events).
+channel), then call ``demo.functions.onboard`` with ``open_session``
+monkeypatched to yield a stub session that mirrors the projection
+table's "is this user already a member?" answer. The assertions cover
+both the happy path (a brand-new anonymous user joins workspace + every
+default channel) and idempotency (a returning user produces zero new
+events).
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -99,14 +101,25 @@ def _bootstrap_bus_with_demo_workspace(monkeypatch: pytest.MonkeyPatch) -> tuple
     return bus, state
 
 
+def _patch_open_session(monkeypatch: pytest.MonkeyPatch, session: _StubSession) -> None:
+    """Make ``with open_session() as s:`` yield our stub inside ``onboard``."""
+
+    @contextmanager
+    def _fake_open_session():
+        yield session
+
+    monkeypatch.setattr("domain.demo.functions.open_session", _fake_open_session)
+
+
 def test_onboard_new_user_joins_workspace_and_default_channels(monkeypatch: pytest.MonkeyPatch) -> None:
     bus, state = _bootstrap_bus_with_demo_workspace(monkeypatch)
     session = _StubSession(
         workspace_members={(DEMO_WORKSPACE_ID, SYSTEM_USER_ID)},
         channel_members={(c, SYSTEM_USER_ID) for c in DEFAULT_CHANNEL_IDS},
     )
+    _patch_open_session(monkeypatch, session)
 
-    result = onboard(user_id="u_anon_bear", display_name="Anonymous Bear", session=session)
+    result = onboard(user_id="u_anon_bear", display_name="Anonymous Bear")
 
     assert result == {
         "user_id": "u_anon_bear",
@@ -153,7 +166,8 @@ def test_onboard_is_idempotent_when_user_already_joined(monkeypatch: pytest.Monk
         channel_members={(c, SYSTEM_USER_ID) for c in DEFAULT_CHANNEL_IDS}
         | {(c, "u_anon_bear") for c in DEFAULT_CHANNEL_IDS},
     )
+    _patch_open_session(monkeypatch, session)
 
-    onboard(user_id="u_anon_bear", display_name="Anonymous Bear", session=session)
+    onboard(user_id="u_anon_bear", display_name="Anonymous Bear")
 
     assert state.last_sequence[DEMO_WORKSPACE_ID] == sequence_before

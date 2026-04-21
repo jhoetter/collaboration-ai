@@ -45,9 +45,3 @@ explain *why* an action was blocked.
   event whose projection clears the content from the read-side. This
   preserves the audit trail (you can prove a message was redacted by
   whom and when) without leaking the original text.
-
-## Bridges (Phase 6)
-
-Imported messages carry `origin: {source: 'slack', author_label: '…'}`.
-They cannot be edited from `collaboration-ai`; the only mutation is a
-workspace-level "purge import" command that drops the partition.

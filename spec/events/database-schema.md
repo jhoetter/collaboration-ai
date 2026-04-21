@@ -99,9 +99,7 @@ CREATE TABLE messages (
   redacted     boolean NOT NULL DEFAULT false,
   redact_reason text,
   sequence     bigint  NOT NULL,
-  created_at   bigint  NOT NULL,
-  imported_from text,
-  original_author text
+  created_at   bigint  NOT NULL
 );
 CREATE INDEX messages_channel_seq ON messages (channel_id, sequence DESC);
 CREATE INDEX messages_thread     ON messages (thread_root) WHERE thread_root IS NOT NULL;

@@ -129,7 +129,7 @@ admins approve / reject staged agent commands here. A small badge
 in the header shows the pending count, fetched via
 `get_pending_agent_proposals_count` once on mount and on focus.
 
-## Python `@function` bridges
+## Python `@function` shells
 
 `packages/hof-components/starters/hofos/domain/collaborationai/` mirrors
 the `officeai/` directory structure so the integration is discoverable
@@ -165,8 +165,6 @@ The shells expose collaboration-ai operations as native hof-engine
 ```sh
 hofos collab status                       # sidecar health + lockfile pin
 hofos collab bump                         # fetch latest release, write lockfile
-hofos collab bridges slack import <zip>   # opt-in Slack archive import
-hofos collab bridges matrix configure     # interactive Matrix poller setup
 hofos collab agent stage <command-json>   # stage an agent action from the CLI
 hofos collab agent approve <proposal-id>  # approve a staged action
 ```

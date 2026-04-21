@@ -1,4 +1,4 @@
-"""hof-os bridges to the collaboration-ai sidecar.
+"""hof-os adapter for the collaboration-ai sidecar.
 
 Drop-in copy for `starters/hofos/domain/collaborationai/` in the hof-os
 monorepo. Keeps the same shape as the existing `officeai/` starter:

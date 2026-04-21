@@ -68,8 +68,6 @@ EventType = Literal[
     # Notifications
     "notification.create",
     "notification.read",
-    # Bridges
-    "bridge.import.message",
 ]
 
 EVENT_TYPES: frozenset[str] = frozenset(
@@ -115,7 +113,6 @@ EVENT_TYPES: frozenset[str] = frozenset(
         "message.reminder.fired",
         "notification.create",
         "notification.read",
-        "bridge.import.message",
     ]
 )
 
@@ -154,8 +151,8 @@ class Event:
     agent_id: str | None = None
     relates_to: RelatesTo | None = None
     idempotency_key: str | None = None
-    # Free-form ingest provenance (used by Phase 6 bridges so an imported
-    # Slack message can carry the original timestamp + author label).
+    # Free-form ingest provenance (e.g. tagging a message with the agent
+    # run that produced it). Optional and projector-ignored today.
     origin: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:

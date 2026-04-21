@@ -507,27 +507,6 @@ def _project_notification_read(s: ProjectedState, e: Event) -> None:
         notif["read_at"] = e.origin_ts
 
 
-def _project_bridge_import(s: ProjectedState, e: Event) -> None:
-    """Phase 6: write an imported message into the projected state."""
-    s.messages[e.event_id] = {
-        "id": e.event_id,
-        "workspace_id": e.workspace_id,
-        "channel_id": e.room_id,
-        "thread_root": e.content.get("thread_root"),
-        "sender_id": e.sender_id,
-        "sender_type": "system",
-        "content": e.content.get("content", ""),
-        "mentions": [],
-        "attachments": list(e.content.get("attachments") or []),
-        "created_at": int(e.content.get("origin_ts", e.origin_ts)),
-        "edited_at": None,
-        "redacted": False,
-        "imported_from": (e.origin or {}).get("source"),
-        "original_author": (e.origin or {}).get("author_label"),
-        "sequence": e.sequence,
-    }
-
-
 _DISPATCH: dict[str, Callable[[ProjectedState, Event], None]] = {
     "workspace.create": _project_workspace_create,
     "workspace.update": _project_workspace_update,
@@ -570,7 +549,6 @@ _DISPATCH: dict[str, Callable[[ProjectedState, Event], None]] = {
     "message.reminder.fired": _project_message_reminder_fired,
     "notification.create": _project_notification_create,
     "notification.read": _project_notification_read,
-    "bridge.import.message": _project_bridge_import,
 }
 
 

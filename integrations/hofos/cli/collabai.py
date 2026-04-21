@@ -16,9 +16,7 @@ from rich.console import Console
 from rich.table import Table
 
 collabai_app = typer.Typer(help="collaboration-ai sidecar controls")
-bridges_app = typer.Typer(help="Read-only bridges from external chat systems")
 agent_app = typer.Typer(help="Agent staging / approval")
-collabai_app.add_typer(bridges_app, name="bridges")
 collabai_app.add_typer(agent_app, name="agent")
 
 console = Console()
@@ -53,34 +51,6 @@ def bump() -> None:
     """Fetch the latest collaboration-ai release and rewrite the lockfile."""
     from .._collabai_internal import bump_lockfile  # type: ignore[import-not-found]
     bump_lockfile()
-
-
-@bridges_app.command("slack-import")
-def slack_import(zip_path: Path, workspace: str = typer.Option(..., "--workspace", "-w")) -> None:
-    """Import a Slack workspace export into archive channels."""
-    from .._collabai_internal import call_function  # type: ignore[import-not-found]
-    result = call_function(
-        "bridges:slack-import",
-        {"workspace_id": workspace, "export_path": str(zip_path)},
-    )
-    console.print(result)
-
-
-@bridges_app.command("matrix-configure")
-def matrix_configure(workspace: str = typer.Option(..., "--workspace", "-w")) -> None:
-    """Interactively configure the Matrix poller for this workspace."""
-    homeserver = typer.prompt("Matrix homeserver URL")
-    access_token = typer.prompt("Access token", hide_input=True)
-    from .._collabai_internal import call_function  # type: ignore[import-not-found]
-    call_function(
-        "bridges:matrix-configure",
-        {
-            "workspace_id": workspace,
-            "homeserver": homeserver,
-            "access_token": access_token,
-        },
-    )
-    console.print("[green]Matrix poller configured.[/]")
 
 
 @agent_app.command("stage")

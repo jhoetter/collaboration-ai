@@ -25,7 +25,6 @@
 - Notifications, scheduled messages, reminders → Phase 3
 - MCP server + agent CLI → Phase 4
 - Web UI → Phase 5
-- Bridges → Phase 6
 
 ## Acceptance
 
