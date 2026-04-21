@@ -1,0 +1,28 @@
+{
+  "name": "@collabai/agent-cli",
+  "version": "0.0.1",
+  "private": true,
+  "description": "collab-agent CLI: drives the collaboration-ai @function surface from a terminal or another agent.",
+  "type": "module",
+  "bin": {
+    "collab-agent": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --experimental-strip-types src/**/*.test.ts"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "undici": "^7.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+uv.lock
+fixtures/**/*.json
+.venv
+__pycache__
+**/*.py

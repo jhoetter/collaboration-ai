@@ -1,0 +1,85 @@
+# ============================================
+# collaboration-ai Monorepo .gitignore
+# ============================================
+
+# --- Node / JS ---
+node_modules/
+.pnp.*
+.pnpm-store/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+.eggs/
+*.whl
+.venv/
+venv/
+.uv/
+
+# Python testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- Runtime / local databases ---
+*.db
+*.sqlite
+*.sqlite3
+!*.db.example
+*.pid
+
+# --- Environment ---
+.env
+.env.*
+!.env.example
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+docker-compose.override.yml
+docker-data/
+
+# --- Coverage ---
+coverage/
+*.lcov
+.nyc_output/
+
+# --- Misc ---
+.cache/
+.parcel-cache/
+*.tgz
+.tmp/
+scratch/
+
+# Playwright artifacts
+playwright-report/
+test-results/

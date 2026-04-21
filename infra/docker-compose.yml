@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: collabai-postgres
+    environment:
+      POSTGRES_DB: collabai
+      POSTGRES_USER: collabai
+      POSTGRES_PASSWORD: collabai
+    ports:
+      - "5434:5432"
+    volumes:
+      - collabai_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabai -d collabai"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: collabai-redis
+    ports:
+      - "6381:6379"
+    volumes:
+      - collabai_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    container_name: collabai-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: collabai
+      MINIO_ROOT_PASSWORD: collabai-dev-password
+    ports:
+      - "9100:9000"
+      - "9101:9001"
+    volumes:
+      - collabai_minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # MinIO bootstrap: create the attachments bucket once the server is healthy.
+  minio-init:
+    image: minio/mc:latest
+    container_name: collabai-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 collabai collabai-dev-password &&
+        mc mb -p local/collabai-attachments || true &&
+        mc version enable local/collabai-attachments || true
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: collabai-mailhog
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+
+volumes:
+  collabai_postgres:
+  collabai_redis:
+  collabai_minio:
