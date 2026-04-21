@@ -37,7 +37,7 @@ def _object_key(workspace_id: str, file_id: str) -> str:
     return f"workspaces/{workspace_id}/attachments/{file_id}"
 
 
-@function(name="attachment:upload-init", mcp_expose=False)
+@function(name="attachment:upload-init", mcp_expose=True, mcp_scope="write:attachments")
 def upload_init(workspace_id: str, mime: str, *, actor_id: str) -> dict[str, Any]:
     """Mint a presigned PUT URL for one upload. 5-minute TTL."""
     file_id = f"att_{make_uuid7()}"
@@ -56,7 +56,7 @@ def upload_init(workspace_id: str, mime: str, *, actor_id: str) -> dict[str, Any
     }
 
 
-@function(name="attachment:upload-finalise", mcp_expose=False)
+@function(name="attachment:upload-finalise", mcp_expose=True, mcp_scope="write:attachments")
 def upload_finalise(
     workspace_id: str,
     file_id: str,

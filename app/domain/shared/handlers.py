@@ -166,6 +166,272 @@ def handle_channel_set_topic(cmd: Command, state: ProjectedState) -> list[EventE
     return [_envelope(cmd, type="channel.topic.set", content=cmd.payload, room_id=cmd.room_id)]
 
 
+def handle_channel_update(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "channel:update requires a room_id")
+    _require_channel_membership(cmd, state, cmd.room_id)
+    return [_envelope(cmd, type="channel.update", content=cmd.payload, room_id=cmd.room_id)]
+
+
+def handle_channel_archive(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "channel:archive requires a room_id")
+    ch = state.channels.get(cmd.room_id)
+    if ch is None:
+        raise CommandRejected("not_found", f"Unknown channel {cmd.room_id}")
+    # Sender must be a workspace admin/owner OR the channel creator. DMs
+    # cannot be archived (use leave instead).
+    if ch.get("type") in {"dm", "group_dm"}:
+        raise CommandRejected("invalid_command", "DMs cannot be archived")
+    members = state.workspace_members.get(cmd.workspace_id, {})
+    member = members.get(cmd.actor_id)
+    is_admin = member is not None and member.get("role") in {"owner", "admin"}
+    is_creator = ch.get("created_by") == cmd.actor_id
+    if not (is_admin or is_creator):
+        raise CommandRejected("forbidden", "Only admin or channel creator can archive")
+    return [_envelope(cmd, type="channel.archive", content={}, room_id=cmd.room_id)]
+
+
+def handle_channel_unarchive(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "channel:unarchive requires a room_id")
+    ch = state.channels.get(cmd.room_id)
+    if ch is None:
+        raise CommandRejected("not_found", f"Unknown channel {cmd.room_id}")
+    members = state.workspace_members.get(cmd.workspace_id, {})
+    member = members.get(cmd.actor_id)
+    is_admin = member is not None and member.get("role") in {"owner", "admin"}
+    is_creator = ch.get("created_by") == cmd.actor_id
+    if not (is_admin or is_creator):
+        raise CommandRejected("forbidden", "Only admin or channel creator can unarchive")
+    return [_envelope(cmd, type="channel.unarchive", content={}, room_id=cmd.room_id)]
+
+
+def handle_channel_leave(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "channel:leave requires a room_id")
+    target_user = cmd.payload.get("user_id") or cmd.actor_id
+    members = state.channel_members.get(cmd.room_id, {})
+    if target_user not in members:
+        raise CommandRejected("not_found", "User is not a member of this channel")
+    if target_user != cmd.actor_id:
+        ws_members = state.workspace_members.get(cmd.workspace_id, {})
+        member = ws_members.get(cmd.actor_id)
+        if member is None or member.get("role") not in {"owner", "admin"}:
+            raise CommandRejected("forbidden", "Only admin can remove other members")
+    return [
+        _envelope(
+            cmd,
+            type="channel.member.leave",
+            content={"user_id": target_user},
+            room_id=cmd.room_id,
+        )
+    ]
+
+
+def handle_channel_kick(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "channel:kick requires a room_id")
+    members = state.workspace_members.get(cmd.workspace_id, {})
+    member = members.get(cmd.actor_id)
+    if member is None or member.get("role") not in {"owner", "admin"}:
+        raise CommandRejected("forbidden", "Only admin can kick from a channel")
+    channel_members = state.channel_members.get(cmd.room_id, {})
+    target = cmd.payload.get("user_id")
+    if not target or target not in channel_members:
+        raise CommandRejected("not_found", "User is not a member of this channel")
+    return [_envelope(cmd, type="channel.member.kick", content=cmd.payload, room_id=cmd.room_id)]
+
+
+def handle_chat_pin_message(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    target_id = cmd.payload.get("message_id")
+    if not target_id:
+        raise CommandRejected("invalid_payload", "message_id required")
+    msg = state.messages.get(target_id)
+    if msg is None or msg.get("redacted"):
+        raise CommandRejected("not_found", f"Unknown message {target_id}")
+    _require_channel_membership(cmd, state, msg["channel_id"])
+    return [
+        _envelope(
+            cmd,
+            type="channel.pin.add",
+            content={"message_id": target_id},
+            room_id=msg["channel_id"],
+        )
+    ]
+
+
+def handle_chat_unpin_message(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    target_id = cmd.payload.get("message_id")
+    if not target_id:
+        raise CommandRejected("invalid_payload", "message_id required")
+    msg = state.messages.get(target_id)
+    if msg is None:
+        raise CommandRejected("not_found", f"Unknown message {target_id}")
+    _require_channel_membership(cmd, state, msg["channel_id"])
+    return [
+        _envelope(
+            cmd,
+            type="channel.pin.remove",
+            content={"message_id": target_id},
+            room_id=msg["channel_id"],
+        )
+    ]
+
+
+def handle_chat_set_draft(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "chat:set-draft requires a room_id")
+    return [_envelope(cmd, type="draft.set", content=cmd.payload, room_id=cmd.room_id)]
+
+
+def handle_chat_clear_draft(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "chat:clear-draft requires a room_id")
+    return [_envelope(cmd, type="draft.clear", content={}, room_id=cmd.room_id)]
+
+
+def handle_user_set_status(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    _require_workspace_membership(cmd, state)
+    return [
+        _envelope(
+            cmd,
+            type="user.status.set",
+            content=cmd.payload,
+            room_id=cmd.workspace_id,
+        )
+    ]
+
+
+def handle_user_set_presence(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    _require_workspace_membership(cmd, state)
+    return [
+        _envelope(
+            cmd,
+            type="user.presence.set",
+            content=cmd.payload,
+            room_id=cmd.workspace_id,
+        )
+    ]
+
+
+def handle_user_snooze(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    _require_workspace_membership(cmd, state)
+    return [
+        _envelope(
+            cmd,
+            type="user.snooze.set",
+            content=cmd.payload,
+            room_id=cmd.workspace_id,
+        )
+    ]
+
+
+def handle_user_set_display_name(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    _require_workspace_membership(cmd, state)
+    return [
+        _envelope(
+            cmd,
+            type="user.display-name.set",
+            content=cmd.payload,
+            room_id=cmd.workspace_id,
+        )
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Huddles
+# ---------------------------------------------------------------------------
+
+
+def handle_huddle_start(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "huddle:start requires a room_id (channel)")
+    _require_channel_membership(cmd, state, cmd.room_id)
+    # If a huddle is already running we no-op (idempotent open). The
+    # caller (frontend) will just connect to the existing room.
+    existing = state.huddles.get(cmd.room_id) if hasattr(state, "huddles") else None
+    if existing and not existing.get("ended_at"):
+        return [
+            _envelope(
+                cmd,
+                type="huddle.join",
+                content={"huddle_id": existing["huddle_id"]},
+                room_id=cmd.room_id,
+            )
+        ]
+    huddle_id = cmd.payload.get("huddle_id") or make_event_id()
+    livekit_room = cmd.payload.get("livekit_room") or huddle_id
+    return [
+        _envelope(
+            cmd,
+            type="huddle.start",
+            content={
+                "huddle_id": huddle_id,
+                "livekit_room": livekit_room,
+                **({"title": cmd.payload["title"]} if cmd.payload.get("title") else {}),
+            },
+            room_id=cmd.room_id,
+        )
+    ]
+
+
+def handle_huddle_join(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "huddle:join requires a room_id")
+    _require_channel_membership(cmd, state, cmd.room_id)
+    huddle = (
+        state.huddles.get(cmd.room_id) if hasattr(state, "huddles") else None
+    )
+    if huddle is None or huddle.get("ended_at"):
+        raise CommandRejected("not_found", "No active huddle in this channel")
+    return [
+        _envelope(
+            cmd,
+            type="huddle.join",
+            content={"huddle_id": huddle["huddle_id"]},
+            room_id=cmd.room_id,
+        )
+    ]
+
+
+def handle_huddle_leave(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "huddle:leave requires a room_id")
+    huddle = (
+        state.huddles.get(cmd.room_id) if hasattr(state, "huddles") else None
+    )
+    if huddle is None:
+        # Best-effort idempotent leave — silently no-op.
+        return []
+    return [
+        _envelope(
+            cmd,
+            type="huddle.leave",
+            content={"huddle_id": huddle["huddle_id"]},
+            room_id=cmd.room_id,
+        )
+    ]
+
+
+def handle_huddle_end(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "huddle:end requires a room_id")
+    huddle = (
+        state.huddles.get(cmd.room_id) if hasattr(state, "huddles") else None
+    )
+    if huddle is None:
+        return []
+    return [
+        _envelope(
+            cmd,
+            type="huddle.end",
+            content={"huddle_id": huddle["huddle_id"]},
+            room_id=cmd.room_id,
+        )
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Chat
 # ---------------------------------------------------------------------------
@@ -645,12 +911,29 @@ def register_default_handlers(bus: CommandBus) -> CommandBus:
     bus.register("channel:create", handle_channel_create)
     bus.register("channel:invite", handle_channel_invite)
     bus.register("channel:set-topic", handle_channel_set_topic)
+    bus.register("channel:update", handle_channel_update)
+    bus.register("channel:archive", handle_channel_archive)
+    bus.register("channel:unarchive", handle_channel_unarchive)
+    bus.register("channel:leave", handle_channel_leave)
+    bus.register("channel:kick", handle_channel_kick)
     bus.register("chat:send-message", handle_chat_send_message)
     bus.register("chat:edit-message", handle_chat_edit_message)
     bus.register("chat:delete-message", handle_chat_delete_message)
     bus.register("chat:add-reaction", handle_chat_add_reaction)
     bus.register("chat:remove-reaction", handle_chat_remove_reaction)
     bus.register("chat:mark-read", handle_chat_mark_read)
+    bus.register("chat:pin-message", handle_chat_pin_message)
+    bus.register("chat:unpin-message", handle_chat_unpin_message)
+    bus.register("chat:set-draft", handle_chat_set_draft)
+    bus.register("chat:clear-draft", handle_chat_clear_draft)
+    bus.register("user:set-status", handle_user_set_status)
+    bus.register("user:set-presence", handle_user_set_presence)
+    bus.register("user:snooze-notifications", handle_user_snooze)
+    bus.register("user:set-display-name", handle_user_set_display_name)
+    bus.register("huddle:start", handle_huddle_start)
+    bus.register("huddle:join", handle_huddle_join)
+    bus.register("huddle:leave", handle_huddle_leave)
+    bus.register("huddle:end", handle_huddle_end)
     bus.register("agent:propose-message", handle_agent_propose_message)
     bus.register("agent:approve-proposal", handle_agent_approve_proposal)
     bus.register("agent:reject-proposal", handle_agent_reject_proposal)

@@ -113,6 +113,11 @@ EVENT_TYPES: frozenset[str] = frozenset(
         "message.reminder.fired",
         "notification.create",
         "notification.read",
+        "user.display-name.set",
+        "huddle.start",
+        "huddle.join",
+        "huddle.leave",
+        "huddle.end",
     ]
 )
 

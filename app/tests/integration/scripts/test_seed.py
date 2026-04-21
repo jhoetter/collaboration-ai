@@ -44,6 +44,9 @@ class _StubSession:
     workspaces: set[str] = field(default_factory=set)
     channels_by_ws: dict[str, set[str]] = field(default_factory=dict)
     proposals_by_ws: dict[str, list[tuple[str, dict[str, Any]]]] = field(default_factory=dict)
+    workspace_members: set[tuple[str, str]] = field(default_factory=set)
+    channel_members: set[tuple[str, str]] = field(default_factory=set)
+    seeded_event_keys: set[str] = field(default_factory=set)
     upserts: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     commits: int = 0
 
@@ -55,6 +58,15 @@ class _StubSession:
         if "channel_id FROM channels" in sql:
             channels = self.channels_by_ws.get(params["w"], set())
             return _Result(rows=[(c,) for c in channels])
+        if "FROM workspace_members" in sql:
+            present = (params["w"], params["u"]) in self.workspace_members
+            return _Result(rows=[(1,)] if present else [])
+        if "FROM channel_members" in sql:
+            present = (params["c"], params["u"]) in self.channel_members
+            return _Result(rows=[(1,)] if present else [])
+        if "FROM events" in sql:
+            present = params.get("k") in self.seeded_event_keys
+            return _Result(rows=[(1,)] if present else [])
         if "FROM proposals" in sql:
             rows = [
                 {"channel_id": cid, "payload": payload}
@@ -135,6 +147,14 @@ def test_seed_is_idempotent_on_rerun(monkeypatch: pytest.MonkeyPatch) -> None:
                 for spec in seed.DEMO_PROPOSALS
             ]
         },
+        workspace_members={
+            (seed.DEMO_WORKSPACE_ID, seed.SYSTEM_USER_ID),
+            (seed.DEMO_WORKSPACE_ID, seed.DEMO_PARTNER_USER_ID),
+        },
+        channel_members={
+            (cid, seed.DEMO_PARTNER_USER_ID) for cid, _n, _t in seed.DEFAULT_CHANNELS
+        },
+        seeded_event_keys={seed._SEED_MESSAGES_MARKER},
     )
     factory = _SessionFactory(session=session)
     monkeypatch.setattr("domain.shared.runtime.get_session_factory", lambda: factory)

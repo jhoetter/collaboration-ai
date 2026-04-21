@@ -23,11 +23,14 @@ from typing import Any
 # `WebSocket` at module scope keeps it in globals so the resolver sees it.
 from fastapi import WebSocket, WebSocketDisconnect
 
+import time
+
 from ..events.repository import stream_events
 from ..shared.sync_cursor import advance, decode_cursor, encode_cursor
 from .fanout import InProcessFanout
-from .messages import ControlFrame, SyncMessage
+from .messages import ControlFrame, PresenceUpdate, SyncMessage, TypingUpdate
 from .queue import BoundedQueue
+from .registry import connection_registry, get_presence_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -100,12 +103,20 @@ def build_router(*, fanout: InProcessFanout, session_factory):  # type: ignore[n
         # the dependency tree empty; otherwise a parsing failure would
         # close the handshake before the client gets a real close code.
         workspace_id = websocket.query_params.get("workspace_id", "")
+        user_id = websocket.query_params.get("user_id", "")
         await websocket.accept()
         if not workspace_id:
             await websocket.close(code=4400, reason="workspace_id required")
             return
 
         queue: BoundedQueue = BoundedQueue(maxsize=256)
+        presence = get_presence_tracker()
+        registry = connection_registry()
+
+        async def send_async(message: SyncMessage) -> None:
+            await _send(websocket, message)
+
+        registry.add(workspace_id, send_async)
 
         def _on_overflow(sub_id: int) -> None:
             asyncio.get_event_loop().create_task(
@@ -124,9 +135,15 @@ def build_router(*, fanout: InProcessFanout, session_factory):  # type: ignore[n
             )
 
         sub_id = fanout.subscribe(workspace_id, set(), queue, on_overflow=_on_overflow)  # type: ignore[arg-type]
+        if user_id:
+            presence.heartbeat(workspace_id, user_id, status="active")
+            await _broadcast_presence(workspace_id, user_id, "active")
+            await _send_initial_presence(websocket, workspace_id)
         try:
             push_task = asyncio.create_task(_push_loop(websocket, queue, workspace_id))
-            recv_task = asyncio.create_task(_recv_loop(websocket))
+            recv_task = asyncio.create_task(
+                _recv_loop(websocket, workspace_id=workspace_id, user_id=user_id)
+            )
             done, pending = await asyncio.wait(
                 {push_task, recv_task}, return_when=asyncio.FIRST_COMPLETED
             )
@@ -136,6 +153,9 @@ def build_router(*, fanout: InProcessFanout, session_factory):  # type: ignore[n
             pass
         finally:
             fanout.unsubscribe(sub_id)
+            registry.remove(workspace_id, send_async)
+            if user_id:
+                await _broadcast_presence(workspace_id, user_id, "offline")
 
     return router
 
@@ -163,16 +183,83 @@ async def _push_loop(websocket, queue: BoundedQueue, workspace_id: str) -> None:
         await _send(websocket, msg)
 
 
-async def _recv_loop(websocket) -> None:  # type: ignore[no-untyped-def]
+async def _recv_loop(  # type: ignore[no-untyped-def]
+    websocket, *, workspace_id: str, user_id: str
+) -> None:
+    presence = get_presence_tracker()
     while True:
         text = await websocket.receive_text()
         try:
             payload = json.loads(text)
         except json.JSONDecodeError:
             continue
-        if payload.get("type") == "ping":
-            await websocket.send_text(json.dumps({"type": "control", "control": {"kind": "pong"}}))
+        kind = payload.get("type")
+        if kind == "ping":
+            if user_id:
+                presence.heartbeat(workspace_id, user_id, status="active")
+            await websocket.send_text(
+                json.dumps({"type": "control", "control": {"kind": "pong"}})
+            )
+        elif kind == "typing" and user_id:
+            channel_id = payload.get("channel_id") or ""
+            if not channel_id:
+                continue
+            presence.typing_start(channel_id, user_id)
+            expires_at = int(time.time() * 1000) + presence.typing_ttl_s * 1000
+            await _broadcast_typing(workspace_id, channel_id, user_id, expires_at)
+        elif kind == "presence" and user_id:
+            status = payload.get("status", "active")
+            presence.heartbeat(workspace_id, user_id, status=status)
+            await _broadcast_presence(workspace_id, user_id, status)
 
 
 async def _send(websocket, message: SyncMessage) -> None:  # type: ignore[no-untyped-def]
     await websocket.send_text(json.dumps(message.to_dict(), default=str))
+
+
+async def _broadcast_presence(workspace_id: str, user_id: str, status: str) -> None:
+    msg = SyncMessage(
+        type="presence",
+        workspace_id=workspace_id,
+        cursor=encode_cursor(workspace_id, 0),
+        presence=[PresenceUpdate(user_id=user_id, status=status, set_at_ms=int(time.time() * 1000))],  # type: ignore[arg-type]
+    )
+    for send in connection_registry().fanout(workspace_id):
+        try:
+            await send(msg)  # type: ignore[misc]
+        except Exception:  # noqa: BLE001 — best-effort broadcast
+            continue
+
+
+async def _broadcast_typing(
+    workspace_id: str, channel_id: str, user_id: str, expires_at_ms: int
+) -> None:
+    msg = SyncMessage(
+        type="typing",
+        workspace_id=workspace_id,
+        cursor=encode_cursor(workspace_id, 0),
+        typing=[TypingUpdate(channel_id=channel_id, user_id=user_id, expires_at_ms=expires_at_ms)],
+    )
+    for send in connection_registry().fanout(workspace_id):
+        try:
+            await send(msg)  # type: ignore[misc]
+        except Exception:  # noqa: BLE001
+            continue
+
+
+async def _send_initial_presence(websocket, workspace_id: str) -> None:  # type: ignore[no-untyped-def]
+    presence = get_presence_tracker()
+    snapshot = presence.workspace_presence(workspace_id)
+    if not snapshot:
+        return
+    now = int(time.time() * 1000)
+    msg = SyncMessage(
+        type="presence",
+        workspace_id=workspace_id,
+        cursor=encode_cursor(workspace_id, 0),
+        presence=[
+            PresenceUpdate(user_id=uid, status=status, set_at_ms=now)  # type: ignore[arg-type]
+            for uid, status in snapshot.items()
+        ],
+    )
+    await _send(websocket, msg)

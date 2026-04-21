@@ -95,18 +95,157 @@ def set_topic(
     ).to_dict()
 
 
+@function(name="channel:update", mcp_expose=True, mcp_scope="write:channels")
+def update_channel(
+    workspace_id: str,
+    channel_id: str,
+    *,
+    name: str | None = None,
+    topic: str | None = None,
+    description: str | None = None,
+    staging_policy: str | None = None,
+    slow_mode_seconds: int | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if name is not None:
+        payload["name"] = name
+    if topic is not None:
+        payload["topic"] = topic
+    if description is not None:
+        payload["description"] = description
+    if staging_policy is not None:
+        payload["staging_policy"] = staging_policy
+    if slow_mode_seconds is not None:
+        payload["slow_mode_seconds"] = slow_mode_seconds
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="channel:update",
+            payload=payload,
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
+@function(name="channel:archive", mcp_expose=True, mcp_scope="write:channels")
+def archive_channel(workspace_id: str, channel_id: str, *, actor_id: str) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="channel:archive",
+            payload={},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
+@function(name="channel:unarchive", mcp_expose=True, mcp_scope="write:channels")
+def unarchive_channel(workspace_id: str, channel_id: str, *, actor_id: str) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="channel:unarchive",
+            payload={},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
+@function(name="channel:leave", mcp_expose=True, mcp_scope="write:channels")
+def leave_channel(
+    workspace_id: str,
+    channel_id: str,
+    *,
+    user_id: str | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if user_id is not None:
+        payload["user_id"] = user_id
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="channel:leave",
+            payload=payload,
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
+@function(name="channel:kick", mcp_expose=True, mcp_scope="write:channels")
+def kick_from_channel(
+    workspace_id: str,
+    channel_id: str,
+    user_id: str,
+    *,
+    reason: str | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="channel:kick",
+            payload={"user_id": user_id, "reason": reason},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
 @function(name="channel:list", mcp_expose=True, mcp_scope="read:channels")
-def list_channels(workspace_id: str) -> list[dict[str, Any]]:
+def list_channels(
+    workspace_id: str,
+    *,
+    include_archived: bool = False,
+) -> list[dict[str, Any]]:
     """Return channels visible to the caller. Real ACL filtering lives in
     a separate ``permissions`` helper plugged in by the auth middleware.
     """
     from sqlalchemy import text
 
+    sql = "SELECT * FROM channels WHERE workspace_id = :w"
+    if not include_archived:
+        sql += " AND archived = false"
+    sql += " ORDER BY name"
+    with open_session() as session:
+        rows = session.execute(text(sql), {"w": workspace_id}).mappings()
+        return [dict(r) for r in rows]
+
+
+@function(name="channel:list-members", mcp_expose=True, mcp_scope="read:channels")
+def list_channel_members(channel_id: str) -> list[dict[str, Any]]:
+    from sqlalchemy import text
+
     with open_session() as session:
         rows = session.execute(
             text(
-                "SELECT * FROM channels WHERE workspace_id = :w AND archived = false ORDER BY name"
+                """
+                SELECT cm.user_id,
+                       COALESCE(u.display_name, cm.user_id) AS display_name,
+                       COALESCE(u.is_anonymous, FALSE) AS is_anonymous,
+                       cm.role,
+                       cm.joined_at
+                FROM channel_members cm
+                LEFT JOIN users u ON u.user_id = cm.user_id
+                WHERE cm.channel_id = :c
+                ORDER BY display_name
+                """
             ),
-            {"w": workspace_id},
+            {"c": channel_id},
         ).mappings()
         return [dict(r) for r in rows]

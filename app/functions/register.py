@@ -21,6 +21,7 @@ from domain.attachments import functions as _attachments  # noqa: F401
 from domain.channels import functions as _channels  # noqa: F401
 from domain.demo import functions as _demo  # noqa: F401
 from domain.events import functions as _events  # noqa: F401
+from domain.huddles import functions as _huddles  # noqa: F401
 from domain.messages import functions as _messages  # noqa: F401
 from domain.messages import functions_phase3 as _messages_phase3  # noqa: F401
 from domain.users import functions as _users  # noqa: F401

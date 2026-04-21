@@ -16,8 +16,10 @@ We deviate: the backend is a [`hof-engine`](https://github.com/jhoetter/hof-engi
 Python application. Rationale:
 
 - `hof-engine` already provides Tables, `@function`, Flows, Cron, Celery
-  fan-out, FastAPI, WebSockets, an admin UI, and an LLM-integration
-  surface — the same primitives we'd otherwise rebuild in Node.
+  fan-out, FastAPI, WebSockets, and an admin UI — the same primitives
+  we'd otherwise rebuild in Node. (We do **not** use hof-engine's
+  optional LLM-integration surface; agents are external CLI/MCP
+  clients — see `spec/agent/`.)
 - Integration into `hof-os` is a solved problem when the upstream is
   itself a `hof-engine` app: it ships as a sibling Docker image plus an
   artifact tarball that drops into the hof-os sandbox, mirroring the

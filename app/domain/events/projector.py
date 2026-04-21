@@ -78,6 +78,11 @@ class ProjectedState:
     dm_index: dict[str, str] = field(default_factory=dict)
     """``dm_index[<sorted-participants-hash>] = channel_id``."""
 
+    huddles: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Active huddle keyed by ``channel_id``. Cleared on ``huddle.end``.
+    Shape: ``{huddle_id, livekit_room, started_by, started_at,
+    title, ended_at, participants: set[str]}``."""
+
     # Bookkeeping for idempotent replay.
     _seen_event_ids: set[str] = field(default_factory=set)
     last_sequence: dict[str, int] = field(default_factory=dict)
@@ -507,6 +512,48 @@ def _project_notification_read(s: ProjectedState, e: Event) -> None:
         notif["read_at"] = e.origin_ts
 
 
+def _project_user_display_name_set(s: ProjectedState, e: Event) -> None:
+    # Display-name updates are surfaced through the `users` projection
+    # table (written by `projection_writer.py`); we keep no in-memory
+    # mirror because nothing in `ProjectedState` reads it back.
+    return
+
+
+def _project_huddle_start(s: ProjectedState, e: Event) -> None:
+    s.huddles[e.room_id] = {
+        "huddle_id": e.content["huddle_id"],
+        "channel_id": e.room_id,
+        "livekit_room": e.content.get("livekit_room", e.content["huddle_id"]),
+        "started_by": e.sender_id,
+        "started_at": e.origin_ts,
+        "ended_at": None,
+        "participants": {e.sender_id},
+        "title": e.content.get("title"),
+    }
+
+
+def _project_huddle_join(s: ProjectedState, e: Event) -> None:
+    h = s.huddles.get(e.room_id)
+    if h is None or h.get("ended_at"):
+        return
+    h["participants"].add(e.sender_id)
+
+
+def _project_huddle_leave(s: ProjectedState, e: Event) -> None:
+    h = s.huddles.get(e.room_id)
+    if h is None:
+        return
+    h["participants"].discard(e.sender_id)
+
+
+def _project_huddle_end(s: ProjectedState, e: Event) -> None:
+    h = s.huddles.get(e.room_id)
+    if h is None:
+        return
+    h["ended_at"] = e.origin_ts
+    s.huddles.pop(e.room_id, None)
+
+
 _DISPATCH: dict[str, Callable[[ProjectedState, Event], None]] = {
     "workspace.create": _project_workspace_create,
     "workspace.update": _project_workspace_update,
@@ -549,6 +596,11 @@ _DISPATCH: dict[str, Callable[[ProjectedState, Event], None]] = {
     "message.reminder.fired": _project_message_reminder_fired,
     "notification.create": _project_notification_create,
     "notification.read": _project_notification_read,
+    "user.display-name.set": _project_user_display_name_set,
+    "huddle.start": _project_huddle_start,
+    "huddle.join": _project_huddle_join,
+    "huddle.leave": _project_huddle_leave,
+    "huddle.end": _project_huddle_end,
 }
 
 

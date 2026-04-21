@@ -180,6 +180,74 @@ def _project_channel_topic_set(s: Session, e: Event) -> None:
     )
 
 
+def _project_channel_update(s: Session, e: Event) -> None:
+    """Update mutable channel metadata. Only fields present in the payload
+    are touched; missing fields stay at their current value."""
+    sets: list[str] = []
+    params: dict[str, Any] = {"cid": e.room_id}
+    for key in ("name", "topic", "description", "staging_policy", "slow_mode_seconds"):
+        if key in e.content:
+            sets.append(f"{key} = :{key}")
+            params[key] = e.content[key]
+    if not sets:
+        return
+    s.execute(text(f"UPDATE channels SET {', '.join(sets)} WHERE channel_id = :cid"), params)
+
+
+def _project_channel_archive(s: Session, e: Event) -> None:
+    s.execute(
+        text("UPDATE channels SET archived = TRUE WHERE channel_id = :cid"),
+        {"cid": e.room_id},
+    )
+
+
+def _project_channel_unarchive(s: Session, e: Event) -> None:
+    s.execute(
+        text("UPDATE channels SET archived = FALSE WHERE channel_id = :cid"),
+        {"cid": e.room_id},
+    )
+
+
+def _project_channel_member_leave(s: Session, e: Event) -> None:
+    user_id = e.content.get("user_id", e.sender_id)
+    s.execute(
+        text("DELETE FROM channel_members WHERE channel_id = :cid AND user_id = :uid"),
+        {"cid": e.room_id, "uid": user_id},
+    )
+
+
+def _project_channel_member_kick(s: Session, e: Event) -> None:
+    s.execute(
+        text("DELETE FROM channel_members WHERE channel_id = :cid AND user_id = :uid"),
+        {"cid": e.room_id, "uid": e.content["user_id"]},
+    )
+
+
+def _project_channel_pin_add(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            INSERT INTO pinned (id, channel_id, message_id, pinned_at, pinned_by)
+            VALUES (gen_random_uuid(), :cid, :mid, :ts, :sender)
+            ON CONFLICT (channel_id, message_id) DO NOTHING
+            """
+        ),
+        {
+            "cid": e.room_id,
+            "mid": e.content["message_id"],
+            "ts": e.origin_ts,
+            "sender": e.sender_id,
+        },
+    )
+
+
+def _project_channel_pin_remove(s: Session, e: Event) -> None:
+    s.execute(
+        text("DELETE FROM pinned WHERE channel_id = :cid AND message_id = :mid"),
+        {"cid": e.room_id, "mid": e.content["message_id"]},
+    )
+
+
 def _project_message_send(s: Session, e: Event) -> None:
     s.execute(
         text(
@@ -210,6 +278,41 @@ def _project_message_send(s: Session, e: Event) -> None:
     )
 
 
+def _project_message_edit(s: Session, e: Event) -> None:
+    target = e.relates_to.event_id if e.relates_to else None
+    if not target:
+        return
+    if "mentions" in e.content:
+        s.execute(
+            text(
+                """
+                UPDATE messages
+                SET content = :content,
+                    mentions = CAST(:mentions AS jsonb),
+                    edited_at = :ts
+                WHERE message_id = :mid AND redacted = FALSE
+                """
+            ),
+            {
+                "mid": target,
+                "content": e.content.get("content", ""),
+                "mentions": _jsonify(list(e.content.get("mentions") or [])),
+                "ts": e.origin_ts,
+            },
+        )
+    else:
+        s.execute(
+            text(
+                """
+                UPDATE messages
+                SET content = :content, edited_at = :ts
+                WHERE message_id = :mid AND redacted = FALSE
+                """
+            ),
+            {"mid": target, "content": e.content.get("content", ""), "ts": e.origin_ts},
+        )
+
+
 def _project_message_redact(s: Session, e: Event) -> None:
     target = e.relates_to.event_id if e.relates_to else None
     if not target:
@@ -227,6 +330,147 @@ def _project_message_redact(s: Session, e: Event) -> None:
             """
         ),
         {"mid": target, "reason": e.content.get("reason")},
+    )
+
+
+def _project_reaction_add(s: Session, e: Event) -> None:
+    target = e.relates_to.event_id if e.relates_to else None
+    if not target:
+        return
+    s.execute(
+        text(
+            """
+            INSERT INTO reactions (id, message_id, emoji, user_id, added_at)
+            VALUES (gen_random_uuid(), :mid, :emoji, :uid, :ts)
+            ON CONFLICT (message_id, emoji, user_id) DO NOTHING
+            """
+        ),
+        {
+            "mid": target,
+            "emoji": e.content["emoji"],
+            "uid": e.sender_id,
+            "ts": e.origin_ts,
+        },
+    )
+
+
+def _project_reaction_remove(s: Session, e: Event) -> None:
+    target = e.relates_to.event_id if e.relates_to else None
+    if not target:
+        return
+    s.execute(
+        text(
+            """
+            DELETE FROM reactions
+            WHERE message_id = :mid AND emoji = :emoji AND user_id = :uid
+            """
+        ),
+        {
+            "mid": target,
+            "emoji": e.content["emoji"],
+            "uid": e.sender_id,
+        },
+    )
+
+
+def _project_read_marker(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            INSERT INTO read_markers (id, user_id, channel_id, up_to_sequence)
+            VALUES (gen_random_uuid(), :uid, :cid, :seq)
+            ON CONFLICT (user_id, channel_id) DO UPDATE
+              SET up_to_sequence = GREATEST(read_markers.up_to_sequence, EXCLUDED.up_to_sequence)
+            """
+        ),
+        {
+            "uid": e.sender_id,
+            "cid": e.room_id,
+            "seq": int(e.content.get("up_to_sequence") or e.sequence),
+        },
+    )
+
+
+def _project_draft_set(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            INSERT INTO drafts (id, user_id, channel_id, thread_root, content, updated_at)
+            VALUES (gen_random_uuid(), :uid, :cid, :thread, :content, :ts)
+            ON CONFLICT (user_id, channel_id) DO UPDATE
+              SET content = EXCLUDED.content,
+                  thread_root = EXCLUDED.thread_root,
+                  updated_at = EXCLUDED.updated_at
+            """
+        ),
+        {
+            "uid": e.sender_id,
+            "cid": e.room_id,
+            "thread": e.content.get("thread_root"),
+            "content": e.content.get("content", ""),
+            "ts": e.origin_ts,
+        },
+    )
+
+
+def _project_draft_clear(s: Session, e: Event) -> None:
+    s.execute(
+        text("DELETE FROM drafts WHERE user_id = :uid AND channel_id = :cid"),
+        {"uid": e.sender_id, "cid": e.room_id},
+    )
+
+
+def _project_dm_create(s: Session, e: Event) -> None:
+    """DMs reuse the channels table; the `dm.create` event is the marker
+    that the room is a DM. We only need to ensure the row is flagged
+    correctly (channel.create already handled the bulk)."""
+    s.execute(
+        text(
+            "UPDATE channels SET type = 'dm', private = TRUE WHERE channel_id = :cid"
+        ),
+        {"cid": e.room_id},
+    )
+
+
+def _project_notification_create(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            INSERT INTO notifications (id, notification_id, user_id, workspace_id,
+                                       channel_id, kind, target_event_id, body,
+                                       created_at, read_at)
+            VALUES (gen_random_uuid(), :nid, :uid, :wid, :cid, :kind, :target,
+                    :body, :ts, NULL)
+            ON CONFLICT (notification_id) DO NOTHING
+            """
+        ),
+        {
+            "nid": e.content["notification_id"],
+            "uid": e.content["user_id"],
+            "wid": e.workspace_id,
+            "cid": e.room_id,
+            "kind": e.content.get("kind", "mention"),
+            "target": e.content.get("target_event_id"),
+            "body": e.content.get("body"),
+            "ts": e.origin_ts,
+        },
+    )
+
+
+def _project_notification_read(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            UPDATE notifications
+            SET read_at = :ts
+            WHERE notification_id = :nid AND user_id = :uid AND read_at IS NULL
+            """
+        ),
+        {
+            "nid": e.content["notification_id"],
+            "uid": e.sender_id,
+            "ts": e.origin_ts,
+        },
     )
 
 
@@ -288,6 +532,110 @@ def _project_proposal_reject(s: Session, e: Event) -> None:
     )
 
 
+def _project_proposal_edit_and_approve(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            UPDATE proposals
+            SET status = 'edited',
+                resolved_at = :ts,
+                resolved_by = :sender,
+                edited_payload = CAST(:payload AS jsonb)
+            WHERE proposal_id = :pid AND status = 'pending'
+            """
+        ),
+        {
+            "pid": e.content["proposal_id"],
+            "ts": e.origin_ts,
+            "sender": e.sender_id,
+            "payload": _jsonify(e.content.get("edited_payload") or {}),
+        },
+    )
+
+
+def _project_huddle_start(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            INSERT INTO huddles (id, huddle_id, workspace_id, channel_id,
+                                 livekit_room, started_by, started_at,
+                                 ended_at, title)
+            VALUES (gen_random_uuid(), :hid, :wid, :cid, :room, :sender,
+                    :ts, NULL, :title)
+            ON CONFLICT (huddle_id) DO NOTHING
+            """
+        ),
+        {
+            "hid": e.content["huddle_id"],
+            "wid": e.workspace_id,
+            "cid": e.room_id,
+            "room": e.content.get("livekit_room", e.content["huddle_id"]),
+            "sender": e.sender_id,
+            "ts": e.origin_ts,
+            "title": e.content.get("title"),
+        },
+    )
+    s.execute(
+        text(
+            """
+            INSERT INTO huddle_participants (id, huddle_id, user_id, joined_at, left_at, role)
+            VALUES (gen_random_uuid(), :hid, :uid, :ts, NULL, 'host')
+            ON CONFLICT (huddle_id, user_id) DO NOTHING
+            """
+        ),
+        {"hid": e.content["huddle_id"], "uid": e.sender_id, "ts": e.origin_ts},
+    )
+
+
+def _project_huddle_join(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            INSERT INTO huddle_participants (id, huddle_id, user_id, joined_at, left_at, role)
+            VALUES (gen_random_uuid(), :hid, :uid, :ts, NULL, 'guest')
+            ON CONFLICT (huddle_id, user_id) DO UPDATE
+              SET joined_at = LEAST(huddle_participants.joined_at, EXCLUDED.joined_at),
+                  left_at = NULL
+            """
+        ),
+        {"hid": e.content["huddle_id"], "uid": e.sender_id, "ts": e.origin_ts},
+    )
+
+
+def _project_huddle_leave(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            UPDATE huddle_participants
+            SET left_at = :ts
+            WHERE huddle_id = :hid AND user_id = :uid AND left_at IS NULL
+            """
+        ),
+        {"hid": e.content["huddle_id"], "uid": e.sender_id, "ts": e.origin_ts},
+    )
+
+
+def _project_huddle_end(s: Session, e: Event) -> None:
+    s.execute(
+        text(
+            """
+            UPDATE huddles SET ended_at = :ts
+            WHERE huddle_id = :hid AND ended_at IS NULL
+            """
+        ),
+        {"hid": e.content["huddle_id"], "ts": e.origin_ts},
+    )
+    s.execute(
+        text(
+            """
+            UPDATE huddle_participants SET left_at = :ts
+            WHERE huddle_id = :hid AND left_at IS NULL
+            """
+        ),
+        {"hid": e.content["huddle_id"], "ts": e.origin_ts},
+    )
+
+
 def _project_agent_register(s: Session, e: Event) -> None:
     s.execute(
         text(
@@ -312,18 +660,61 @@ def _project_agent_register(s: Session, e: Event) -> None:
     )
 
 
+def _project_user_display_name_set(s: Session, e: Event) -> None:
+    """Mirror a `user.display-name.set` event onto the `users` table.
+
+    The function endpoint already writes the row inline (so anonymous
+    bootstrapping works without a workspace context); this writer keeps
+    the SQL projection consistent when the event arrives via replay or
+    when a separate process consumes the log.
+    """
+    s.execute(
+        text(
+            """
+            INSERT INTO users (id, user_id, display_name, is_anonymous)
+            VALUES (gen_random_uuid(), :user_id, :display_name, TRUE)
+            ON CONFLICT (user_id) DO UPDATE
+              SET display_name = EXCLUDED.display_name
+            """
+        ),
+        {"user_id": e.sender_id, "display_name": e.content.get("display_name", e.sender_id)},
+    )
+
+
 _DISPATCH: dict[str, Callable[[Session, Event], None]] = {
     "workspace.create": _project_workspace_create,
     "workspace.member.add": _project_workspace_member_add,
     "workspace.member.role-set": _project_workspace_member_role_set,
     "channel.create": _project_channel_create,
+    "channel.update": _project_channel_update,
+    "channel.archive": _project_channel_archive,
+    "channel.unarchive": _project_channel_unarchive,
     "channel.member.join": _project_channel_member_join,
     "channel.member.invite": _project_channel_member_invite,
+    "channel.member.leave": _project_channel_member_leave,
+    "channel.member.kick": _project_channel_member_kick,
+    "channel.pin.add": _project_channel_pin_add,
+    "channel.pin.remove": _project_channel_pin_remove,
     "channel.topic.set": _project_channel_topic_set,
     "message.send": _project_message_send,
+    "message.edit": _project_message_edit,
     "message.redact": _project_message_redact,
+    "reaction.add": _project_reaction_add,
+    "reaction.remove": _project_reaction_remove,
+    "read.marker": _project_read_marker,
+    "draft.set": _project_draft_set,
+    "draft.clear": _project_draft_clear,
+    "dm.create": _project_dm_create,
+    "notification.create": _project_notification_create,
+    "notification.read": _project_notification_read,
     "agent.identity.register": _project_agent_register,
     "agent.proposal.create": _project_proposal_create,
     "agent.proposal.approve": _project_proposal_approve,
     "agent.proposal.reject": _project_proposal_reject,
+    "agent.proposal.edit-and-approve": _project_proposal_edit_and_approve,
+    "huddle.start": _project_huddle_start,
+    "huddle.join": _project_huddle_join,
+    "huddle.leave": _project_huddle_leave,
+    "huddle.end": _project_huddle_end,
+    "user.display-name.set": _project_user_display_name_set,
 }

@@ -1,0 +1,41 @@
+---
+description: Use stable selectors with Zustand to avoid render storms
+globs: packages/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Zustand: stable selectors only
+
+Returning a fresh object/array from a selector causes the component to
+re-render on every store update. Pick a primitive, or wrap with
+`useShallow`.
+
+## BAD — fresh array every selector run
+
+```tsx
+const messages = useSync((s) => s.messages.filter((m) => m.channelId === id));
+```
+
+## GOOD — primitive ref, stable identity
+
+```tsx
+const messages = useSync((s) => s.messagesByChannel[id]);
+```
+
+## GOOD — derived array via `useShallow`
+
+```tsx
+import { useShallow } from "zustand/react/shallow";
+
+const memberIds = useChannel(useShallow((s) => s.members[channelId] ?? []));
+```
+
+## Rules
+
+- **Never** call `.map`, `.filter`, `.slice`, or `Object.keys` directly
+  inside a `useStore(selector)` callback unless the result is wrapped in
+  `useShallow`.
+- For multiple values, prefer two `useStore` calls over returning an
+  object literal.
+- Selectors are pure — derive in `useMemo` outside the store call when
+  the input is already stable.

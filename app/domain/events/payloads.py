@@ -110,6 +110,16 @@ class ChannelPin(_StrictModel):
     message_id: str
 
 
+class ChannelArchive(_StrictModel):
+    """No payload, but the strict-model wrapper rejects unexpected keys."""
+
+
+class ChannelMemberLeave(_StrictModel):
+    user_id: str | None = None
+    """Optional. Defaults to the actor (`self-leave`); admins may leave on
+    behalf of another member, in which case it equals a `kick`."""
+
+
 # ---------------------------------------------------------------------------
 # Messages
 # ---------------------------------------------------------------------------
@@ -175,6 +185,10 @@ class DraftSet(_StrictModel):
     thread_root: str | None = None
 
 
+class DraftClear(_StrictModel):
+    """No fields — the channel id is on the event envelope (`room_id`)."""
+
+
 class UserStatusSet(_StrictModel):
     emoji: str | None = None
     text: str | None = None
@@ -188,6 +202,40 @@ class UserPresenceSet(_StrictModel):
 
 class UserSnoozeSet(_StrictModel):
     until: int | None = None
+
+
+class UserDisplayNameSet(_StrictModel):
+    display_name: str
+
+    @field_validator("display_name")
+    @classmethod
+    def _trim(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("display_name must be non-empty")
+        if len(v) > 80:
+            raise ValueError("display_name must be ≤80 chars")
+        return v
+
+
+# ---------------------------------------------------------------------------
+# Huddles
+# ---------------------------------------------------------------------------
+
+
+class HuddleStart(_StrictModel):
+    huddle_id: str
+    livekit_room: str
+    title: str | None = None
+
+
+class HuddleJoinLeave(_StrictModel):
+    huddle_id: str
+
+
+class HuddleEnd(_StrictModel):
+    huddle_id: str
+    reason: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -229,8 +277,11 @@ PAYLOAD_SCHEMAS: dict[str, type[_StrictModel]] = {
     "workspace.member.role-set": WorkspaceMemberRoleSet,
     "channel.create": ChannelCreate,
     "channel.update": ChannelUpdate,
+    "channel.archive": ChannelArchive,
+    "channel.unarchive": ChannelArchive,
     "channel.member.invite": ChannelInvite,
     "channel.member.kick": ChannelKick,
+    "channel.member.leave": ChannelMemberLeave,
     "channel.topic.set": ChannelTopicSet,
     "channel.pin.add": ChannelPin,
     "channel.pin.remove": ChannelPin,
@@ -241,9 +292,15 @@ PAYLOAD_SCHEMAS: dict[str, type[_StrictModel]] = {
     "reaction.remove": ReactionAddRemove,
     "read.marker": ReadMarker,
     "draft.set": DraftSet,
+    "draft.clear": DraftClear,
     "user.status.set": UserStatusSet,
     "user.presence.set": UserPresenceSet,
     "user.snooze.set": UserSnoozeSet,
+    "user.display-name.set": UserDisplayNameSet,
+    "huddle.start": HuddleStart,
+    "huddle.join": HuddleJoinLeave,
+    "huddle.leave": HuddleJoinLeave,
+    "huddle.end": HuddleEnd,
     "agent.identity.register": AgentRegister,
     "agent.proposal.create": AgentProposeMessage,
     "agent.proposal.approve": ProposalDecision,

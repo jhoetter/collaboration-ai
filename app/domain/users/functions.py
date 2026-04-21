@@ -20,9 +20,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..shared.decorators import function
-from ..shared.runtime import open_session
 from sqlalchemy import text
+
+from ..shared.command_bus import Command
+from ..shared.decorators import function
+from ..shared.runtime import get_command_bus, open_session
 
 
 @function(name="users:upsert-anonymous", mcp_expose=False)
@@ -50,6 +52,99 @@ def upsert_anonymous(
         )
         session.commit()
     return {"user_id": user_id, "display_name": display_name, "is_anonymous": True}
+
+
+@function(name="users:set-display-name", mcp_expose=False)
+def set_display_name(
+    display_name: str,
+    *,
+    workspace_id: str | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    """Update the user's stored display name and emit a
+    ``user.display-name.set`` event so projections stay in sync.
+
+    Workspace context is optional — a fresh anonymous browser writes
+    its name before joining a workspace; the event is then skipped and
+    only the SQL row is touched. Once the user is in a workspace the
+    update is also dispatched through the command bus.
+    """
+    with open_session() as session:
+        session.execute(
+            text(
+                """
+                INSERT INTO users (id, user_id, display_name, is_anonymous)
+                VALUES (gen_random_uuid(), :user_id, :display_name, TRUE)
+                ON CONFLICT (user_id) DO UPDATE
+                  SET display_name = EXCLUDED.display_name
+                """
+            ),
+            {"user_id": actor_id, "display_name": display_name},
+        )
+        session.commit()
+    if workspace_id:
+        bus = get_command_bus()
+        bus.dispatch(
+            Command(
+                type="user:set-display-name",
+                payload={"display_name": display_name},
+                source="human",
+                actor_id=actor_id,
+                workspace_id=workspace_id,
+                room_id=workspace_id,
+            )
+        )
+    return {"user_id": actor_id, "display_name": display_name}
+
+
+@function(name="users:set-status", mcp_expose=True, mcp_scope="write:users")
+def set_status(
+    workspace_id: str,
+    *,
+    emoji: str | None = None,
+    status_text: str | None = None,
+    clear_at: int | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if emoji is not None:
+        payload["emoji"] = emoji
+    if status_text is not None:
+        payload["text"] = status_text
+    if clear_at is not None:
+        payload["clear_at"] = clear_at
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="user:set-status",
+            payload=payload,
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=workspace_id,
+        )
+    ).to_dict()
+
+
+@function(name="users:set-presence", mcp_expose=False)
+def set_presence(
+    workspace_id: str,
+    status: str,
+    *,
+    until: int | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="user:set-presence",
+            payload={"status": status, **({"until": until} if until is not None else {})},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=workspace_id,
+        )
+    ).to_dict()
 
 
 @function(name="users:list", mcp_expose=True, mcp_scope="read:users")

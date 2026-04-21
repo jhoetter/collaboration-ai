@@ -4,6 +4,12 @@ AI-native, event-sourced team chat. Full Slack-style surface (workspaces,
 channels, threads, DMs, reactions, files, search, presence) with AI
 agents as **first-class participants** instead of bolted-on bots.
 
+> **No LLMs ship inside the product.** Every model — OpenAI, Anthropic,
+> a local Ollama, anything — runs in a third-party process and drives
+> the workspace through the [`collab-agent` CLI](#the-cli-is-the-ai-surface)
+> (or its MCP bridge). The server has no `OPENAI_API_KEY`, no inference
+> code, no prompt templates. The CLI is the AI surface.
+
 This repo is built per the spec in [`prompt.md`](./prompt.md), adapted to
 ship as a [`hof-engine`](https://github.com/jhoetter/hof-engine)
 application so it can deploy standalone _and_ embed cleanly into
@@ -77,6 +83,78 @@ make db-logs                    # tail container logs
 
 Backends mirror the same scheme one decade up: 8000 / 8100 / 8200 / 8300.
 Override with `make dev WEB_PORT=4000 API_PORT=9000` when needed.
+
+## The CLI is the AI surface
+
+External agents (any LLM, any framework) drive the workspace through
+[`@collabai/agent-cli`](packages/agent-cli) — a thin TypeScript wrapper
+around the same `@function` registry the web UI uses. Every chat
+mutation, read, and event subscription has a CLI verb.
+
+```bash
+# 1. Authenticate against your collab server
+collab-agent login --url https://collab.example.com \
+  --token $COLLABAI_TOKEN --workspace ws_demo --actor agt_my_bot
+
+# 2. Listen for new events (JSONL on stdout — pipe into any agent loop)
+collab-agent subscribe --since 0 | while read evt; do
+  echo "$evt" | my-llm-agent --tool collab-agent
+done
+
+# 3. Read, search, react, send — all without any inference code in the server
+collab-agent read --channel c_general --since 1234
+collab-agent search "deploy script" --limit 10
+collab-agent react evt_abc 👀
+collab-agent send --channel c_general --content "I looked into it; PR #42."
+
+# 4. Generic escape hatch — call any @function by name
+collab-agent call channel:list-members --json '{"channel_id":"c_general"}'
+
+# 5. MCP bridge — auto-discovers every @function for stdio MCP clients
+collab-agent mcp serve
+```
+
+Staging policies (`agent-messages-require-approval` etc.) are enforced
+on the bus, so even an over-eager agent's actions land in the human
+inbox first when the channel is configured that way.
+
+The hofos sidecar CLI (`integrations/hofos/cli/collabai.py`) is a
+narrow wrapper used by hof-os deploys to bump versions and stage
+proposals; the first-class surface is `collab-agent`.
+
+## Demo script
+
+After `make dev` has the stack running on `:3300`, the seed script
+gives you a fully populated workspace so you can click through every
+Slack-style feature in two minutes:
+
+1. **Open** http://localhost:3300 — you join `Demo Workspace` as a
+   fresh anonymous identity, with a second human (`Alex Rivera`) and
+   a `System` user already present.
+2. **Sidebar** — switch between `#general`, `#engineering`, and
+   `#random`; note unread badges and the `Mentions` shortcut.
+3. **`#general`** — the welcome message from Alex is **pinned** and
+   already has a 👋 reaction. Hover the message → reply in thread,
+   add another emoji, or `Edit` your own.
+4. **`#engineering`** — open the seeded thread "Heads up team…" in the
+   right rail. Type `@a` to mention Alex (the mention picker is local).
+5. **Drag-and-drop** any image into the composer to upload an
+   attachment; rich text supports `**bold**`, `*italic*`, ``` `code` ```
+   and `> quote`.
+6. **`Cmd-K`** opens the spotlight palette. Tabs: Channels, People,
+   Messages — Messages hits the backend full-text search.
+7. **Click 🎧 Huddle** in any channel header. The bottom sheet opens a
+   LiveKit room (the dev compose stack ships a `livekit-server` on
+   `:7880`); a system message links the huddle in the channel so
+   anyone can join.
+8. **DMs** — `+` next to "Direct Messages" → pick Alex → start a
+   private 1-1.
+9. **User menu** (bottom-left) — set a status emoji, toggle presence,
+   or "Sign out" to mint a fresh identity.
+
+Re-running `make seed` is idempotent — the partner user, channels,
+welcome message, reactions, pin, and seeded thread are all guarded by
+stable idempotency keys.
 
 ## Phases
 

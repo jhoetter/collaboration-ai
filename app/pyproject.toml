@@ -27,6 +27,11 @@ dependencies = [
     "pywebpush>=2.0",
     "mcp>=1.0",
     "websockets>=14",
+    # LiveKit SDK for huddle AccessToken minting. Optional — the
+    # huddles backend falls back to a hand-rolled HMAC-SHA256 JWT if
+    # the SDK is unavailable, so installs that don't need the huddle
+    # feature can drop this dep.
+    "livekit-api>=0.7",
 ]
 
 [project.optional-dependencies]

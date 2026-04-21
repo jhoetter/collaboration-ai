@@ -41,11 +41,79 @@ program
   .description("Send a chat message in the given channel.")
   .requiredOption("--channel <channelId>")
   .requiredOption("--content <content>")
+  .option("--thread <rootEventId>", "Reply in the given thread root")
   .action(async (opts) => {
     const cfg = loadConfig();
     const client = new CollabClient(cfg);
-    const res = await client.send(opts.channel, opts.content);
+    const res = await client.send(opts.channel, opts.content, {
+      thread_root: opts.thread,
+    });
     console.log(JSON.stringify(res, null, 2));
+  });
+
+program
+  .command("read")
+  .description("Read the message stream of a channel; --since for incremental polling.")
+  .requiredOption("--channel <channelId>")
+  .option("--since <sequence>", "Only return messages with sequence > N", "0")
+  .option("--limit <n>", "Max rows", "100")
+  .action(async (opts) => {
+    const cfg = loadConfig();
+    const client = new CollabClient(cfg);
+    const rows = await client.read(opts.channel, {
+      since: parseInt(opts.since, 10),
+      limit: parseInt(opts.limit, 10),
+    });
+    console.log(JSON.stringify(rows, null, 2));
+  });
+
+program
+  .command("search <query>")
+  .description("Full-text search across channels you can see.")
+  .option("--channel <channelId...>", "Restrict to channel id(s)")
+  .option("--from <userId>", "Restrict to a sender")
+  .option("--limit <n>", "Max rows", "20")
+  .action(async (query, opts) => {
+    const cfg = loadConfig();
+    const client = new CollabClient(cfg);
+    const rows = await client.search(query, {
+      channel_ids: opts.channel,
+      from_user: opts.from,
+      limit: parseInt(opts.limit, 10),
+    });
+    console.log(JSON.stringify(rows, null, 2));
+  });
+
+program
+  .command("react <targetEventId> <emoji>")
+  .description("Add an emoji reaction to a message.")
+  .action(async (target, emoji) => {
+    const cfg = loadConfig();
+    const client = new CollabClient(cfg);
+    const res = await client.addReaction(target, emoji);
+    console.log(JSON.stringify(res, null, 2));
+  });
+
+program
+  .command("channels")
+  .description("List channels visible to the current actor.")
+  .action(async () => {
+    const cfg = loadConfig();
+    const client = new CollabClient(cfg);
+    const rows = await client.channels();
+    console.log(JSON.stringify(rows, null, 2));
+  });
+
+program
+  .command("subscribe")
+  .description("Stream new events from /api/sync as JSONL — one event per line. Long-running.")
+  .option("--since <sequence>", "Start cursor", "0")
+  .action(async (opts) => {
+    const cfg = loadConfig();
+    const client = new CollabClient(cfg);
+    for await (const event of client.subscribe({ since: parseInt(opts.since, 10) })) {
+      process.stdout.write(`${JSON.stringify(event)}\n`);
+    }
   });
 
 program

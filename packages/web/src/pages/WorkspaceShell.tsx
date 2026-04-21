@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { Route, Routes, useParams } from "react-router";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
+import { ThreadPane } from "../components/ThreadPane.tsx";
 import { useEventStream } from "../hooks/useEventStream.ts";
 import { useAuth } from "../state/auth.ts";
+import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
 import { AgentInbox } from "./AgentInbox.tsx";
 import { ChannelPage } from "./ChannelPage.tsx";
@@ -20,6 +22,8 @@ export function WorkspaceShell() {
     if (effectiveWorkspaceId) void hydrate(effectiveWorkspaceId);
   }, [effectiveWorkspaceId, hydrate]);
 
+  const threadOpen = useThread((s) => s.rootId !== null);
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -33,7 +37,7 @@ export function WorkspaceShell() {
           />
         </Routes>
       </main>
-      <AgentInbox />
+      {threadOpen ? <ThreadPane /> : <AgentInbox />}
       <CommandPalette />
     </div>
   );

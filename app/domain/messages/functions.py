@@ -133,6 +133,108 @@ def remove_reaction(
     ).to_dict()
 
 
+@function(name="chat:pin-message", mcp_expose=True, mcp_scope="write:messages")
+def pin_message(
+    workspace_id: str,
+    target_event_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:pin-message",
+            payload={"message_id": target_event_id},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:unpin-message", mcp_expose=True, mcp_scope="write:messages")
+def unpin_message(
+    workspace_id: str,
+    target_event_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:unpin-message",
+            payload={"message_id": target_event_id},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:list-pinned", mcp_expose=True, mcp_scope="read:messages")
+def list_pinned(channel_id: str) -> list[dict[str, Any]]:
+    with open_session() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT p.message_id, p.pinned_at, p.pinned_by,
+                       m.content, m.sender_id, m.sender_type, m.created_at
+                FROM pinned p
+                JOIN messages m ON m.message_id = p.message_id
+                WHERE p.channel_id = :c AND m.redacted = FALSE
+                ORDER BY p.pinned_at DESC
+                """
+            ),
+            {"c": channel_id},
+        ).mappings()
+        return [dict(r) for r in rows]
+
+
+@function(name="chat:set-draft", mcp_expose=False)
+def set_draft(
+    workspace_id: str,
+    channel_id: str,
+    content: str,
+    *,
+    thread_root: str | None = None,
+    actor_id: str,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"content": content}
+    if thread_root is not None:
+        payload["thread_root"] = thread_root
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:set-draft",
+            payload=payload,
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:clear-draft", mcp_expose=False)
+def clear_draft(
+    workspace_id: str,
+    channel_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:clear-draft",
+            payload={},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
 @function(name="chat:mark-read", mcp_expose=True, mcp_scope="write:read-markers")
 def mark_read(
     workspace_id: str,

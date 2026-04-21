@@ -1,13 +1,13 @@
 import { useParams } from "react-router";
-import { Composer } from "../components/Composer.tsx";
+import { ChannelHeader } from "../components/ChannelHeader.tsx";
+import { Composer, type ComposerSendPayload } from "../components/Composer.tsx";
 import { MessageList } from "../components/MessageList.tsx";
+import { TypingIndicator } from "../components/TypingIndicator.tsx";
 import { callFunction } from "../lib/api.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Message } from "../state/sync.ts";
+import { useThread } from "../state/threads.ts";
 
-// Stable empty fallback so the selector returns the same reference on every
-// render when the channel has no messages yet. Returning a fresh `[]`
-// literal makes Zustand think state changed and triggers an infinite loop.
 const EMPTY_MESSAGES: Message[] = [];
 
 interface SendMessageResponse {
@@ -34,8 +34,9 @@ export function ChannelPage() {
   const channel = useSync((s) => (channelId ? s.channels[channelId] : undefined));
   const applyOptimistic = useSync((s) => s.applyOptimistic);
   const reconcile = useSync((s) => s.reconcileOptimistic);
+  const openThread = useThread((s) => s.open);
 
-  async function handleSend(text: string) {
+  async function handleSend(payload: ComposerSendPayload) {
     if (!channelId || !identity) return;
     const localId = `local-${crypto.randomUUID()}`;
     applyOptimistic({
@@ -44,14 +45,18 @@ export function ChannelPage() {
       thread_root: null,
       sender_id: identity.user_id,
       sender_type: "human",
-      content: text,
-      mentions: [],
+      content: payload.text,
+      mentions: payload.mentions,
+      attachments: payload.attachments,
       sequence: -1,
+      origin_ts: Date.now(),
     });
     try {
       const result = await callFunction<SendMessageResponse>("chat:send-message", {
         channel_id: channelId,
-        content: text,
+        content: payload.text,
+        mentions: payload.mentions,
+        attachments: payload.attachments,
       });
       if (result.status !== "applied" || result.events.length === 0) {
         console.error("send rejected", result.error);
@@ -64,22 +69,29 @@ export function ChannelPage() {
         thread_root: null,
         sender_id: event.sender_id,
         sender_type: event.sender_type,
-        content: text,
-        mentions: [],
+        content: payload.text,
+        mentions: payload.mentions,
+        attachments: payload.attachments,
         sequence: event.sequence,
+        origin_ts: Date.now(),
       });
     } catch (err) {
       console.error(err);
     }
   }
 
+  if (!channelId) return null;
+
   return (
     <section className="flex h-full flex-1 flex-col">
-      <header className="flex items-center gap-2 border-b border-slate-800 bg-slate-900 px-4 py-2">
-        <h1 className="text-sm font-semibold text-slate-100">#{channel?.name ?? channelId}</h1>
-      </header>
-      <MessageList messages={messages} />
-      <Composer onSend={handleSend} />
+      <ChannelHeader channelId={channelId} channel={channel} />
+      <MessageList messages={messages} channelId={channelId} onOpenThread={openThread} />
+      <TypingIndicator channelId={channelId} />
+      <Composer
+        channelId={channelId}
+        placeholder={`Message #${channel?.name ?? channelId}`}
+        onSend={handleSend}
+      />
     </section>
   );
 }

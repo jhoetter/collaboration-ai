@@ -273,8 +273,11 @@ _COMMAND_TO_EVENT: Mapping[str, str] = {
     "workspace:set-role": "workspace.member.role-set",
     "channel:create": "channel.create",
     "channel:update": "channel.update",
+    "channel:archive": "channel.archive",
+    "channel:unarchive": "channel.unarchive",
     "channel:invite": "channel.member.invite",
     "channel:kick": "channel.member.kick",
+    "channel:leave": "channel.member.leave",
     "channel:set-topic": "channel.topic.set",
     "chat:pin-message": "channel.pin.add",
     "chat:unpin-message": "channel.pin.remove",
@@ -289,9 +292,19 @@ _COMMAND_TO_EVENT: Mapping[str, str] = {
     # "chat:remove-reaction" -> (handled in handler, not auto-validated)
     # "chat:mark-read" -> (handled in handler, not auto-validated)
     "chat:set-draft": "draft.set",
+    "chat:clear-draft": "draft.clear",
     "user:set-status": "user.status.set",
     "user:set-presence": "user.presence.set",
     "user:snooze-notifications": "user.snooze.set",
+    "user:set-display-name": "user.display-name.set",
+    # Huddle commands carry only optional metadata (the handler mints
+    # the `huddle_id` and `livekit_room`), so they don't auto-validate
+    # against the strict event schema. The handler emits well-typed
+    # envelopes which projection_writer + projector consume directly.
+    # "huddle:start" -> (handled in handler)
+    # "huddle:join" -> (handled in handler)
+    # "huddle:leave" -> (handled in handler)
+    # "huddle:end" -> (handled in handler)
     "agent:propose-message": "agent.proposal.create",
     "agent:approve-proposal": "agent.proposal.approve",
     "agent:reject-proposal": "agent.proposal.reject",
