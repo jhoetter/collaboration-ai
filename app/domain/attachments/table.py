@@ -9,7 +9,7 @@ class Attachment(Table):
     __tablename__ = "attachments"
 
     file_id = Column(types.Text, required=True, primary_key=True)
-    workspace_id = Column(types.Text, required=True, indexed=True)
+    workspace_id = Column(types.Text, required=True, index=True)
     uploaded_by = Column(types.Text, required=True)
     object_key = Column(types.Text, required=True)
     mime = Column(types.Text, required=True)

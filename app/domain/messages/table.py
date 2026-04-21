@@ -9,9 +9,9 @@ class Message(Table):
     __tablename__ = "messages"
 
     message_id = Column(types.Text, required=True, primary_key=True)
-    workspace_id = Column(types.Text, required=True, indexed=True)
-    channel_id = Column(types.Text, required=True, indexed=True)
-    thread_root = Column(types.Text, nullable=True, indexed=True)
+    workspace_id = Column(types.Text, required=True, index=True)
+    channel_id = Column(types.Text, required=True, index=True)
+    thread_root = Column(types.Text, nullable=True, index=True)
     sender_id = Column(types.Text, required=True)
     sender_type = Column(types.String, required=True)
     agent_id = Column(types.Text, nullable=True)
@@ -21,7 +21,7 @@ class Message(Table):
     edited_at = Column(types.BigInteger, nullable=True)
     redacted = Column(types.Boolean, required=True, default=False)
     redact_reason = Column(types.Text, nullable=True)
-    sequence = Column(types.BigInteger, required=True, indexed=True)
+    sequence = Column(types.BigInteger, required=True, index=True)
     created_at = Column(types.BigInteger, required=True)
     imported_from = Column(types.Text, nullable=True)
     original_author = Column(types.Text, nullable=True)

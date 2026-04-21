@@ -9,7 +9,7 @@ class Channel(Table):
     __tablename__ = "channels"
 
     channel_id = Column(types.Text, required=True, primary_key=True)
-    workspace_id = Column(types.Text, required=True, indexed=True)
+    workspace_id = Column(types.Text, required=True, index=True)
     name = Column(types.Text, required=True)
     type = Column(types.String, required=True, default="public")
     private = Column(types.Boolean, required=True, default=False)

@@ -9,7 +9,7 @@ class Agent(Table):
     __tablename__ = "agents"
 
     agent_id = Column(types.Text, required=True, primary_key=True)
-    workspace_id = Column(types.Text, required=True, indexed=True)
+    workspace_id = Column(types.Text, required=True, index=True)
     display_name = Column(types.Text, required=True)
     scopes = Column(types.JSON, required=True, default=list)
     registered_at = Column(types.BigInteger, required=True)
@@ -20,8 +20,8 @@ class Proposal(Table):
     __tablename__ = "proposals"
 
     proposal_id = Column(types.Text, required=True, primary_key=True)
-    workspace_id = Column(types.Text, required=True, indexed=True)
-    channel_id = Column(types.Text, required=True, indexed=True)
+    workspace_id = Column(types.Text, required=True, index=True)
+    channel_id = Column(types.Text, required=True, index=True)
     agent_id = Column(types.Text, nullable=True)
     command_type = Column(types.Text, required=True)
     payload = Column(types.JSON, required=True)

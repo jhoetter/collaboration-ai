@@ -36,6 +36,8 @@ class PostgresCommitter:
         for env in envelopes:
             by_ws.setdefault(env.workspace_id, []).append(env)
 
+        from .projection_writer import write_projection
+
         ts = now_ms()
         out: list[Event] = []
         with self._session_factory() as session:
@@ -45,6 +47,7 @@ class PostgresCommitter:
                     seq = base + offset + 1
                     row = self._insert_event(session, env, seq, ts)
                     out.append(row)
+                    write_projection(session, row)
             session.commit()
         return out
 
