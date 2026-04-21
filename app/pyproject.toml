@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "collaboration-ai backend — hof-engine application implementing event-sourced team chat with first-class agents."
 requires-python = ">=3.12"
 dependencies = [
-    "hof-engine>=0.5.0",
+    # Pinned to git main, mirroring hof-os/backend/pyproject.toml so all
+    # three repos (hof-os, office-ai-via-bridges, this one) consume the
+    # same hof-engine head. PyPI lags well behind (latest there is
+    # 0.1.x); we want the same code that hof-os ships against.
+    "hof-engine @ git+https://github.com/jhoetter/hof-engine.git",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
     "sqlalchemy>=2.0",
@@ -41,6 +45,9 @@ collabai-mcp = "domain.agent_api.bin:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["domain", "tables", "functions", "flows", "cron"]

@@ -14,10 +14,12 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-COPY app/pyproject.toml app/uv.lock* ./
-RUN uv pip install --system --requirement pyproject.toml
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY app /app
+RUN uv pip install --system -e .
 
 EXPOSE 8300
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD curl -fsS http://localhost:8300/healthz || exit 1

@@ -40,10 +40,21 @@ help:
 	@echo "  build        Build all distributable artefacts"
 	@echo "  clean        Remove build outputs and venvs"
 
+# If `~/repos/hof-engine` exists we prefer an editable install of the
+# sibling checkout so backend hacking can stay local-first (matches
+# the office-ai sibling-fallback pattern in
+# ensure-collabai-react-embeds.cjs). Otherwise pyproject.toml's
+# `hof-engine @ git+...` pin pulls main from GitHub — same source
+# hof-os/backend uses.
+HOF_ENGINE_LOCAL := $(HOME)/repos/hof-engine
+
 install:
 	$(PNPM) install
 	cd $(APP_DIR) && $(PYTHON) -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e ".[dev]"
-	cd cli/collabai && $(PYTHON) -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e ".[dev]"
+	@if [ -d "$(HOF_ENGINE_LOCAL)" ]; then \
+	  echo "→ overlaying editable hof-engine from $(HOF_ENGINE_LOCAL)"; \
+	  $(APP_DIR)/.venv/bin/pip install -e "$(HOF_ENGINE_LOCAL)"; \
+	fi
 
 # Mirrors hof-os/Makefile naming (db-up / db-down / db-reset). Old
 # dev-stack* / compose-* targets stay as aliases so existing muscle
