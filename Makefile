@@ -5,15 +5,30 @@ PYTHON ?= python3.13
 APP_DIR := app
 PNPM := pnpm
 
-.PHONY: help install dev dev-stack dev-stack-down test test-py test-js \
-        format format-check lint architecture typecheck verify build clean \
-        compose-up compose-down compose-logs
+# Local "AI suite" port allocation:
+#   3000 -> hof-os         (8000 backend)
+#   3100 -> office-ai      (8100 backend)
+#   3200 -> mail-ai        (8200 backend, reserved)
+#   3300 -> collaboration  (8300 backend)  <-- this repo
+WEB_PORT ?= 3300
+API_PORT ?= 8300
+
+.PHONY: help install dev dev-api dev-web kill-ports \
+        db-up db-down db-reset db-logs \
+        dev-stack dev-stack-down compose-up compose-down compose-logs \
+        test test-py test-js format format-check lint architecture \
+        typecheck verify build clean
 
 help:
 	@echo "Targets:"
 	@echo "  install      Install JS + Python dependencies"
-	@echo "  dev-stack    Start the dev infra (postgres / redis / minio / mailhog)"
-	@echo "  dev          Run the backend + UI dev servers (requires dev-stack)"
+	@echo "  dev          Bring up infra + backend (:$(API_PORT)) + web UI (:$(WEB_PORT)) — one command"
+	@echo "  dev-api      Backend only on :$(API_PORT) (assumes db-up has run)"
+	@echo "  dev-web      Web UI only on :$(WEB_PORT)"
+	@echo "  db-up        Start postgres / redis / minio / mailhog (== old dev-stack)"
+	@echo "  db-down      Stop the dev infra"
+	@echo "  db-reset     Wipe volumes and recreate the dev infra"
+	@echo "  db-logs      Tail dev-infra container logs"
 	@echo "  test         Run the full test suite"
 	@echo "  test-py      Run Python tests only"
 	@echo "  test-js      Run JS tests only"
@@ -30,19 +45,49 @@ install:
 	cd $(APP_DIR) && $(PYTHON) -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e ".[dev]"
 	cd cli/collabai && $(PYTHON) -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e ".[dev]"
 
-dev-stack compose-up:
+# Mirrors hof-os/Makefile naming (db-up / db-down / db-reset). Old
+# dev-stack* / compose-* targets stay as aliases so existing muscle
+# memory and CI scripts keep working.
+db-up:
 	docker compose -f infra/docker-compose.yml up -d
 	@echo ""
 	@echo "Postgres: localhost:5434  Redis: localhost:6381  MinIO: http://localhost:9101  Mailhog: http://localhost:8026"
 
-compose-down dev-stack-down:
+db-down:
 	docker compose -f infra/docker-compose.yml down
 
-compose-logs:
+db-reset:
+	docker compose -f infra/docker-compose.yml down -v
+	$(MAKE) db-up
+
+db-logs:
 	docker compose -f infra/docker-compose.yml logs -f --tail=100
 
-dev:
-	$(PNPM) -w turbo dev
+dev-stack: db-up
+dev-stack-down: db-down
+compose-up: db-up
+compose-down: db-down
+compose-logs: db-logs
+
+# Frees ports we own before spinning back up — matches hof-os's
+# `kill-ports` so re-running `make dev` after a Ctrl-C doesn't trip
+# "address already in use".
+kill-ports:
+	@lsof -ti :$(API_PORT) | xargs kill -9 2>/dev/null || true
+	@lsof -ti :$(WEB_PORT) | xargs kill -9 2>/dev/null || true
+
+dev: db-up kill-ports
+	@echo "→ API   http://localhost:$(API_PORT)"
+	@echo "→ Web   http://localhost:$(WEB_PORT)"
+	$(PNPM) -w exec concurrently -k -n api,web -c blue,magenta \
+	  "$(MAKE) dev-api" \
+	  "$(MAKE) dev-web"
+
+dev-api:
+	cd $(APP_DIR) && .venv/bin/hof dev --no-ui --port $(API_PORT)
+
+dev-web:
+	$(PNPM) --filter @collabai/web dev --port $(WEB_PORT) --strictPort
 
 test: test-py test-js
 

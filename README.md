@@ -47,10 +47,36 @@ collaboration-ai/
 
 ```bash
 make install                    # install JS + Python deps
-make dev-stack                  # start Postgres + Redis + MinIO + Mailhog
-make dev                        # backend on :8200, web UI on :5173
+make dev                        # one command: infra + backend (:8300) + web UI (:3300)
+open http://localhost:3300
 make verify                     # the merge gate
 ```
+
+`make dev` mirrors hof-os: it auto-runs `db-up` (Postgres + Redis +
+MinIO + Mailhog via `infra/docker-compose.yml`), kills any stale
+ports, then starts the backend and web halves side by side under
+`concurrently`.
+
+Granular targets when you want finer control:
+
+```bash
+make dev-api                    # FastAPI + Celery on :8300 (assumes db-up)
+make dev-web                    # Vite + React on :3300
+make db-up | db-down | db-reset # infra lifecycle (== hof-os naming)
+make db-logs                    # tail container logs
+```
+
+### Port allocation across the local AI suite
+
+| Port | Project          |
+| ---- | ---------------- |
+| 3000 | hof-os           |
+| 3100 | office-ai        |
+| 3200 | mail-ai (held)   |
+| 3300 | collaboration-ai |
+
+Backends mirror the same scheme one decade up: 8000 / 8100 / 8200 / 8300.
+Override with `make dev WEB_PORT=4000 API_PORT=9000` when needed.
 
 ## Phases
 

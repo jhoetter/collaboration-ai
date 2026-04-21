@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: true,
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3300",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

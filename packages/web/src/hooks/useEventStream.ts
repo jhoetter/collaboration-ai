@@ -16,7 +16,8 @@ export function useEventStream(workspaceId: string | undefined) {
     let pollHandle: number | null = null;
 
     function startWebSocket() {
-      socket = new WebSocket(`ws://${location.host}/ws/events?workspace_id=${workspaceId}`);
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      socket = new WebSocket(`${proto}://${location.host}/ws/events?workspace_id=${workspaceId}`);
       socket.onmessage = (msg) => {
         try {
           const event = JSON.parse(msg.data);

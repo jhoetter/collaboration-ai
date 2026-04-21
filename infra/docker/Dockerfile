@@ -19,6 +19,6 @@ RUN uv pip install --system --requirement pyproject.toml
 
 COPY app /app
 
-EXPOSE 8000
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD curl -fsS http://localhost:8000/healthz || exit 1
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8300
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD curl -fsS http://localhost:8300/healthz || exit 1
+CMD ["uvicorn", "hof.api.server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8300"]
