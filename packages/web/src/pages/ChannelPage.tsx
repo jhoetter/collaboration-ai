@@ -2,43 +2,64 @@ import { useParams } from "react-router";
 import { Composer } from "../components/Composer.tsx";
 import { MessageList } from "../components/MessageList.tsx";
 import { callFunction } from "../lib/api.ts";
+import { useAuth } from "../state/auth.ts";
 import { useSync } from "../state/sync.ts";
 
+interface SendMessageResponse {
+  command_id: string;
+  status: "committed" | "rejected" | "staged";
+  events: Array<{
+    event_id: string;
+    sequence: number;
+    sender_id: string;
+    sender_type: "human" | "agent" | "system";
+    type: string;
+    content: Record<string, unknown>;
+    room_id: string;
+  }>;
+  error?: { code: string; message: string };
+}
+
 export function ChannelPage() {
-  const { workspaceId, channelId } = useParams<{ workspaceId: string; channelId: string }>();
+  const { channelId } = useParams<{ channelId: string }>();
+  const identity = useAuth((s) => s.identity);
   const messages = useSync((s) => (channelId ? s.messagesByChannel[channelId] ?? [] : []));
   const channel = useSync((s) => (channelId ? s.channels[channelId] : undefined));
   const applyOptimistic = useSync((s) => s.applyOptimistic);
   const reconcile = useSync((s) => s.reconcileOptimistic);
 
   async function handleSend(text: string) {
-    if (!workspaceId || !channelId) return;
+    if (!channelId || !identity) return;
     const localId = `local-${crypto.randomUUID()}`;
     applyOptimistic({
       id: localId,
       channel_id: channelId,
       thread_root: null,
-      sender_id: "me",
+      sender_id: identity.user_id,
       sender_type: "human",
       content: text,
       mentions: [],
       sequence: -1,
     });
     try {
-      const result = await callFunction<{ event_id: string; sequence: number }>("chat:send-message", {
-        workspace_id: workspaceId,
+      const result = await callFunction<SendMessageResponse>("chat:send-message", {
         channel_id: channelId,
         content: text,
       });
+      if (result.status !== "committed" || result.events.length === 0) {
+        console.error("send rejected", result.error);
+        return;
+      }
+      const event = result.events[0];
       reconcile(localId, {
-        id: result.event_id,
+        id: event.event_id,
         channel_id: channelId,
         thread_root: null,
-        sender_id: "me",
-        sender_type: "human",
+        sender_id: event.sender_id,
+        sender_type: event.sender_type,
         content: text,
         mentions: [],
-        sequence: result.sequence,
+        sequence: event.sequence,
       });
     } catch (err) {
       console.error(err);

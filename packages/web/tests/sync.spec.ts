@@ -17,8 +17,8 @@ test("two clients see the same message @smoke", async ({ browser }) => {
   const pageA = await ctxA.newPage();
   const pageB = await ctxB.newPage();
 
-  await pageA.goto("/w/demo/c/general");
-  await pageB.goto("/w/demo/c/general");
+  await pageA.goto("/w/w_demo/c/c_general");
+  await pageB.goto("/w/w_demo/c/c_general");
 
   await pageA.getByLabel("Message composer").fill("hello from A");
   await pageA.getByRole("button", { name: "Send" }).click();

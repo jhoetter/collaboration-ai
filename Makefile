@@ -13,7 +13,7 @@ PNPM := pnpm
 WEB_PORT ?= 3300
 API_PORT ?= 8300
 
-.PHONY: help install dev dev-api dev-web kill-ports \
+.PHONY: help install dev dev-api dev-web kill-ports seed \
         db-up db-down db-reset db-logs \
         dev-stack dev-stack-down compose-up compose-down compose-logs \
         test test-py test-js format format-check lint architecture \
@@ -25,6 +25,7 @@ help:
 	@echo "  dev          Bring up infra + backend (:$(API_PORT)) + web UI (:$(WEB_PORT)) — one command"
 	@echo "  dev-api      Backend only on :$(API_PORT) (assumes db-up has run)"
 	@echo "  dev-web      Web UI only on :$(WEB_PORT)"
+	@echo "  seed         Populate the demo workspace, channels, agent + proposals (idempotent)"
 	@echo "  db-up        Start postgres / redis / minio / mailhog (== old dev-stack)"
 	@echo "  db-down      Stop the dev infra"
 	@echo "  db-reset     Wipe volumes and recreate the dev infra"
@@ -99,6 +100,9 @@ dev-api:
 
 dev-web:
 	$(PNPM) --filter @collabai/web dev --port $(WEB_PORT) --strictPort
+
+seed:
+	cd $(APP_DIR) && .venv/bin/python -m scripts.seed
 
 test: test-py test-js
 

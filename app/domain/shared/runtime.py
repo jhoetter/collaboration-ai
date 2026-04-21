@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from ..events.projector import ProjectedState, project_event
 from .command_bus import CommandBus, Committer
 from .handlers import register_default_handlers
 
@@ -17,12 +18,39 @@ from .handlers import register_default_handlers
 def get_command_bus() -> CommandBus:
     from hof import get_session_factory  # noqa: WPS433
 
-    from ..events.repository import PostgresCommitter
+    from ..events.repository import PostgresCommitter, stream_events
 
-    bus = CommandBus()
+    session_factory = get_session_factory()
+
+    state = ProjectedState()
+    # Warm the in-memory state from the event log so authorisation
+    # checks (workspace membership, channel ACLs, …) survive process
+    # restarts. Single-process dev only — multi-worker deployments need
+    # the Celery projector worker.
+    try:
+        with session_factory() as session:
+            for workspace_id in _list_workspace_ids(session):
+                for event in stream_events(
+                    session,
+                    workspace_id=workspace_id,
+                    since_sequence=0,
+                    limit=10_000_000,
+                ):
+                    project_event(state, event)
+    except Exception:  # noqa: BLE001 — first-boot tables may not exist yet
+        state = ProjectedState()
+
+    bus = CommandBus(projector_state=state)
     register_default_handlers(bus)
-    bus.committer = Committer(commit=PostgresCommitter(get_session_factory()).commit)
+    bus.committer = Committer(commit=PostgresCommitter(session_factory).commit)
     return bus
+
+
+def _list_workspace_ids(session) -> list[str]:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    rows = session.execute(text("SELECT DISTINCT workspace_id FROM events")).fetchall()
+    return [row[0] for row in rows]
 
 
 def reset_command_bus_for_tests() -> None:

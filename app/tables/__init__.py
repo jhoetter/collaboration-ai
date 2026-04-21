@@ -10,6 +10,7 @@ from domain.attachments.table import Attachment
 from domain.channels.table import Channel, ChannelMember
 from domain.events.table import EventRow, WorkspaceSequence
 from domain.messages.table import Draft, Message, Pinned, ReadMarker, Reaction
+from domain.users.table import User
 from domain.workspaces.table import Workspace, WorkspaceMember
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "Proposal",
     "ReadMarker",
     "Reaction",
+    "User",
     "Workspace",
     "WorkspaceMember",
     "WorkspaceSequence",
