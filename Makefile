@@ -81,12 +81,39 @@ compose-up: db-up
 compose-down: db-down
 compose-logs: db-logs
 
-# Frees ports we own before spinning back up — matches hof-os's
-# `kill-ports` so re-running `make dev` after a Ctrl-C doesn't trip
-# "address already in use".
+# Frees the ports we own before spinning back up. Mirrors mail-ai /
+# office-ai: a naive `lsof | kill` loses to vite / next / concurrently
+# because (a) they spawn workers that hold the port even after the
+# parent dies, and (b) there's a tiny window between kill and the next
+# bind where the supervisor can respawn. So we do:
+#   1. kill any process holding the port
+#   2. pkill the supervisors that match this workspace (so we don't
+#      whack mail-ai / office-ai / hof-os running side-by-side)
+#   3. poll until the ports are really free (max ~3s)
+# Re-running `make dev` from any state Just Works.
 kill-ports:
-	@lsof -ti :$(API_PORT) | xargs kill -9 2>/dev/null || true
-	@lsof -ti :$(WEB_PORT) | xargs kill -9 2>/dev/null || true
+	@PORTS="$(API_PORT) $(WEB_PORT)"; \
+	WS_TAG="$(CURDIR)"; \
+	for _ in 1 2 3 4 5 6; do \
+	  for p in $$PORTS; do \
+	    pids=$$(lsof -ti :$$p 2>/dev/null); \
+	    [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true; \
+	  done; \
+	  pkill -9 -f "vite.*$$WS_TAG"        2>/dev/null || true; \
+	  pkill -9 -f "next-server.*$$WS_TAG" 2>/dev/null || true; \
+	  pkill -9 -f "next dev.*$$WS_TAG"    2>/dev/null || true; \
+	  pkill -9 -f "uvicorn.*$$WS_TAG"     2>/dev/null || true; \
+	  pkill -9 -f "concurrently.*$$WS_TAG" 2>/dev/null || true; \
+	  pkill -9 -f "turbo run dev"         2>/dev/null || true; \
+	  busy=""; \
+	  for p in $$PORTS; do \
+	    lsof -ti :$$p >/dev/null 2>&1 && busy="$$busy $$p"; \
+	  done; \
+	  [ -z "$$busy" ] && exit 0; \
+	  sleep 0.5; \
+	done; \
+	echo "kill-ports: still in use after retries:$$busy" >&2; \
+	exit 1
 
 dev: db-up kill-ports
 	@echo "→ API   http://localhost:$(API_PORT)"
