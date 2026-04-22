@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "./cn";
 
 export interface ModalProps {
@@ -29,6 +30,16 @@ const SIZE_CLASS: Record<NonNullable<ModalProps["size"]>, string> = {
  * Centered modal dialog with a translucent scrim. Backdrop click and
  * the Escape key both fire `onClose`. The card uses semantic tokens so
  * it follows the active design-system + colour-scheme automatically.
+ *
+ * The dialog renders through `createPortal` to `document.body` so its
+ * `position: fixed` scrim is laid out against the viewport. Without
+ * the portal, any ancestor that establishes a containing block for
+ * fixed descendants — `transform`, `filter`, `perspective`,
+ * `backdrop-filter`, `will-change: transform`, `contain: paint` etc. —
+ * would re-anchor the modal inside that ancestor's box. The mobile
+ * sidebar wrapper in `WorkspaceShell` uses `transform`, which is what
+ * caused "New direct message" / "Create channel" to render trapped
+ * inside the sidebar column.
  */
 export function Modal({
   title,
@@ -48,7 +59,9 @@ export function Modal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -98,6 +111,7 @@ export function Modal({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

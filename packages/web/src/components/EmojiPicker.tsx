@@ -89,11 +89,14 @@ export function EmojiPicker({ onPick, onClose }: EmojiPickerProps) {
   // module-level constant immutable across remounts.
   const categoryIcons = useMemo(() => ({ ...CATEGORY_ICONS }), []);
 
+  // `emoji-mart` ships its own chrome (background, border, shadow) and an
+  // internally-scrolling emoji grid sized to its intrinsic height. Wrapping
+  // it in a container with `max-h` + `overflow-hidden` would clip the host
+  // without telling the picker to shrink, which kills its internal scroll
+  // and strands the bottom rows on shorter viewports — so we leave layout
+  // entirely to the picker here.
   return (
-    <div
-      ref={ref}
-      className="w-[min(20rem,calc(100vw-1rem))] max-h-[70dvh] overflow-hidden rounded-md border border-border bg-card shadow-2xl"
-    >
+    <div ref={ref} className="w-[min(20rem,calc(100vw-1rem))]">
       <Picker
         data={data}
         theme={resolvedScheme}

@@ -57,6 +57,7 @@ const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀"];
 // across re-renders or React hits "getSnapshot should be cached" → infinite
 // loop. `[] as const` would still be a fresh array per render.
 const EMPTY_STAR_LIST: readonly string[] = Object.freeze([]);
+const EMPTY_PIN_LIST: readonly string[] = Object.freeze([]);
 
 export interface MessageListProps {
   messages: Message[];
@@ -86,6 +87,12 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
   const visible = useMemo(() => messages.filter((m) => !m.thread_root), [messages]);
   const grouped = useMemo(() => groupMessages(visible), [visible]);
   const dividers = useMemo(() => buildDividers(grouped), [grouped]);
+  // Pinned ids are kept as a Set for O(1) lookup per row. The selector
+  // returns the same array reference between sync events (see
+  // `pinsByChannel` in `state/sync.ts`), so the Set only rebuilds when
+  // a pin/unpin actually changes the channel's pin list.
+  const pinnedList = useSync((s) => s.pinsByChannel[channelId] ?? EMPTY_PIN_LIST);
+  const pinnedIds = useMemo(() => new Set(pinnedList), [pinnedList]);
 
   // Parse `#message-${id}` out of the URL hash. Set by the top-bar
   // search, the activity feed, the sidebar's saved/star list, and
@@ -218,6 +225,7 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
                       onOpenThread={onOpenThread}
                       firstUnreadId={firstUnreadId}
                       highlightedId={highlightedId}
+                      pinnedIds={pinnedIds}
                       onPreviewImage={(att, peers) => lightbox.open(att, peers)}
                     />
                   </Fragment>
@@ -329,12 +337,14 @@ function MessageGroup({
   onOpenThread,
   firstUnreadId,
   highlightedId,
+  pinnedIds,
   onPreviewImage,
 }: {
   group: Group;
   onOpenThread?: (rootId: string) => void;
   firstUnreadId: string | null;
   highlightedId: string | null;
+  pinnedIds: ReadonlySet<string>;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
   const name = useDisplayName(group.head.sender_id);
@@ -348,6 +358,7 @@ function MessageGroup({
         onOpenThread={onOpenThread}
         isFirstUnread={firstUnreadId === group.head.id}
         isHighlighted={highlightedId === group.head.id}
+        isPinned={pinnedIds.has(group.head.id)}
         onPreviewImage={onPreviewImage}
         leading={
           <div className="pt-0.5">
@@ -373,6 +384,7 @@ function MessageGroup({
           onOpenThread={onOpenThread}
           isFirstUnread={firstUnreadId === m.id}
           isHighlighted={highlightedId === m.id}
+          isPinned={pinnedIds.has(m.id)}
           onPreviewImage={onPreviewImage}
           compact
           leading={
@@ -394,6 +406,7 @@ function MessageRow({
   onOpenThread,
   isFirstUnread,
   isHighlighted,
+  isPinned,
   onPreviewImage,
 }: {
   message: Message;
@@ -403,22 +416,40 @@ function MessageRow({
   onOpenThread?: (rootId: string) => void;
   isFirstUnread?: boolean;
   isHighlighted?: boolean;
+  isPinned?: boolean;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
+  const { t } = useTranslator();
+  // Pinned rows get a persistent soft warning tint plus a left bar
+  // (Slack-style). The search-jump animation also paints the warning
+  // colour, but only for ~2.4s — the two states stack cleanly because
+  // `[data-highlight]` overrides the background during its keyframes
+  // and falls back to the pinned tint when it finishes.
+  const pinnedClasses = isPinned
+    ? "bg-warning-bg shadow-[inset_3px_0_0_var(--warning)] hover:bg-warning-bg"
+    : "hover:bg-hover";
   return (
     <div
       data-highlight={isHighlighted ? "true" : undefined}
-      className={`group/msg relative flex items-start gap-2 rounded-md px-2 transition-colors duration-150 hover:bg-hover ${
+      data-pinned={isPinned ? "true" : undefined}
+      className={`group/msg relative flex items-start gap-2 rounded-md px-2 transition-colors duration-150 ${pinnedClasses} ${
         compact ? "py-0.5" : "py-1"
       }`}
     >
       <div className="flex w-8 shrink-0 justify-center">{leading}</div>
       <div className="min-w-0 flex-1">
+        {isPinned && (
+          <p className="mb-0.5 inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-warning">
+            <IconPin size={10} />
+            {t("messageActions.pinned")}
+          </p>
+        )}
         {header}
         <MessageBody
           message={message}
           onOpenThread={onOpenThread}
           isFirstUnread={isFirstUnread}
+          isPinned={isPinned}
           onPreviewImage={onPreviewImage}
         />
       </div>
@@ -430,11 +461,13 @@ function MessageBody({
   message,
   onOpenThread,
   isFirstUnread,
+  isPinned,
   onPreviewImage,
 }: {
   message: Message;
   onOpenThread?: (rootId: string) => void;
   isFirstUnread?: boolean;
+  isPinned?: boolean;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
   const { t } = useTranslator();
@@ -501,8 +534,9 @@ function MessageBody({
     await callFunction("chat:delete-message", { target_event_id: message.id });
   }
 
-  async function pinMessage() {
-    await callFunction("chat:pin-message", { target_event_id: message.id });
+  async function togglePin() {
+    const fn = isPinned ? "chat:unpin-message" : "chat:pin-message";
+    await callFunction(fn, { target_event_id: message.id });
   }
 
   async function toggleStar() {
@@ -725,6 +759,7 @@ function MessageBody({
               {showMore && (
                 <MoreMenu
                   isOwn={isOwn}
+                  isPinned={Boolean(isPinned)}
                   onClose={() => setShowMore(false)}
                   onEdit={() => {
                     setShowMore(false);
@@ -736,7 +771,7 @@ function MessageBody({
                   }}
                   onPin={() => {
                     setShowMore(false);
-                    void pinMessage();
+                    void togglePin();
                   }}
                   onMarkUnread={() => {
                     setShowMore(false);
@@ -767,6 +802,7 @@ function MessageBody({
         <MobileActionSheet
           isOwn={isOwn}
           isStarred={isStarred}
+          isPinned={Boolean(isPinned)}
           canReply={Boolean(onOpenThread)}
           onClose={() => setShowMobileSheet(false)}
           onReact={(emoji) => {
@@ -791,7 +827,7 @@ function MessageBody({
           }}
           onPin={() => {
             setShowMobileSheet(false);
-            void pinMessage();
+            void togglePin();
           }}
           onMarkUnread={() => {
             setShowMobileSheet(false);
@@ -818,6 +854,7 @@ function MessageBody({
 function MobileActionSheet({
   isOwn,
   isStarred,
+  isPinned,
   canReply,
   onClose,
   onReact,
@@ -833,6 +870,7 @@ function MobileActionSheet({
 }: {
   isOwn: boolean;
   isStarred: boolean;
+  isPinned: boolean;
   canReply: boolean;
   onClose: () => void;
   onReact: (emoji: string) => void;
@@ -908,7 +946,11 @@ function MobileActionSheet({
             onClick={onSave}
           />
           <SheetItem icon={<IconCopy />} label={t("messageActions.share")} onClick={onShare} />
-          <SheetItem icon={<IconPin />} label={t("messageActions.pin")} onClick={onPin} />
+          <SheetItem
+            icon={<IconPin />}
+            label={isPinned ? t("messageActions.unpin") : t("messageActions.pin")}
+            onClick={onPin}
+          />
           <SheetItem
             icon={<IconBookmark />}
             label={t("messageActions.markUnread")}
@@ -968,6 +1010,7 @@ function SheetItem({
 
 function MoreMenu({
   isOwn,
+  isPinned,
   onClose,
   onEdit,
   onDelete,
@@ -976,6 +1019,7 @@ function MoreMenu({
   onCopyLink,
 }: {
   isOwn: boolean;
+  isPinned: boolean;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -997,7 +1041,11 @@ function MoreMenu({
       ref={ref}
       className="absolute right-0 top-full z-40 mt-1 w-52 overflow-hidden rounded-md border border-border bg-card shadow-xl"
     >
-      <MenuItem icon={<IconPin />} label={t("messageActions.pin")} onClick={onPin} />
+      <MenuItem
+        icon={<IconPin />}
+        label={isPinned ? t("messageActions.unpin") : t("messageActions.pin")}
+        onClick={onPin}
+      />
       <MenuItem
         icon={<IconBookmark />}
         label={t("messageActions.markUnread")}

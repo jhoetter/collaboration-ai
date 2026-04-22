@@ -134,6 +134,8 @@
     "edit": "Edit message",
     "delete": "Delete message",
     "pin": "Pin to channel",
+    "unpin": "Unpin from channel",
+    "pinned": "Pinned",
     "markUnread": "Mark unread",
     "copyLink": "Copy link to message",
     "linkCopied": "Link copied",

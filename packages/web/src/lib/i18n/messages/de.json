@@ -134,6 +134,8 @@
     "edit": "Nachricht bearbeiten",
     "delete": "Nachricht löschen",
     "pin": "An Kanal anpinnen",
+    "unpin": "Von Kanal lösen",
+    "pinned": "Angepinnt",
     "markUnread": "Als ungelesen markieren",
     "copyLink": "Link zur Nachricht kopieren",
     "linkCopied": "Link kopiert",
