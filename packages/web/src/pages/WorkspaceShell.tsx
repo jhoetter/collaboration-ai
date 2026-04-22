@@ -1,13 +1,17 @@
 import { useEffect } from "react";
 import { Route, Routes, useParams } from "react-router";
 import { CommandPalette } from "../components/CommandPalette.tsx";
+import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
 import { ThreadPane } from "../components/ThreadPane.tsx";
+import { ToastHost } from "../components/ToastHost.tsx";
+import { useUi } from "../state/ui.ts";
 import { useEventStream } from "../hooks/useEventStream.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
+import { Activity } from "./Activity.tsx";
 import { AgentInbox } from "./AgentInbox.tsx";
 import { ChannelPage } from "./ChannelPage.tsx";
 
@@ -41,18 +45,18 @@ export function WorkspaceShell() {
 
   if (authStatus === "joining" || authStatus === "idle") {
     return (
-      <main className="flex h-screen items-center justify-center bg-slate-950 text-sm text-slate-500">
+      <main className="flex h-screen items-center justify-center bg-background text-sm text-tertiary">
         {t("common.joiningWorkspace")}
       </main>
     );
   }
   if (authStatus === "error") {
     return (
-      <main className="flex h-screen items-center justify-center bg-slate-950 p-6">
-        <div className="max-w-md rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
+      <main className="flex h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-lg border border-destructive/40 bg-destructive-bg p-4 text-sm text-destructive">
           <p className="mb-2 font-semibold">{t("common.joinWorkspaceError")}</p>
-          <p className="mb-3 text-rose-300/80">{authError}</p>
-          <p className="text-xs text-rose-300/60">
+          <p className="mb-3 opacity-80">{authError}</p>
+          <p className="text-xs opacity-70">
             {t("common.didYouRunSeed", { cmd: "make seed" })}
           </p>
         </div>
@@ -67,6 +71,7 @@ export function WorkspaceShell() {
         <Routes>
           <Route index element={<EmptyState />} />
           <Route path="c/:channelId" element={<ChannelPage />} />
+          <Route path="activity" element={<Activity />} />
           <Route
             path="agent-inbox"
             element={<EmptyState label="Open agent inbox in the right rail." />}
@@ -74,14 +79,32 @@ export function WorkspaceShell() {
         </Routes>
       </main>
       {threadOpen ? <ThreadPane /> : <AgentInbox />}
+      <MembersRail />
       <CommandPalette />
+      <ToastHost />
     </div>
   );
 }
 
+function MembersRail() {
+  const open = useUi((s) => s.membersPanelOpen);
+  if (!open) return null;
+  return (
+    <Routes>
+      <Route path="c/:channelId" element={<MembersPanelForRoute />} />
+    </Routes>
+  );
+}
+
+function MembersPanelForRoute() {
+  const { channelId } = useParams<{ channelId: string }>();
+  if (!channelId) return null;
+  return <MembersPanel channelId={channelId} />;
+}
+
 function EmptyState({ label }: { label?: string } = {}) {
   return (
-    <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+    <div className="flex flex-1 items-center justify-center text-sm text-tertiary">
       {label ?? "Pick a channel from the sidebar to start chatting."}
     </div>
   );

@@ -68,6 +68,18 @@ EventType = Literal[
     # Notifications
     "notification.create",
     "notification.read",
+    # Stars / saved-for-later
+    "message.starred",
+    "message.unstarred",
+    # Per-user notification preferences (per channel)
+    "channel.notification.set",
+    # Display name + huddles + link unfurls (additive)
+    "user.display-name.set",
+    "huddle.start",
+    "huddle.join",
+    "huddle.leave",
+    "huddle.end",
+    "link.unfurl",
 ]
 
 EVENT_TYPES: frozenset[str] = frozenset(
@@ -118,6 +130,10 @@ EVENT_TYPES: frozenset[str] = frozenset(
         "huddle.join",
         "huddle.leave",
         "huddle.end",
+        "message.starred",
+        "message.unstarred",
+        "channel.notification.set",
+        "link.unfurl",
     ]
 )
 

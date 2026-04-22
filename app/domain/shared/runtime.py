@@ -62,6 +62,18 @@ def reset_command_bus_for_tests() -> None:
     get_command_bus.cache_clear()
 
 
+def get_projected_state() -> ProjectedState:
+    """Return the running in-memory projection state owned by the bus.
+
+    Read-side endpoints (e.g. `chat:list-stars`,
+    `chat:list-notification-prefs`) use this so they don't have to query
+    SQL for derived state we already maintain in-process. Falls back to
+    a fresh state if the bus hasn't been initialised yet.
+    """
+    bus = get_command_bus()
+    return bus.projector_state or ProjectedState()
+
+
 def get_session_factory():
     """Re-exports the hof-engine SQLAlchemy session factory.
 

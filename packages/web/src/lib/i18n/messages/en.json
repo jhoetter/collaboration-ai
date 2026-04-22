@@ -6,6 +6,9 @@
     "send": "Send",
     "open": "Open",
     "close": "Close",
+    "download": "Download",
+    "search": "Search",
+    "back": "Back",
     "create": "Create",
     "delete": "Delete",
     "edit": "Edit",
@@ -36,7 +39,9 @@
     "noDms": "No DMs yet.",
     "addChannel": "Add channel",
     "newDm": "New direct message",
-    "mentionInChannel": "@you in #{channel}"
+    "mentionInChannel": "@you in #{channel}",
+    "saved": "Saved",
+    "activity": "Activity"
   },
   "userMenu": {
     "youAre": "You are",
@@ -47,7 +52,8 @@
     "setActive": "Set as Active",
     "setAway": "Set as Away",
     "signOut": "Sign out",
-    "signOutConfirm": "Sign out and forget this identity?"
+    "signOutConfirm": "Sign out and forget this identity?",
+    "theme": "Theme"
   },
   "channel": {
     "messagePrefix": "Message #{name}",
@@ -64,7 +70,64 @@
     "uploadFailed": "failed",
     "addEmoji": "Add emoji",
     "attachFile": "Attach file",
-    "removeAttachment": "Remove attachment"
+    "removeAttachment": "Remove attachment",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strikethrough": "Strikethrough",
+    "link": "Link",
+    "bulletedList": "Bulleted list",
+    "numberedList": "Numbered list",
+    "code": "Code",
+    "codeBlock": "Code block",
+    "quote": "Quote",
+    "showFormatting": "Show formatting",
+    "hideFormatting": "Hide formatting",
+    "more": "More actions",
+    "mention": "Mention someone",
+    "linkPrompt": "Paste or type a URL",
+    "actions": {
+      "attach": "Attach a file",
+      "snippet": "Code snippet",
+      "fromUrl": "Insert from URL",
+      "mention": "Mention someone"
+    },
+    "slash": {
+      "me": "Display this message as italic",
+      "shrug": "Append ¯\\_(ツ)_/¯ to your message",
+      "pin": "Pin your last message in this channel",
+      "invite": "Invite someone to this channel",
+      "dm": "Open a DM with someone",
+      "away": "Set yourself as away"
+    }
+  },
+  "messageActions": {
+    "addReaction": "Add reaction",
+    "replyInThread": "Reply in thread",
+    "share": "Copy link",
+    "save": "Save for later",
+    "saved": "Saved",
+    "more": "More actions",
+    "edit": "Edit message",
+    "delete": "Delete message",
+    "pin": "Pin to channel",
+    "markUnread": "Mark unread",
+    "copyLink": "Copy link to message",
+    "linkCopied": "Link copied",
+    "deleteConfirm": "Delete this message?",
+    "reactedBy": "Reacted: {names}",
+    "andOthers": "+{n} more",
+    "you": "you"
+  },
+  "messageList": {
+    "newMessages": "{n} new messages",
+    "newMessagesOne": "1 new message",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "jumpToLatest": "Jump to latest",
+    "empty": "No messages yet — say hi.",
+    "welcomeToChannel": "Welcome to #{name}",
+    "channelStart": "This is the very beginning of the #{name} channel.",
+    "dmStart": "This is the very beginning of your direct message history with {name}."
   },
   "thread": {
     "title": "Thread",
@@ -118,5 +181,45 @@
   "agentInbox": {
     "title": "Agent inbox",
     "empty": "Nothing waiting on you."
+  },
+  "activity": {
+    "title": "Activity",
+    "count": "{n} items",
+    "emptyTitle": "All caught up",
+    "emptyBody": "When someone mentions you, replies in a thread you're following or reacts to one of your messages, you'll see it here.",
+    "mentionedYou": "mentioned you",
+    "replied": "replied to a thread",
+    "reacted": "reacted to your message",
+    "invited": "invited you to a channel"
+  },
+  "channelHeader": {
+    "notifications": "Notifications",
+    "notifyAll": "All messages",
+    "notifyMentions": "@-mentions only",
+    "notifyNone": "Nothing",
+    "settings": "Channel settings"
+  },
+  "toasts": {
+    "jump": "Jump",
+    "notification": "New activity",
+    "mention": "You were mentioned",
+    "reaction": "Someone reacted",
+    "reply": "New thread reply",
+    "invite": "New channel invite"
+  },
+  "members": {
+    "title": "Members",
+    "search": "Search members…",
+    "owner": "owner",
+    "admin": "admin",
+    "member": "member",
+    "remove": "Remove",
+    "removeConfirm": "Remove {name} from #{channel}?",
+    "leaveChannel": "Leave channel",
+    "leaveConfirm": "Leave #{channel}?",
+    "invite": "Add people",
+    "invitePlaceholder": "Find people…",
+    "noResults": "No matches.",
+    "added": "Added"
   }
 }

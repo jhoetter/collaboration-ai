@@ -4,10 +4,10 @@ import { cn } from "./cn";
 export type PresenceStatus = "online" | "idle" | "dnd" | "offline";
 
 const TONE: Record<PresenceStatus, string> = {
-  online: "bg-[var(--presence-online,#22A55B)]",
-  idle: "bg-[var(--presence-idle,#E0A028)]",
-  dnd: "bg-[var(--presence-dnd,#D84B3E)]",
-  offline: "bg-[var(--presence-offline,#9B9A97)]",
+  online: "bg-presence-online",
+  idle: "bg-presence-idle",
+  dnd: "bg-presence-dnd",
+  offline: "bg-presence-offline",
 };
 
 export interface PresenceDotProps {
@@ -20,7 +20,11 @@ export function PresenceDot({ status, className }: PresenceDotProps) {
     <span
       role="status"
       aria-label={`Presence: ${status}`}
-      className={cn("inline-block h-2 w-2 rounded-full ring-2 ring-background", TONE[status], className)}
+      className={cn(
+        "inline-block h-2 w-2 rounded-full ring-2 ring-background",
+        TONE[status],
+        className,
+      )}
     />
   );
 }

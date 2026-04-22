@@ -1,0 +1,182 @@
+/*
+ * collaboration-ai — default preset (Notion-neutral)
+ *
+ * Warm zinc/stone neutral palette with a quiet teal accent. Inter for UI.
+ * Light is the `:root` baseline. Dark applies via:
+ *   - explicit `.collab-theme-dark` class on <html> (runtime toggle), OR
+ *   - `prefers-color-scheme: dark` when neither `.collab-theme-light`
+ *     nor `.collab-theme-dark` is set on <html> (i.e. "system").
+ *
+ * Every token below is mirrored in tokens-conservative.css and consumed
+ * from the Tailwind preset as `var(--<name>)`.
+ */
+:root {
+  /* Surfaces */
+  --background: #ffffff;
+  --foreground: #37352f;
+  --surface: #fbfbfa;
+  --card: #ffffff;
+  --hover: #f4f4f1;
+  --border: #e9e9e7;
+  --divider: var(--border);
+
+  /* Text */
+  --muted-foreground: #787774;
+  --secondary: var(--muted-foreground);
+  --tertiary: #b9b8b5;
+
+  /* Accent (links, active rows, focus) */
+  --accent: #0e8a7e;
+  --accent-light: #e6f4f2;
+  --accent-foreground: #ffffff;
+
+  /* Primary surfaces (buttons, etc.) */
+  --primary: #37352f;
+  --primary-foreground: #ffffff;
+
+  /* Status */
+  --destructive: #d84b3e;
+  --destructive-foreground: #ffffff;
+  --destructive-bg: rgba(216, 75, 62, 0.08);
+  --success: #2f7d59;
+  --success-bg: rgba(47, 125, 89, 0.1);
+  --warning: #e57a2e;
+  --warning-bg: rgba(229, 122, 46, 0.1);
+  --info: #2383e2;
+  --info-bg: rgba(35, 131, 226, 0.1);
+  --error: var(--destructive);
+
+  /* Brand */
+  --collab-teal: #0e8a7e;
+  --collab-teal-light: #e6f4f2;
+  --collab-teal-muted: rgba(14, 138, 126, 0.2);
+  --agent-amber: #d97706;
+  --agent-amber-light: #fef3e6;
+  --agent-amber-muted: rgba(217, 119, 6, 0.2);
+
+  /* Presence */
+  --presence-online: #22a55b;
+  --presence-idle: #e0a028;
+  --presence-dnd: #d84b3e;
+  --presence-offline: #9b9a97;
+
+  /* Typography */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --body-font-features: "cv02", "cv03", "cv04", "cv11";
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Focus ring */
+  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  color-scheme: light;
+}
+
+/*
+ * Dark via system preference (no class set).
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not(.collab-theme-light):not(.collab-theme-dark) {
+    --background: #191919;
+    --foreground: #e3e2e0;
+    --surface: #202020;
+    --card: #202020;
+    --hover: #2a2a2a;
+    --border: #2f2f2f;
+    --divider: var(--border);
+
+    --muted-foreground: #9b9a97;
+    --secondary: var(--muted-foreground);
+    --tertiary: #5a5a58;
+
+    --accent: #34b0a1;
+    --accent-light: #142b28;
+    --accent-foreground: #0a1f1c;
+
+    --primary: #e3e2e0;
+    --primary-foreground: #191919;
+
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --destructive-bg: rgba(239, 68, 68, 0.14);
+    --success: #34d399;
+    --success-bg: rgba(52, 211, 153, 0.14);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --info: #60a5fa;
+    --info-bg: rgba(96, 165, 250, 0.14);
+    --error: var(--destructive);
+
+    --collab-teal: #34b0a1;
+    --collab-teal-light: #142b28;
+    --collab-teal-muted: rgba(52, 176, 161, 0.2);
+    --agent-amber: #f59e0b;
+    --agent-amber-light: #2a1d05;
+    --agent-amber-muted: rgba(245, 158, 11, 0.2);
+
+    --presence-online: #34d399;
+    --presence-idle: #fbbf24;
+    --presence-dnd: #ef4444;
+    --presence-offline: #6b7280;
+
+    --ring: color-mix(in srgb, var(--accent) 55%, transparent);
+
+    color-scheme: dark;
+  }
+}
+
+/*
+ * Dark via explicit class (runtime toggle).
+ */
+:root.collab-theme-dark {
+  --background: #191919;
+  --foreground: #e3e2e0;
+  --surface: #202020;
+  --card: #202020;
+  --hover: #2a2a2a;
+  --border: #2f2f2f;
+  --divider: var(--border);
+
+  --muted-foreground: #9b9a97;
+  --secondary: var(--muted-foreground);
+  --tertiary: #5a5a58;
+
+  --accent: #34b0a1;
+  --accent-light: #142b28;
+  --accent-foreground: #0a1f1c;
+
+  --primary: #e3e2e0;
+  --primary-foreground: #191919;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --destructive-bg: rgba(239, 68, 68, 0.14);
+  --success: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.14);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.14);
+  --info: #60a5fa;
+  --info-bg: rgba(96, 165, 250, 0.14);
+  --error: var(--destructive);
+
+  --collab-teal: #34b0a1;
+  --collab-teal-light: #142b28;
+  --collab-teal-muted: rgba(52, 176, 161, 0.2);
+  --agent-amber: #f59e0b;
+  --agent-amber-light: #2a1d05;
+  --agent-amber-muted: rgba(245, 158, 11, 0.2);
+
+  --presence-online: #34d399;
+  --presence-idle: #fbbf24;
+  --presence-dnd: #ef4444;
+  --presence-offline: #6b7280;
+
+  --ring: color-mix(in srgb, var(--accent) 55%, transparent);
+
+  color-scheme: dark;
+}

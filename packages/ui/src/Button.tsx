@@ -10,14 +10,18 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  primary: "bg-foreground text-background hover:bg-foreground/90",
-  secondary: "bg-hover text-foreground hover:bg-divider",
-  ghost: "bg-transparent text-secondary hover:bg-hover hover:text-foreground",
-  danger: "bg-[var(--error,#D84B3E)] text-white hover:opacity-90",
+  primary:
+    "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85",
+  secondary:
+    "bg-hover text-foreground hover:bg-border/80 active:bg-border",
+  ghost:
+    "bg-transparent text-secondary hover:bg-hover hover:text-foreground active:bg-hover",
+  danger:
+    "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/85",
 };
 
 const SIZE_CLASS: Record<Size, string> = {
-  sm: "h-7 px-2 text-xs rounded",
+  sm: "h-7 px-2 text-xs rounded-md",
   md: "h-9 px-3 text-sm rounded-md",
 };
 
@@ -32,10 +36,12 @@ export function Button({
     <button
       type={type ?? "button"}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex select-none items-center justify-center gap-1.5 font-medium transition-colors duration-150",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         VARIANT_CLASS[variant],
         SIZE_CLASS[size],
-        className
+        className,
       )}
       {...rest}
     />

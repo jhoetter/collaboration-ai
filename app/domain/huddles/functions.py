@@ -17,6 +17,7 @@ caller can disable the UI button.
 
 from __future__ import annotations
 
+import datetime as _dt
 import os
 import time
 from typing import Any
@@ -141,10 +142,13 @@ def huddle_token(
     state = get_projected_state(workspace_id)
     huddle = state.huddles.get(channel_id)
     if huddle is None:
-        # Lazy-start: kicks off the huddle so the caller's token works
+        # Lazy-start: kick off the huddle so the caller's token works
         # immediately without a separate `huddle:start` round-trip.
+        # Surface the underlying rejection (e.g. unknown channel,
+        # forbidden) instead of swallowing it — otherwise the client
+        # only ever sees a confusing "failed to materialise" message.
         bus = get_command_bus()
-        bus.dispatch(
+        result = bus.dispatch(
             Command(
                 type="huddle:start",
                 payload={},
@@ -154,6 +158,10 @@ def huddle_token(
                 room_id=channel_id,
             )
         )
+        if result.status == "rejected" and result.error is not None:
+            raise RuntimeError(
+                f"huddle:start was rejected ({result.error.code}): {result.error.message}"
+            )
         state = get_projected_state(workspace_id)
         huddle = state.huddles.get(channel_id)
     if huddle is None:
@@ -193,7 +201,10 @@ def _mint_access_token(
         token = token.with_grants(
             livekit_api.VideoGrants(room_join=True, room=room, can_publish=True, can_subscribe=True)
         )
-        token = token.with_ttl(ttl_seconds)
+        # `livekit-api` >= 0.7 takes a `datetime.timedelta` here, not an
+        # int — passing seconds raises "unsupported operand type(s) for
+        # +: 'datetime.datetime' and 'int'" deep inside the SDK.
+        token = token.with_ttl(_dt.timedelta(seconds=ttl_seconds))
         return token.to_jwt()
     except ImportError:
         return _fallback_jwt(api_key, api_secret, room, identity, ttl_seconds)

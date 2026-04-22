@@ -8,6 +8,7 @@
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { useEffect, useRef } from "react";
+import { useColorScheme } from "../lib/theme/index.ts";
 
 export interface EmojiPickerProps {
   onPick: (emoji: string) => void;
@@ -16,6 +17,7 @@ export interface EmojiPickerProps {
 
 export function EmojiPicker({ onPick, onClose }: EmojiPickerProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const { resolvedScheme } = useColorScheme();
 
   useEffect(() => {
     function handleDocClick(e: MouseEvent) {
@@ -27,10 +29,10 @@ export function EmojiPicker({ onPick, onClose }: EmojiPickerProps) {
   }, [onClose]);
 
   return (
-    <div ref={ref} className="rounded border border-slate-700 bg-slate-900 shadow-2xl">
+    <div ref={ref} className="rounded-md border border-border bg-card shadow-2xl">
       <Picker
         data={data}
-        theme="dark"
+        theme={resolvedScheme}
         previewPosition="none"
         skinTonePosition="none"
         onEmojiSelect={(emoji: { native?: string; shortcodes?: string }) => {

@@ -602,6 +602,112 @@ def handle_chat_mark_read(cmd: Command, state: ProjectedState) -> list[EventEnve
     ]
 
 
+def handle_chat_mark_unread(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    """Move the actor's read marker to *just before* the target message.
+
+    Re-emits a ``read.marker`` event whose ``up_to_sequence`` is one less
+    than the target. The projector takes the maximum, so to move backwards
+    we have to clobber the user's marker entry directly (the projector
+    refuses to regress). Concretely, we encode the desired backward move
+    as a fresh marker at ``target.sequence - 1``; the WS gateway pushes
+    it down and the frontend reduces accordingly.
+    """
+    target_event_id = cmd.payload.get("target_event_id")
+    if not target_event_id:
+        raise CommandRejected("invalid_payload", "target_event_id required")
+    msg = state.messages.get(target_event_id)
+    if msg is None:
+        raise CommandRejected("not_found", f"Unknown message {target_event_id}")
+    new_seq = max(0, int(msg["sequence"]) - 1)
+    # Emit a `read.marker` carrying the new (lower) sequence. The projector
+    # itself only moves the marker forward; the frontend `setReadUpTo`
+    # reducer accepts arbitrary values, so the round-trip works for the
+    # active session. Cross-session rewinds are by design uncommon.
+    return [
+        _envelope(
+            cmd,
+            type="read.marker",
+            content={"up_to_sequence": new_seq, "up_to_event_id": target_event_id, "rewind": True},
+            room_id=msg["channel_id"],
+        )
+    ]
+
+
+def handle_chat_star_message(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    target_id = cmd.payload.get("target_event_id")
+    if not target_id:
+        raise CommandRejected("invalid_payload", "target_event_id required")
+    msg = state.messages.get(target_id)
+    if msg is None or msg.get("redacted"):
+        raise CommandRejected("not_found", f"Unknown message {target_id}")
+    _require_channel_membership(cmd, state, msg["channel_id"])
+    return [
+        _envelope(
+            cmd,
+            type="message.starred",
+            content={"target_event_id": target_id},
+            room_id=msg["channel_id"],
+        )
+    ]
+
+
+def handle_chat_unstar_message(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    target_id = cmd.payload.get("target_event_id")
+    if not target_id:
+        raise CommandRejected("invalid_payload", "target_event_id required")
+    msg = state.messages.get(target_id)
+    if msg is None:
+        raise CommandRejected("not_found", f"Unknown message {target_id}")
+    return [
+        _envelope(
+            cmd,
+            type="message.unstarred",
+            content={"target_event_id": target_id},
+            room_id=msg["channel_id"],
+        )
+    ]
+
+
+def handle_chat_set_notification_pref(
+    cmd: Command, state: ProjectedState
+) -> list[EventEnvelope]:
+    if cmd.room_id is None:
+        raise CommandRejected("invalid_command", "chat:set-notification-pref requires a room_id")
+    _require_channel_membership(cmd, state, cmd.room_id)
+    mode = cmd.payload.get("mode", "all")
+    if mode not in {"all", "mentions", "none"}:
+        raise CommandRejected("invalid_payload", "mode must be all|mentions|none")
+    return [
+        _envelope(
+            cmd,
+            type="channel.notification.set",
+            content={"mode": mode},
+            room_id=cmd.room_id,
+        )
+    ]
+
+
+def handle_link_unfurl(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
+    """Persist a freshly-fetched link unfurl into the event log.
+
+    The HTTP fetch happens in the function-layer (`link:unfurl`) which
+    only dispatches this command after a successful resolution. We keep
+    the projector update in the log so replays + WS-push are uniform.
+    """
+    payload = dict(cmd.payload)
+    url = payload.get("url")
+    if not url:
+        raise CommandRejected("invalid_payload", "url required")
+    return [
+        _envelope(
+            cmd,
+            type="link.unfurl",
+            content=payload,
+            room_id=cmd.room_id or cmd.workspace_id,
+        )
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Agent staging
 # ---------------------------------------------------------------------------
@@ -944,4 +1050,9 @@ def register_default_handlers(bus: CommandBus) -> CommandBus:
     bus.register("chat:set-reminder", handle_chat_set_reminder)
     bus.register("chat:cancel-reminder", handle_chat_cancel_reminder)
     bus.register("notifications:mark-read", handle_notifications_mark_read)
+    bus.register("chat:mark-unread", handle_chat_mark_unread)
+    bus.register("chat:star-message", handle_chat_star_message)
+    bus.register("chat:unstar-message", handle_chat_unstar_message)
+    bus.register("chat:set-notification-pref", handle_chat_set_notification_pref)
+    bus.register("link:unfurl", handle_link_unfurl)
     return bus

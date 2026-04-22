@@ -16,7 +16,7 @@ export function ChannelIcon({ kind, className }: ChannelIconProps) {
       aria-hidden="true"
       className={cn(
         "inline-flex h-4 w-4 items-center justify-center text-[12px] text-secondary",
-        className
+        className,
       )}
     >
       {symbol}

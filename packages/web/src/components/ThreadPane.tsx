@@ -86,17 +86,17 @@ export function ThreadPane() {
   }
 
   return (
-    <aside className="flex w-96 flex-col border-l border-slate-800 bg-slate-950">
-      <header className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+    <aside className="flex w-96 flex-col border-l border-border bg-background">
+      <header className="flex items-center justify-between border-b border-border px-3 py-3">
         <div>
-          <p className="text-sm font-semibold text-slate-100">Thread</p>
-          <p className="text-xs text-slate-500">{replies.length} replies</p>
+          <p className="text-sm font-semibold text-foreground">Thread</p>
+          <p className="text-xs text-tertiary">{replies.length} replies</p>
         </div>
         <button
           type="button"
           aria-label="Close thread"
           onClick={close}
-          className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+          className="rounded-md p-1 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           ✕
         </button>
@@ -104,10 +104,10 @@ export function ThreadPane() {
       <div className="flex-1 overflow-y-auto px-3 py-2">
         <ThreadEntry message={root} />
         {replies.length > 0 && (
-          <div className="my-3 flex items-center gap-2 text-xs text-slate-500">
-            <span className="h-px flex-1 bg-slate-800" />
+          <div className="my-3 flex items-center gap-2 text-xs text-tertiary">
+            <span className="h-px flex-1 bg-border" />
             <span>{replies.length} {replies.length === 1 ? "reply" : "replies"}</span>
-            <span className="h-px flex-1 bg-slate-800" />
+            <span className="h-px flex-1 bg-border" />
           </div>
         )}
         <ul className="flex flex-col gap-2">
@@ -119,7 +119,7 @@ export function ThreadPane() {
         </ul>
         <div ref={tailRef} />
       </div>
-      <div className="border-t border-slate-800">
+      <div className="border-t border-border">
         <Composer
           channelId={root.channel_id}
           threadRoot={root.id}
@@ -137,8 +137,8 @@ function ThreadEntry({ message, compact }: { message: Message; compact?: boolean
     <div className="flex items-start gap-2">
       <Avatar name={name || message.sender_id} kind={message.sender_type} size={compact ? 24 : 32} />
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-2 text-xs text-slate-500">
-          <span className="text-sm font-semibold text-slate-100">
+        <p className="flex items-baseline gap-2 text-xs text-tertiary">
+          <span className="text-sm font-semibold text-foreground">
             {name || message.sender_id}
           </span>
           {message.sender_type === "agent" && (
@@ -148,8 +148,8 @@ function ThreadEntry({ message, compact }: { message: Message; compact?: boolean
           )}
           <span>{new Date(message.origin_ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
         </p>
-        <p className="whitespace-pre-wrap break-words text-sm text-slate-100">
-          {message.redacted ? <em className="text-slate-500">[deleted]</em> : message.content}
+        <p className="whitespace-pre-wrap break-words text-sm text-foreground">
+          {message.redacted ? <em className="text-tertiary">[deleted]</em> : message.content}
         </p>
       </div>
     </div>

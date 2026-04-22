@@ -254,6 +254,128 @@ def mark_read(
     ).to_dict()
 
 
+@function(name="chat:mark-unread", mcp_expose=True, mcp_scope="write:read-markers")
+def mark_unread(
+    workspace_id: str,
+    target_event_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    """Move the actor's read marker back to *just before* ``target_event_id``."""
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:mark-unread",
+            payload={"target_event_id": target_event_id},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:star-message", mcp_expose=True, mcp_scope="write:messages")
+def star_message(
+    workspace_id: str,
+    target_event_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:star-message",
+            payload={"target_event_id": target_event_id},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:unstar-message", mcp_expose=True, mcp_scope="write:messages")
+def unstar_message(
+    workspace_id: str,
+    target_event_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:unstar-message",
+            payload={"target_event_id": target_event_id},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:list-stars", mcp_expose=True, mcp_scope="read:messages")
+def list_stars(workspace_id: str, *, actor_id: str) -> list[dict[str, Any]]:
+    """Return the actor's starred messages, most recent first."""
+    from ..shared.runtime import get_projected_state  # noqa: PLC0415 — runtime accessor
+
+    try:
+        state = get_projected_state()
+    except Exception:
+        return []
+    starred_ids = list(state.stars_by_user.get(actor_id, []) or [])
+    out: list[dict[str, Any]] = []
+    for msg_id in starred_ids:
+        msg = state.messages.get(msg_id)
+        if msg is None or msg.get("redacted"):
+            continue
+        if msg.get("workspace_id") != workspace_id:
+            continue
+        out.append(
+            {
+                "message_id": msg["id"],
+                "channel_id": msg["channel_id"],
+                "sender_id": msg["sender_id"],
+                "content": msg["content"],
+                "created_at": msg.get("created_at"),
+                "starred_at": msg.get("created_at"),
+            }
+        )
+    return out
+
+
+@function(name="chat:set-notification-pref", mcp_expose=True, mcp_scope="write:notifications")
+def set_notification_pref(
+    workspace_id: str,
+    channel_id: str,
+    mode: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    """Set the actor's per-channel notification mode (``all`` | ``mentions`` | ``none``)."""
+    bus = get_command_bus()
+    return bus.dispatch(
+        Command(
+            type="chat:set-notification-pref",
+            payload={"mode": mode},
+            source="human",
+            actor_id=actor_id,
+            workspace_id=workspace_id,
+            room_id=channel_id,
+        )
+    ).to_dict()
+
+
+@function(name="chat:list-notification-prefs", mcp_expose=False)
+def list_notification_prefs(workspace_id: str, *, actor_id: str) -> dict[str, str]:
+    """Return ``{channel_id: mode}`` for the actor; channels not present default to ``all``."""
+    from ..shared.runtime import get_projected_state  # noqa: PLC0415
+
+    try:
+        state = get_projected_state()
+    except Exception:
+        return {}
+    return dict(state.notification_prefs.get(actor_id, {}) or {})
+
+
 @function(name="chat:list-messages", mcp_expose=True, mcp_scope="read:messages")
 def list_messages(
     channel_id: str,

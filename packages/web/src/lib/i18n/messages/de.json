@@ -6,6 +6,9 @@
     "send": "Senden",
     "open": "Öffnen",
     "close": "Schließen",
+    "download": "Herunterladen",
+    "search": "Suche",
+    "back": "Zurück",
     "create": "Erstellen",
     "delete": "Löschen",
     "edit": "Bearbeiten",
@@ -36,7 +39,9 @@
     "noDms": "Noch keine DMs.",
     "addChannel": "Kanal hinzufügen",
     "newDm": "Neue Direktnachricht",
-    "mentionInChannel": "@dich in #{channel}"
+    "mentionInChannel": "@dich in #{channel}",
+    "saved": "Gespeichert",
+    "activity": "Aktivität"
   },
   "userMenu": {
     "youAre": "Du bist",
@@ -47,7 +52,8 @@
     "setActive": "Auf aktiv setzen",
     "setAway": "Auf abwesend setzen",
     "signOut": "Abmelden",
-    "signOutConfirm": "Abmelden und diese Identität vergessen?"
+    "signOutConfirm": "Abmelden und diese Identität vergessen?",
+    "theme": "Design"
   },
   "channel": {
     "messagePrefix": "Nachricht an #{name}",
@@ -64,7 +70,64 @@
     "uploadFailed": "fehlgeschlagen",
     "addEmoji": "Emoji einfügen",
     "attachFile": "Datei anhängen",
-    "removeAttachment": "Anhang entfernen"
+    "removeAttachment": "Anhang entfernen",
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "strikethrough": "Durchgestrichen",
+    "link": "Link",
+    "bulletedList": "Aufzählung",
+    "numberedList": "Nummerierte Liste",
+    "code": "Code",
+    "codeBlock": "Codeblock",
+    "quote": "Zitat",
+    "showFormatting": "Formatierung anzeigen",
+    "hideFormatting": "Formatierung ausblenden",
+    "more": "Weitere Aktionen",
+    "mention": "Person erwähnen",
+    "linkPrompt": "URL einfügen oder eingeben",
+    "actions": {
+      "attach": "Datei anhängen",
+      "snippet": "Code-Snippet",
+      "fromUrl": "Aus URL einfügen",
+      "mention": "Person erwähnen"
+    },
+    "slash": {
+      "me": "Diese Nachricht kursiv darstellen",
+      "shrug": "¯\\_(ツ)_/¯ an die Nachricht anhängen",
+      "pin": "Letzte eigene Nachricht im Kanal anpinnen",
+      "invite": "Person in diesen Kanal einladen",
+      "dm": "DM mit jemandem öffnen",
+      "away": "Status auf abwesend setzen"
+    }
+  },
+  "messageActions": {
+    "addReaction": "Reaktion hinzufügen",
+    "replyInThread": "Im Thread antworten",
+    "share": "Link kopieren",
+    "save": "Für später speichern",
+    "saved": "Gespeichert",
+    "more": "Weitere Aktionen",
+    "edit": "Nachricht bearbeiten",
+    "delete": "Nachricht löschen",
+    "pin": "An Kanal anpinnen",
+    "markUnread": "Als ungelesen markieren",
+    "copyLink": "Link zur Nachricht kopieren",
+    "linkCopied": "Link kopiert",
+    "deleteConfirm": "Diese Nachricht löschen?",
+    "reactedBy": "Reaktionen: {names}",
+    "andOthers": "+{n} weitere",
+    "you": "du"
+  },
+  "messageList": {
+    "newMessages": "{n} neue Nachrichten",
+    "newMessagesOne": "1 neue Nachricht",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "jumpToLatest": "Zum Neuesten springen",
+    "empty": "Noch keine Nachrichten – sag Hallo.",
+    "welcomeToChannel": "Willkommen in #{name}",
+    "channelStart": "Hier beginnt der Kanal #{name}.",
+    "dmStart": "Hier beginnt euer Direktnachrichten-Verlauf mit {name}."
   },
   "thread": {
     "title": "Thread",
@@ -118,5 +181,45 @@
   "agentInbox": {
     "title": "Agent-Posteingang",
     "empty": "Nichts wartet auf dich."
+  },
+  "activity": {
+    "title": "Aktivität",
+    "count": "{n} Einträge",
+    "emptyTitle": "Alles erledigt",
+    "emptyBody": "Sobald dich jemand erwähnt, in einem verfolgten Thread antwortet oder auf eine deiner Nachrichten reagiert, taucht es hier auf.",
+    "mentionedYou": "hat dich erwähnt",
+    "replied": "hat in einem Thread geantwortet",
+    "reacted": "hat auf deine Nachricht reagiert",
+    "invited": "hat dich in einen Kanal eingeladen"
+  },
+  "channelHeader": {
+    "notifications": "Benachrichtigungen",
+    "notifyAll": "Alle Nachrichten",
+    "notifyMentions": "Nur @-Erwähnungen",
+    "notifyNone": "Keine",
+    "settings": "Kanal-Einstellungen"
+  },
+  "toasts": {
+    "jump": "Springen",
+    "notification": "Neue Aktivität",
+    "mention": "Du wurdest erwähnt",
+    "reaction": "Jemand hat reagiert",
+    "reply": "Neue Thread-Antwort",
+    "invite": "Neue Kanal-Einladung"
+  },
+  "members": {
+    "title": "Mitglieder",
+    "search": "Mitglieder suchen…",
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Mitglied",
+    "remove": "Entfernen",
+    "removeConfirm": "{name} aus #{channel} entfernen?",
+    "leaveChannel": "Kanal verlassen",
+    "leaveConfirm": "#{channel} verlassen?",
+    "invite": "Personen hinzufügen",
+    "invitePlaceholder": "Personen suchen…",
+    "noResults": "Keine Treffer.",
+    "added": "Hinzugefügt"
   }
 }

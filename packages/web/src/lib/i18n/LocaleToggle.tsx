@@ -29,7 +29,7 @@ export function LocaleToggle({ className, compact }: LocaleToggleProps) {
         type="button"
         onClick={() => setLocale(next.value)}
         className={
-          "flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[11px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors duration-150 " +
+          "flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[11px] font-medium text-secondary hover:bg-hover hover:text-foreground transition-colors duration-150 " +
           (className ?? "")
         }
         title={`${current.title} → ${next.title}`}
@@ -44,7 +44,7 @@ export function LocaleToggle({ className, compact }: LocaleToggleProps) {
     <div
       role="group"
       aria-label="Language"
-      className={"inline-flex items-center rounded-md bg-slate-800/60 p-0.5 gap-0.5 " + (className ?? "")}
+      className={"inline-flex items-center rounded-md bg-hover p-0.5 gap-0.5 " + (className ?? "")}
     >
       {OPTIONS.map(({ value, label, title }) => {
         const active = locale === value;
@@ -57,7 +57,7 @@ export function LocaleToggle({ className, compact }: LocaleToggleProps) {
             title={title}
             className={
               "flex h-6 items-center justify-center rounded px-2 text-[11px] font-medium transition-colors duration-150 " +
-              (active ? "bg-slate-950 text-collab-teal-300 shadow-sm" : "text-slate-400 hover:text-slate-100")
+              (active ? "bg-card text-accent shadow-sm" : "text-secondary hover:text-foreground")
             }
           >
             {label}

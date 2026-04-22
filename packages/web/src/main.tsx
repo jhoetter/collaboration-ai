@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, useNavigate } from "react-router";
 import "./index.css";
 import { I18nProvider, useTranslator } from "./lib/i18n/index.ts";
+import { ThemeProvider } from "./lib/theme/index.ts";
 import { useAuth } from "./state/auth.ts";
 import { WorkspaceShell } from "./pages/WorkspaceShell.tsx";
 
@@ -12,14 +13,16 @@ const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <I18nProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Bootstrap />} />
-            <Route path="/w/:workspaceId/*" element={<WorkspaceShell />} />
-          </Routes>
-        </BrowserRouter>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Bootstrap />} />
+              <Route path="/w/:workspaceId/*" element={<WorkspaceShell />} />
+            </Routes>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ThemeProvider>
     </I18nProvider>
   </React.StrictMode>,
 );
@@ -50,11 +53,11 @@ function Bootstrap() {
 
   if (status === "error") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 p-6">
-        <div className="max-w-md rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
+      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-lg border border-destructive/40 bg-destructive-bg p-4 text-sm text-destructive">
           <p className="mb-2 font-semibold">{t("common.joinWorkspaceError")}</p>
-          <p className="mb-3 text-rose-300/80">{error}</p>
-          <p className="text-xs text-rose-300/60">
+          <p className="mb-3 opacity-80">{error}</p>
+          <p className="text-xs opacity-70">
             {t("common.didYouRunSeed", { cmd: "make seed" })}
           </p>
         </div>
@@ -63,7 +66,7 @@ function Bootstrap() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-500">
+    <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
       {t("common.joiningWorkspace")}
     </main>
   );

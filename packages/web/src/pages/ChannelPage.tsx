@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { ChannelHeader } from "../components/ChannelHeader.tsx";
 import { Composer, type ComposerSendPayload } from "../components/Composer.tsx";
+import { DropOverlay } from "../components/DropOverlay.tsx";
 import { MessageList } from "../components/MessageList.tsx";
 import { TypingIndicator } from "../components/TypingIndicator.tsx";
 import { callFunction } from "../lib/api.ts";
@@ -87,10 +89,50 @@ export function ChannelPage() {
     }
   }
 
+  const [dragActive, setDragActive] = useState(false);
+  const dragDepth = useRef(0);
+
+  useEffect(() => {
+    setDragActive(false);
+    dragDepth.current = 0;
+  }, [channelId]);
+
+  function handleDragEnter(e: React.DragEvent<HTMLElement>) {
+    if (!hasFiles(e.dataTransfer)) return;
+    dragDepth.current += 1;
+    setDragActive(true);
+  }
+
+  function handleDragLeave() {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragActive(false);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLElement>) {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragActive(false);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    if (files.length === 0 || !channelId) return;
+    window.dispatchEvent(
+      new CustomEvent<{ channelId: string; files: File[] }>("collab:files-dropped", {
+        detail: { channelId, files },
+      }),
+    );
+  }
+
   if (!channelId) return null;
 
   return (
-    <section className="flex h-full flex-1 flex-col">
+    <section
+      className="relative flex h-full flex-1 flex-col"
+      onDragEnter={handleDragEnter}
+      onDragOver={(e) => {
+        if (hasFiles(e.dataTransfer)) e.preventDefault();
+      }}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <ChannelHeader channelId={channelId} channel={channel} />
       <MessageList messages={messages} channelId={channelId} onOpenThread={openThread} />
       <TypingIndicator channelId={channelId} />
@@ -99,6 +141,12 @@ export function ChannelPage() {
         placeholder={`Message #${channel?.name ?? channelId}`}
         onSend={handleSend}
       />
+      {dragActive && <DropOverlay channelName={channel?.name ?? channelId} />}
     </section>
   );
+}
+
+function hasFiles(dt: DataTransfer | null | undefined): boolean {
+  if (!dt) return false;
+  return Array.from(dt.types ?? []).includes("Files");
 }

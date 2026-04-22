@@ -40,21 +40,24 @@ export function AgentInbox() {
   }
 
   return (
-    <aside className="w-80 border-l border-slate-800 bg-slate-900 p-3">
-      <h2 className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+    <aside className="w-80 border-l border-border bg-surface p-3">
+      <h2 className="mb-2 text-xs uppercase tracking-wide text-tertiary">
         {t("agentInbox.title")}
       </h2>
-      {isLoading && <p className="text-sm text-slate-500">{t("common.loading")}</p>}
+      {isLoading && <p className="text-sm text-tertiary">{t("common.loading")}</p>}
       {!isLoading && proposals.length === 0 && (
-        <p className="text-sm text-slate-500">{t("agentInbox.empty")}</p>
+        <p className="text-sm text-tertiary">{t("agentInbox.empty")}</p>
       )}
       <ul className="flex flex-col gap-3">
         {proposals.map((p) => (
-          <li key={p.proposal_id} className="rounded border border-slate-800 bg-slate-950 p-2">
-            <p className="text-xs text-collab-teal-300">{p.agent_id ?? "agent"}</p>
-            <p className="text-sm text-slate-100">{p.command_type}</p>
-            {p.rationale && <p className="mt-1 text-xs text-slate-400">{p.rationale}</p>}
-            <pre className="mt-1 overflow-x-auto text-[11px] text-slate-400">
+          <li
+            key={p.proposal_id}
+            className="rounded-md border border-border bg-card p-2 transition-colors hover:border-accent/40"
+          >
+            <p className="text-xs font-medium text-accent">{p.agent_id ?? "agent"}</p>
+            <p className="text-sm text-foreground">{p.command_type}</p>
+            {p.rationale && <p className="mt-1 text-xs text-secondary">{p.rationale}</p>}
+            <pre className="mt-1 overflow-x-auto text-[11px] text-tertiary">
               {JSON.stringify(p.payload, null, 2)}
             </pre>
             <div className="mt-2 flex gap-2">

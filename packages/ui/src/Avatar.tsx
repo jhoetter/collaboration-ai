@@ -10,7 +10,7 @@ export interface AvatarProps {
   imageUrl?: string | null;
   /** "human" agents render with the neutral surface; bots get the agent-amber halo. */
   kind?: "human" | "agent" | "system";
-  size?: 16 | 20 | 24 | 32 | 40;
+  size?: 16 | 20 | 24 | 28 | 32 | 40;
   className?: string;
 }
 
@@ -18,6 +18,7 @@ const SIZE_CLASS: Record<NonNullable<AvatarProps["size"]>, string> = {
   16: "h-4 w-4 text-[8px]",
   20: "h-5 w-5 text-[9px]",
   24: "h-6 w-6 text-[10px]",
+  28: "h-7 w-7 text-[10px]",
   32: "h-8 w-8 text-[11px]",
   40: "h-10 w-10 text-xs",
 };
@@ -30,19 +31,18 @@ function initials(name: string): string {
 }
 
 export function Avatar({ name, imageUrl, kind = "human", size = 24, className }: AvatarProps) {
-  const ring = kind === "agent" ? "ring-1 ring-[var(--agent-amber,#D97706)]/60" : "";
+  const ring = kind === "agent" ? "ring-1 ring-agent-amber/60" : "";
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center overflow-hidden rounded-full bg-hover text-foreground font-medium select-none",
+        "inline-flex select-none items-center justify-center overflow-hidden rounded-full bg-hover font-medium text-foreground",
         SIZE_CLASS[size],
         ring,
-        className
+        className,
       )}
       title={name}
     >
       {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
       ) : (
         <span aria-hidden="true">{initials(name)}</span>

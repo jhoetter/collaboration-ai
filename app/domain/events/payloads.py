@@ -265,6 +265,28 @@ class ProposalDecision(_StrictModel):
 
 
 # ---------------------------------------------------------------------------
+# Stars + notification preferences + link unfurls
+# ---------------------------------------------------------------------------
+
+
+class MessageStarChange(_StrictModel):
+    target_event_id: str
+
+
+class ChannelNotificationSet(_StrictModel):
+    mode: Literal["all", "mentions", "none"]
+
+
+class LinkUnfurl(_StrictModel):
+    url: str
+    target_event_id: str | None = None
+    title: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    site_name: str | None = None
+
+
+# ---------------------------------------------------------------------------
 # Lookup table
 # ---------------------------------------------------------------------------
 
@@ -306,6 +328,10 @@ PAYLOAD_SCHEMAS: dict[str, type[_StrictModel]] = {
     "agent.proposal.approve": ProposalDecision,
     "agent.proposal.reject": ProposalDecision,
     "agent.proposal.edit-and-approve": ProposalDecision,
+    "message.starred": MessageStarChange,
+    "message.unstarred": MessageStarChange,
+    "channel.notification.set": ChannelNotificationSet,
+    "link.unfurl": LinkUnfurl,
 }
 
 

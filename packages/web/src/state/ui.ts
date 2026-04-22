@@ -9,20 +9,98 @@ import { create } from "zustand";
  * paths, we publish the intent here and let the Sidebar (and any
  * future entry point) react to it.
  */
+
+const SECTION_STATE_KEY = "collab.sidebar.sections.v1";
+
+type SectionId =
+  | "channels"
+  | "dms"
+  | "saved"
+  | "mentions"
+  | "drafts"
+  | "activity";
+
+function loadSectionState(): Record<SectionId, boolean> {
+  if (typeof window === "undefined")
+    return {
+      channels: true,
+      dms: true,
+      saved: true,
+      mentions: true,
+      drafts: true,
+      activity: true,
+    };
+  try {
+    const raw = window.localStorage.getItem(SECTION_STATE_KEY);
+    if (!raw)
+      return {
+        channels: true,
+        dms: true,
+        saved: true,
+        mentions: true,
+        drafts: true,
+        activity: true,
+      };
+    const parsed = JSON.parse(raw) as Partial<Record<SectionId, boolean>>;
+    return {
+      channels: parsed.channels ?? true,
+      dms: parsed.dms ?? true,
+      saved: parsed.saved ?? true,
+      mentions: parsed.mentions ?? true,
+      drafts: parsed.drafts ?? true,
+      activity: parsed.activity ?? true,
+    };
+  } catch {
+    return {
+      channels: true,
+      dms: true,
+      saved: true,
+      mentions: true,
+      drafts: true,
+      activity: true,
+    };
+  }
+}
+
+function persistSectionState(state: Record<SectionId, boolean>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore quota / private mode errors */
+  }
+}
+
 export interface UiState {
   readonly createChannelOpen: boolean;
   readonly newDmOpen: boolean;
+  readonly membersPanelOpen: boolean;
+  readonly sectionsOpen: Record<SectionId, boolean>;
   setCreateChannelOpen(open: boolean): void;
   setNewDmOpen(open: boolean): void;
+  setMembersPanelOpen(open: boolean): void;
+  toggleSection(id: SectionId): void;
 }
 
-export const useUi = create<UiState>((set) => ({
+export const useUi = create<UiState>((set, get) => ({
   createChannelOpen: false,
   newDmOpen: false,
+  membersPanelOpen: false,
+  sectionsOpen: loadSectionState(),
   setCreateChannelOpen(open) {
     set({ createChannelOpen: open });
   },
   setNewDmOpen(open) {
     set({ newDmOpen: open });
   },
+  setMembersPanelOpen(open) {
+    set({ membersPanelOpen: open });
+  },
+  toggleSection(id) {
+    const next = { ...get().sectionsOpen, [id]: !get().sectionsOpen[id] };
+    persistSectionState(next);
+    set({ sectionsOpen: next });
+  },
 }));
+
+export type { SectionId };

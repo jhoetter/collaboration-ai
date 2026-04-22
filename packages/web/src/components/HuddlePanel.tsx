@@ -65,11 +65,11 @@ export function HuddlePanel({
   }
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 w-[min(640px,90vw)] -translate-x-1/2 rounded-lg border border-slate-700 bg-slate-950 shadow-2xl">
-      <header className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+    <div className="fixed bottom-4 left-1/2 z-40 w-[min(640px,90vw)] -translate-x-1/2 rounded-lg border border-border bg-card shadow-2xl">
+      <header className="flex items-center justify-between border-b border-border px-3 py-2">
         <div>
-          <p className="text-sm font-semibold text-slate-100">Huddle</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-semibold text-foreground">Huddle</p>
+          <p className="text-xs text-tertiary">
             {huddle ? `${huddle.participants.length} on call` : "Connecting…"}
           </p>
         </div>
@@ -78,7 +78,7 @@ export function HuddlePanel({
         </Button>
       </header>
       {error && (
-        <div className="px-3 py-2 text-xs text-rose-400">
+        <div className="px-3 py-2 text-xs text-destructive">
           Could not start huddle: {error}
         </div>
       )}
@@ -98,7 +98,7 @@ export function HuddlePanel({
           <ControlBar variation="minimal" controls={{ camera: true, microphone: true, screenShare: false, leave: false }} />
         </LiveKitRoom>
       ) : !error ? (
-        <div className="p-6 text-center text-xs text-slate-500">Connecting…</div>
+        <div className="p-6 text-center text-xs text-tertiary">Connecting…</div>
       ) : null}
     </div>
   );

@@ -83,6 +83,18 @@ class ProjectedState:
     Shape: ``{huddle_id, livekit_room, started_by, started_at,
     title, ended_at, participants: set[str]}``."""
 
+    starred_by_message: dict[str, set[str]] = field(default_factory=dict)
+    """``starred_by_message[message_id] = set(user_ids)``."""
+
+    stars_by_user: dict[str, list[str]] = field(default_factory=dict)
+    """``stars_by_user[user_id] = [message_id, …]`` ordered most-recent first."""
+
+    notification_prefs: dict[str, dict[str, str]] = field(default_factory=dict)
+    """``notification_prefs[user_id][channel_id] = "all" | "mentions" | "none"``."""
+
+    link_unfurls: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """``link_unfurls[url] = {title, description, image_url, site_name, fetched_at}``."""
+
     # Bookkeeping for idempotent replay.
     _seen_event_ids: set[str] = field(default_factory=set)
     last_sequence: dict[str, int] = field(default_factory=dict)
@@ -554,6 +566,56 @@ def _project_huddle_end(s: ProjectedState, e: Event) -> None:
     s.huddles.pop(e.room_id, None)
 
 
+def _project_message_starred(s: ProjectedState, e: Event) -> None:
+    target = e.content.get("target_event_id")
+    if not target:
+        return
+    by_msg = _ensure(s.starred_by_message, target, set())
+    if e.sender_id in by_msg:
+        return
+    by_msg.add(e.sender_id)
+    user_stars = _ensure(s.stars_by_user, e.sender_id, [])
+    if target not in user_stars:
+        user_stars.insert(0, target)
+
+
+def _project_message_unstarred(s: ProjectedState, e: Event) -> None:
+    target = e.content.get("target_event_id")
+    if not target:
+        return
+    by_msg = s.starred_by_message.get(target)
+    if by_msg:
+        by_msg.discard(e.sender_id)
+        if not by_msg:
+            s.starred_by_message.pop(target, None)
+    user_stars = s.stars_by_user.get(e.sender_id)
+    if user_stars and target in user_stars:
+        user_stars.remove(target)
+
+
+def _project_channel_notification_set(s: ProjectedState, e: Event) -> None:
+    user_prefs = _ensure(s.notification_prefs, e.sender_id, {})
+    mode = e.content.get("mode", "all")
+    if mode == "all":
+        user_prefs.pop(e.room_id, None)
+    else:
+        user_prefs[e.room_id] = mode
+
+
+def _project_link_unfurl(s: ProjectedState, e: Event) -> None:
+    url = e.content.get("url")
+    if not url:
+        return
+    s.link_unfurls[url] = {
+        "url": url,
+        "title": e.content.get("title"),
+        "description": e.content.get("description"),
+        "image_url": e.content.get("image_url"),
+        "site_name": e.content.get("site_name"),
+        "fetched_at": e.origin_ts,
+    }
+
+
 _DISPATCH: dict[str, Callable[[ProjectedState, Event], None]] = {
     "workspace.create": _project_workspace_create,
     "workspace.update": _project_workspace_update,
@@ -601,6 +663,10 @@ _DISPATCH: dict[str, Callable[[ProjectedState, Event], None]] = {
     "huddle.join": _project_huddle_join,
     "huddle.leave": _project_huddle_leave,
     "huddle.end": _project_huddle_end,
+    "message.starred": _project_message_starred,
+    "message.unstarred": _project_message_unstarred,
+    "channel.notification.set": _project_channel_notification_set,
+    "link.unfurl": _project_link_unfurl,
 }
 
 

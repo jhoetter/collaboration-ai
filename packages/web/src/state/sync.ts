@@ -99,6 +99,8 @@ export interface ReactionMap {
   [emoji: string]: string[];
 }
 
+export type NotificationPref = "all" | "mentions" | "none";
+
 export interface SyncState {
   cursor: string | null;
   highSequence: number;
@@ -113,6 +115,9 @@ export interface SyncState {
   presence: Record<string, PresenceStatus>;
   typingByChannel: Record<string, Record<string, number>>;
   huddlesByChannel: Record<string, HuddleRoom>;
+  starredByMessage: Record<string, string[]>;
+  starsByUser: Record<string, string[]>;
+  notificationPrefByChannel: Record<string, Record<string, NotificationPref>>;
   // Mutators
   apply(event: Event): void;
   applyMany(events: Event[], cursor?: string | null): void;
@@ -195,6 +200,9 @@ export const useSync = create<SyncState>((set, get) => ({
   presence: {},
   typingByChannel: {},
   huddlesByChannel: {},
+  starredByMessage: {},
+  starsByUser: {},
+  notificationPrefByChannel: {},
 
   apply(event) {
     get().applyMany([event]);
@@ -211,6 +219,9 @@ export const useSync = create<SyncState>((set, get) => ({
       let draftsByChannel = s.draftsByChannel;
       let huddlesByChannel = s.huddlesByChannel;
       let notifications = s.notifications;
+      let starredByMessage = s.starredByMessage;
+      let starsByUser = s.starsByUser;
+      let notificationPrefByChannel = s.notificationPrefByChannel;
       let mutated = false;
 
       for (const e of events) {
@@ -457,6 +468,38 @@ export const useSync = create<SyncState>((set, get) => ({
             huddlesByChannel = next;
             break;
           }
+          case "message.starred": {
+            const targetId = (e.content.target_event_id as string | undefined) ?? e.relates_to?.event_id;
+            if (!targetId) break;
+            const list = starredByMessage[targetId] ?? [];
+            if (!list.includes(e.sender_id)) {
+              starredByMessage = { ...starredByMessage, [targetId]: [...list, e.sender_id] };
+            }
+            const userStars = starsByUser[e.sender_id] ?? [];
+            if (!userStars.includes(targetId)) {
+              starsByUser = { ...starsByUser, [e.sender_id]: [targetId, ...userStars] };
+            }
+            break;
+          }
+          case "message.unstarred": {
+            const targetId = (e.content.target_event_id as string | undefined) ?? e.relates_to?.event_id;
+            if (!targetId) break;
+            const list = (starredByMessage[targetId] ?? []).filter((u) => u !== e.sender_id);
+            starredByMessage = { ...starredByMessage, [targetId]: list };
+            const userStars = (starsByUser[e.sender_id] ?? []).filter((id) => id !== targetId);
+            starsByUser = { ...starsByUser, [e.sender_id]: userStars };
+            break;
+          }
+          case "channel.notification.set": {
+            const mode = (e.content.mode as NotificationPref | undefined) ?? "all";
+            const userPref = { ...(notificationPrefByChannel[e.sender_id] ?? {}) };
+            userPref[e.room_id] = mode;
+            notificationPrefByChannel = {
+              ...notificationPrefByChannel,
+              [e.sender_id]: userPref,
+            };
+            break;
+          }
           default:
             break;
         }
@@ -473,6 +516,9 @@ export const useSync = create<SyncState>((set, get) => ({
         next.huddlesByChannel = huddlesByChannel;
         next.notifications = notifications;
         next.readUpToByChannel = s.readUpToByChannel;
+        next.starredByMessage = starredByMessage;
+        next.starsByUser = starsByUser;
+        next.notificationPrefByChannel = notificationPrefByChannel;
       }
       if (cursor !== undefined) next.cursor = cursor;
       return next;

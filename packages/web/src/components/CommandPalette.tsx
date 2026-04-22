@@ -307,28 +307,28 @@ export function CommandPalette() {
       role="dialog"
       aria-modal="true"
       aria-label={t("palette.title")}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[18vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 px-4 pt-[18vh] backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) close();
       }}
       data-testid="command-palette"
     >
-      <div className="w-full max-w-xl overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-2xl">
-        <div className="border-b border-slate-800 px-2 py-2">
+      <div className="w-full max-w-xl overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
+        <div className="border-b border-border px-2 py-2">
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKey}
             placeholder={t("palette.placeholder")}
-            className="h-8 w-full rounded-md bg-slate-900 px-2 text-sm text-slate-100 outline-none placeholder:text-slate-500"
+            className="h-8 w-full rounded-md bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-tertiary"
             data-testid="command-palette-input"
             aria-label={t("palette.search")}
           />
         </div>
         <div className="max-h-[55vh] overflow-y-auto p-1">
           {filtered.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-slate-500">
+            <div className="px-3 py-6 text-center text-sm text-tertiary">
               {t("palette.empty")}
             </div>
           ) : (
@@ -338,7 +338,7 @@ export function CommandPalette() {
               return (
                 <div key={item.id}>
                   {showHeader && (
-                    <p className="px-2 pb-0.5 pt-2 text-[10px] uppercase tracking-wider text-slate-500">
+                    <p className="px-2 pb-0.5 pt-2 text-[10px] uppercase tracking-wider text-tertiary">
                       {item.section}
                     </p>
                   )}
@@ -346,28 +346,28 @@ export function CommandPalette() {
                     type="button"
                     onClick={() => pick(item)}
                     onMouseEnter={() => setActive(idx)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
                       active === idx
-                        ? "bg-slate-800 text-collab-teal-300"
-                        : "text-slate-100 hover:bg-slate-800"
+                        ? "bg-accent-light text-accent"
+                        : "text-foreground hover:bg-hover"
                     }`}
                     data-testid={`palette-cmd-${item.id}`}
                   >
                     {item.icon ? (
                       <span className="flex-shrink-0">{item.icon}</span>
                     ) : (
-                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-500">
+                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-tertiary">
                         {iconForKind(item.kind)}
                       </span>
                     )}
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate">{item.label}</span>
                       {item.hint ? (
-                        <span className="truncate text-xs text-slate-500">{item.hint}</span>
+                        <span className="truncate text-xs text-tertiary">{item.hint}</span>
                       ) : null}
                     </span>
                     {item.shortcut ? (
-                      <span className="text-xs tabular-nums text-slate-500">{item.shortcut}</span>
+                      <span className="text-xs tabular-nums text-tertiary">{item.shortcut}</span>
                     ) : null}
                   </button>
                 </div>
@@ -375,7 +375,7 @@ export function CommandPalette() {
             })
           )}
         </div>
-        <div className="border-t border-slate-800 px-3 py-1.5 text-[10px] text-slate-500">
+        <div className="border-t border-border px-3 py-1.5 text-[10px] text-tertiary">
           ↑↓ · ↵ · Esc · {t("palette.shortcutCmdK")}
         </div>
       </div>

@@ -27,7 +27,7 @@ export function TypingIndicator({ channelId }: { channelId: string }) {
     return <div className="h-5" aria-hidden="true" />;
   }
   return (
-    <div className="px-4 py-1 text-xs italic text-slate-400">
+    <div className="px-4 py-1 text-xs italic text-tertiary">
       <TypingNames userIds={userIds} />
     </div>
   );

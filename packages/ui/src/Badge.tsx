@@ -5,11 +5,11 @@ type Tone = "neutral" | "agent" | "info" | "success" | "warning" | "error";
 
 const TONE_CLASS: Record<Tone, string> = {
   neutral: "bg-hover text-secondary",
-  agent: "bg-[var(--agent-amber-light,#FEF3E6)] text-[var(--agent-amber,#D97706)]",
-  info: "bg-[var(--accent-light)] text-[var(--accent)]",
-  success: "bg-[#E6F4EE] text-[var(--success,#2F7D59)]",
-  warning: "bg-[#FCEBD7] text-[var(--warning,#E57A2E)]",
-  error: "bg-[#FBEAE8] text-[var(--error,#D84B3E)]",
+  agent: "bg-agent-amber-light text-agent-amber",
+  info: "bg-accent-light text-accent",
+  success: "bg-success-bg text-success",
+  warning: "bg-warning-bg text-warning",
+  error: "bg-destructive-bg text-destructive",
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -20,9 +20,9 @@ export function Badge({ tone = "neutral", className, ...rest }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase",
+        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
         TONE_CLASS[tone],
-        className
+        className,
       )}
       {...rest}
     />

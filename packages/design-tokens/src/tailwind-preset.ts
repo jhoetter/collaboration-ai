@@ -1,12 +1,16 @@
-import { colors } from "./colors";
-import { fontFamily } from "./typography";
-import { borderRadius, borderWidth } from "./spacing";
-
 /**
- * Tailwind v3 preset for collaboration-ai. With Tailwind v4 (used in the
- * web UI), tokens are emitted via CSS custom properties in `app.css`
- * inside an `@theme {}` block — this preset is for downstream consumers
- * that still use v3.
+ * Tailwind v3 preset for collaboration-ai.
+ *
+ * Every token is sourced from a CSS custom property defined by the
+ * active design-system preset (see `packages/web/src/design-systems/`).
+ * That keeps Tailwind utilities like `bg-background`, `text-accent`,
+ * `border-border`, `rounded-md`, `font-sans` semantic — they swap when
+ * the preset (or light/dark) changes without any component edits.
+ *
+ * No hex constants live here on purpose: anything that needs to vary
+ * by preset must come from `var(--…)`. The hex values in
+ * `./colors.ts` remain only as a documentation reference for preset
+ * authors.
  */
 export const collabAIPreset = {
   theme: {
@@ -14,41 +18,78 @@ export const collabAIPreset = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        surface: "var(--surface)",
+        card: "var(--card)",
+        hover: "var(--hover)",
+        border: "var(--border)",
+        divider: "var(--divider)",
+        muted: {
+          DEFAULT: "var(--muted-foreground)",
+          foreground: "var(--muted-foreground)",
+        },
         secondary: "var(--secondary)",
         tertiary: "var(--tertiary)",
-        divider: "var(--divider)",
-        hover: "var(--hover)",
-        surface: "var(--surface)",
-        accent: "var(--accent)",
-        "accent-light": "var(--accent-light)",
+
+        accent: {
+          DEFAULT: "var(--accent)",
+          light: "var(--accent-light)",
+          foreground: "var(--accent-foreground)",
+        },
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+          bg: "var(--destructive-bg)",
+        },
+        success: {
+          DEFAULT: "var(--success)",
+          bg: "var(--success-bg)",
+        },
+        warning: {
+          DEFAULT: "var(--warning)",
+          bg: "var(--warning-bg)",
+        },
+        info: {
+          DEFAULT: "var(--info)",
+          bg: "var(--info-bg)",
+        },
 
         "collab-teal": {
-          DEFAULT: colors.collabTeal,
-          light: colors.collabTealLight,
-          muted: colors.collabTealMuted,
+          DEFAULT: "var(--collab-teal)",
+          light: "var(--collab-teal-light)",
+          muted: "var(--collab-teal-muted)",
         },
         "agent-amber": {
-          DEFAULT: colors.agentAmber,
-          light: colors.agentAmberLight,
-          muted: colors.agentAmberMuted,
+          DEFAULT: "var(--agent-amber)",
+          light: "var(--agent-amber-light)",
+          muted: "var(--agent-amber-muted)",
         },
 
-        "presence-online": colors.presenceOnline,
-        "presence-idle": colors.presenceIdle,
-        "presence-dnd": colors.presenceDnd,
-        "presence-offline": colors.presenceOffline,
-
-        warning: colors.warning,
-        error: colors.error,
-        info: colors.info,
-        success: colors.success,
+        "presence-online": "var(--presence-online)",
+        "presence-idle": "var(--presence-idle)",
+        "presence-dnd": "var(--presence-dnd)",
+        "presence-offline": "var(--presence-offline)",
       },
       fontFamily: {
-        sans: fontFamily.sans,
-        mono: fontFamily.mono,
+        sans: ["var(--font-sans)"],
+        mono: ["var(--font-mono)"],
       },
-      borderRadius: { ...borderRadius },
-      borderWidth: { ...borderWidth },
+      borderRadius: {
+        none: "0",
+        sm: "var(--radius-sm)",
+        DEFAULT: "var(--radius-md)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        full: "9999px",
+      },
+      ringColor: {
+        DEFAULT: "var(--ring)",
+        accent: "var(--accent)",
+      },
       maxWidth: {
         content: "1200px",
         prose: "65ch",

@@ -1,13 +1,11 @@
+/*
+ * The active design-system preset is selected at build time by Vite
+ * via the `@collabai-design-system.css` alias (see `vite.config.ts`).
+ * It pulls in `tokens-<id>.css` (the variables) followed by `shell.css`
+ * (body type, scrollbars, focus, MessageList prose).
+ */
+@import "@collabai-design-system.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  color-scheme: dark;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}

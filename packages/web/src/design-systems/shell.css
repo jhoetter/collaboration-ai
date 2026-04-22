@@ -1,0 +1,116 @@
+/*
+ * Shared shell — consumed by every preset (default, conservative, …).
+ *
+ * Body typography + colour, scrollbar styling, focus ring helpers,
+ * selection colour and a sensible "prose" baseline for MessageList
+ * markdown content. Anything *visual* that is not the design tokens
+ * themselves but is still preset-agnostic lives here.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-feature-settings: var(--body-font-features, normal);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--foreground);
+}
+
+/* Soft, theme-aware scrollbars — visible enough to find but not chrome-heavy. */
+* {
+  scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 18%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 32%, transparent);
+  background-clip: padding-box;
+}
+
+/*
+ * Focus rings — opt-in via `focus-visible:ring-2 ring-accent/40` from
+ * Tailwind, but also a sensible fallback for native form controls.
+ */
+:where(input, textarea, select, button):focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+/* MessageList prose overrides — keep markdown in chat looking native. */
+.collab-prose {
+  color: var(--foreground);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.collab-prose p {
+  margin: 0;
+}
+.collab-prose p + p {
+  margin-top: 0.5em;
+}
+.collab-prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 2px;
+}
+.collab-prose a:hover {
+  text-decoration-color: var(--accent);
+}
+.collab-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  background: var(--hover);
+  border-radius: var(--radius-sm);
+}
+.collab-prose pre {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.75rem 0.875rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.collab-prose pre code {
+  background: transparent;
+  padding: 0;
+}
+.collab-prose blockquote {
+  margin: 0;
+  padding-left: 0.875rem;
+  border-left: 2px solid var(--border);
+  color: var(--muted-foreground);
+}
+.collab-prose ul,
+.collab-prose ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}

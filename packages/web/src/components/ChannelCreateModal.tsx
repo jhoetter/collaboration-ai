@@ -6,12 +6,11 @@
  * channel (the WS event stream will surface it in the sidebar within
  * a frame).
  */
-import { Button } from "@collabai/ui";
+import { Button, Modal } from "@collabai/ui";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
-import { ModalShell } from "./ChannelSettingsModal.tsx";
 
 interface CreateChannelResponse {
   status: string;
@@ -58,36 +57,37 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalShell title={t("channelCreate.title")} onClose={onClose}>
+    <Modal title={t("channelCreate.title")} onClose={onClose}>
       <div className="flex flex-col gap-3 p-4">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-500">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-tertiary">
           <span>{t("common.name")}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("channelCreate.namePlaceholder")}
-            className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-tertiary focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             autoFocus
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-500">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-tertiary">
           <span>{t("channelCreate.topicPlaceholder")}</span>
           <textarea
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full resize-none rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+            className="w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-200">
+        <label className="flex items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={isPrivate}
             onChange={(e) => setIsPrivate(e.target.checked)}
+            className="h-4 w-4 rounded border-border text-accent focus:ring-accent/40"
           />
           <span>{t("channelCreate.private")} — {t("channelCreate.privateHint")}</span>
         </label>
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
             {t("common.cancel")}
@@ -97,6 +97,6 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
       </div>
-    </ModalShell>
+    </Modal>
   );
 }

@@ -3,13 +3,14 @@
  *
  * Shows the current user's avatar + display name with a dropdown for
  * editing the display name, setting an emoji status, toggling
- * away/active, and signing out (clears localStorage identity).
+ * away/active, switching theme + language, and signing out.
  */
-import { Avatar, PresenceDot, type PresenceStatus as DotStatus } from "@collabai/ui";
+import { Avatar, PresenceDot, ThemeToggle, type PresenceStatus as DotStatus } from "@collabai/ui";
 import { useEffect, useRef, useState } from "react";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
 import { LocaleToggle, useTranslator } from "../lib/i18n/index.ts";
+import { useColorScheme } from "../lib/theme/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type PresenceStatus } from "../state/sync.ts";
 
@@ -17,6 +18,7 @@ export function UserMenu() {
   const identity = useAuth((s) => s.identity);
   const presence = useSync((s) => s.presence);
   const { t } = useTranslator();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(identity?.display_name ?? "");
@@ -72,7 +74,7 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded bg-slate-800/60 px-2 py-2 text-left hover:bg-slate-800"
+        className="flex w-full items-center gap-2 rounded-md bg-card px-2 py-2 text-left transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <span className="relative">
           <Avatar name={identity?.display_name ?? "anonymous"} kind="human" size={32} />
@@ -81,26 +83,26 @@ export function UserMenu() {
           </span>
         </span>
         <span className="min-w-0">
-          <p className="truncate text-xs text-slate-500">{t("userMenu.youAre")}</p>
-          <p className="truncate text-sm font-medium text-collab-teal-300">
+          <p className="truncate text-xs text-tertiary">{t("userMenu.youAre")}</p>
+          <p className="truncate text-sm font-semibold text-foreground">
             {identity?.display_name ?? t("userMenu.anonymous")}
           </p>
         </span>
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded border border-slate-700 bg-slate-900 p-3 shadow-2xl">
+        <div className="absolute left-0 right-0 top-full z-30 mt-1.5 rounded-lg border border-border bg-card p-3 shadow-2xl">
           {editing ? (
             <div className="flex items-center gap-2">
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+                className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
                 autoFocus
               />
               <button
                 type="button"
                 onClick={() => void saveName()}
-                className="text-xs text-collab-teal-300 hover:underline"
+                className="text-xs font-medium text-accent transition-opacity hover:opacity-80"
               >
                 {t("common.save")}
               </button>
@@ -109,52 +111,63 @@ export function UserMenu() {
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="block w-full text-left text-sm text-slate-100 hover:text-collab-teal-300"
+              className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-hover"
             >
               {t("userMenu.editDisplayName")}
             </button>
           )}
-          <hr className="my-2 border-slate-800" />
-          <p className="text-xs uppercase text-slate-500">{t("userMenu.setStatus")}</p>
-          <div className="mt-1 flex items-center gap-1">
+          <hr className="my-2 border-border" />
+          <p className="px-2 text-[11px] font-semibold uppercase tracking-wide text-tertiary">
+            {t("userMenu.setStatus")}
+          </p>
+          <div className="mt-1.5 flex items-center gap-1">
             <input
               value={statusEmoji}
               onChange={(e) => setStatusEmoji(e.target.value)}
               placeholder="🎯"
               maxLength={4}
-              className="w-12 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-center text-sm"
+              className="w-12 rounded-md border border-border bg-background px-2 py-1.5 text-center text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
             <input
               value={statusText}
               onChange={(e) => setStatusText(e.target.value)}
               placeholder={t("userMenu.statusPlaceholder")}
-              className="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+              className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-tertiary focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
             <button
               type="button"
               onClick={() => void setStatus()}
-              className="text-xs text-collab-teal-300 hover:underline"
+              className="text-xs font-medium text-accent transition-opacity hover:opacity-80"
             >
               {t("common.save")}
             </button>
           </div>
-          <hr className="my-2 border-slate-800" />
+          <hr className="my-2 border-border" />
           <button
             type="button"
             onClick={() => void toggleAway()}
-            className="block w-full text-left text-sm text-slate-100 hover:text-collab-teal-300"
+            className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-hover"
           >
             {status === "idle" ? t("userMenu.setActive") : t("userMenu.setAway")}
           </button>
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs uppercase text-slate-500">{t("common.language")}</span>
+          <hr className="my-2 border-border" />
+          <div className="flex items-center justify-between gap-2 px-2 py-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-tertiary">
+              {t("userMenu.theme")}
+            </span>
+            <ThemeToggle value={colorScheme} onChange={setColorScheme} />
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-2 px-2 py-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-tertiary">
+              {t("common.language")}
+            </span>
             <LocaleToggle />
           </div>
-          <hr className="my-2 border-slate-800" />
+          <hr className="my-2 border-border" />
           <button
             type="button"
             onClick={signOut}
-            className="block w-full text-left text-sm text-rose-300 hover:underline"
+            className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-destructive-bg"
           >
             {t("userMenu.signOut")}
           </button>
