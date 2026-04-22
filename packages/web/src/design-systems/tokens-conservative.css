@@ -16,6 +16,8 @@
   --hover: #e7e5e4;
   --border: #d6d3d1;
   --divider: var(--border);
+  --border-hairline: color-mix(in srgb, var(--border) 60%, transparent);
+  --hover-muted: color-mix(in srgb, var(--hover) 50%, var(--background));
 
   --muted-foreground: #57534e;
   --secondary: var(--muted-foreground);
@@ -24,6 +26,10 @@
   --accent: #1e3a8a;
   --accent-light: rgba(30, 58, 138, 0.1);
   --accent-foreground: #ffffff;
+  --accent-faint: color-mix(in srgb, var(--accent) 58%, var(--background));
+  --accent-dim: color-mix(in srgb, var(--accent) 20%, transparent);
+  --reaction-pill: color-mix(in srgb, var(--accent) 40%, var(--background));
+  --reaction-pill-hover: color-mix(in srgb, var(--accent) 32%, var(--background));
 
   --primary: #0c0a09;
   --primary-foreground: #ffffff;

@@ -1018,7 +1018,7 @@ function ComposerInner({
       onDrop={handleDrop}
     >
       {pending.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-start gap-2 rounded-md bg-hover/50 p-2">
+        <div className="mb-3 flex flex-wrap items-start gap-2 rounded-md bg-hover-muted p-2">
           {pending.map((p) => (
             <AttachmentChip
               key={p.file_id}
@@ -1041,13 +1041,13 @@ function ComposerInner({
       )}
       <div
         ref={composerCardRef}
-        className="group/composer rounded-lg border border-border bg-background shadow-sm transition-all focus-within:border-accent/60 focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/20"
+        className="group/composer rounded-lg border border-border bg-background shadow-sm transition-all focus-within:border-accent-faint focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent-dim"
         onClick={focusEditor}
       >
         {showFormatting && (
           <Toolbar
             density="comfortable"
-            className="gap-2 overflow-hidden rounded-t-lg border-b border-border/60 px-3 py-2"
+            className="gap-2 overflow-hidden rounded-t-lg border-b border-hairline px-3 py-2"
             onClick={(e) => e.stopPropagation()}
           >
             <ToolbarButton
@@ -1117,7 +1117,7 @@ function ComposerInner({
           />
         </div>
         <div
-          className="flex items-center gap-2 overflow-x-auto border-t border-border/60 px-3 pb-2.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-center gap-2 overflow-x-auto border-t border-hairline px-3 pb-2.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onClick={(e) => e.stopPropagation()}
         >
           <ToolbarButton

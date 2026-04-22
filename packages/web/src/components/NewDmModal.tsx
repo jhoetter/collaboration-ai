@@ -109,7 +109,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
                   key={id}
                   type="button"
                   onClick={() => toggle(id)}
-                  className="flex items-center gap-1 rounded-full border border-border bg-hover px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-border/60"
+                  className="flex items-center gap-1 rounded-full border border-border bg-hover px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-border"
                 >
                   <span>{u?.display_name ?? id}</span>
                   <span className="text-tertiary">✕</span>

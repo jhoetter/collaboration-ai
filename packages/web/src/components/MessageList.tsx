@@ -1165,8 +1165,8 @@ function ReactionChip({
         aria-label={`${emoji} ${users.length} — ${reactedLine}`}
         className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all duration-100 ${
           mine
-            ? "border-accent/40 bg-accent-light text-accent"
-            : "border-border bg-card text-secondary hover:border-accent/30 hover:bg-hover hover:text-foreground"
+            ? "border-reaction-pill bg-accent-light text-accent"
+            : "border-border bg-card text-secondary hover:border-reaction-pill-hover hover:bg-hover hover:text-foreground"
         }`}
       >
         <span aria-hidden="true">{emoji}</span>

@@ -59,7 +59,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonPr
         aria-label={label}
         aria-pressed={active || undefined}
         className={cn(
-          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary transition-colors duration-150",
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-secondary transition-colors duration-150",
           "hover:bg-hover hover:text-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
           active && "bg-hover text-foreground",

@@ -52,7 +52,7 @@ export function AgentInbox() {
         {proposals.map((p) => (
           <li
             key={p.proposal_id}
-            className="rounded-md border border-border bg-card p-2 transition-colors hover:border-accent/40"
+            className="rounded-md border border-border bg-card p-2 transition-colors hover:border-reaction-pill"
           >
             <p className="text-xs font-medium text-accent">{p.agent_id ?? "agent"}</p>
             <p className="text-sm text-foreground">{p.command_type}</p>

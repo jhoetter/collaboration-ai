@@ -24,6 +24,10 @@ export const collabAIPreset = {
         card: "var(--card)",
         hover: "var(--hover)",
         border: "var(--border)",
+        hairline: "var(--border-hairline)",
+        "hover-muted": "var(--hover-muted)",
+        "reaction-pill": "var(--reaction-pill)",
+        "reaction-pill-hover": "var(--reaction-pill-hover)",
         divider: "var(--divider)",
         muted: {
           DEFAULT: "var(--muted-foreground)",
@@ -36,6 +40,8 @@ export const collabAIPreset = {
           DEFAULT: "var(--accent)",
           light: "var(--accent-light)",
           foreground: "var(--accent-foreground)",
+          faint: "var(--accent-faint)",
+          dim: "var(--accent-dim)",
         },
         primary: {
           DEFAULT: "var(--primary)",

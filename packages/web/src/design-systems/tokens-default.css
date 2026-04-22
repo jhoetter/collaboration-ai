@@ -19,6 +19,9 @@
   --hover: #f4f4f1;
   --border: #e9e9e7;
   --divider: var(--border);
+  /* Tailwind opacity on border tokens (e.g. /60) is invalid for `var(…)` in v3. */
+  --border-hairline: color-mix(in srgb, var(--border) 60%, transparent);
+  --hover-muted: color-mix(in srgb, var(--hover) 50%, var(--background));
 
   /* Text */
   --muted-foreground: #787774;
@@ -29,6 +32,10 @@
   --accent: #0e8a7e;
   --accent-light: #e6f4f2;
   --accent-foreground: #ffffff;
+  --accent-faint: color-mix(in srgb, var(--accent) 58%, var(--background));
+  --accent-dim: color-mix(in srgb, var(--accent) 20%, transparent);
+  --reaction-pill: color-mix(in srgb, var(--accent) 40%, var(--background));
+  --reaction-pill-hover: color-mix(in srgb, var(--accent) 32%, var(--background));
 
   /* Primary surfaces (buttons, etc.) */
   --primary: #37352f;
@@ -92,7 +99,8 @@
 
     --muted-foreground: #9b9a97;
     --secondary: var(--muted-foreground);
-    --tertiary: #5a5a58;
+    /* Darker than secondary but still readable on #191919 (timestamps, hints). */
+    --tertiary: #7a7874;
 
     --accent: #34b0a1;
     --accent-light: #142b28;
@@ -144,7 +152,7 @@
 
   --muted-foreground: #9b9a97;
   --secondary: var(--muted-foreground);
-  --tertiary: #5a5a58;
+  --tertiary: #7a7874;
 
   --accent: #34b0a1;
   --accent-light: #142b28;

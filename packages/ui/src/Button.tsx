@@ -13,7 +13,7 @@ const VARIANT_CLASS: Record<Variant, string> = {
   primary:
     "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85",
   secondary:
-    "bg-hover text-foreground hover:bg-border/80 active:bg-border",
+    "bg-hover text-foreground hover:bg-border active:bg-border",
   ghost:
     "bg-transparent text-secondary hover:bg-hover hover:text-foreground active:bg-hover",
   danger:

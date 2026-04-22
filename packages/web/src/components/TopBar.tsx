@@ -553,7 +553,7 @@ export function TopBar() {
           aria-activedescendant={
             visibleRows[active] ? `topbar-row-${visibleRows[active].key}` : undefined
           }
-          className="h-8 w-full rounded-md border border-border/60 bg-background pl-8 pr-3 text-sm text-foreground transition-colors placeholder:text-tertiary focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20 sm:h-7 sm:pr-12"
+          className="h-8 w-full rounded-md border border-hairline bg-background pl-8 pr-3 text-sm text-foreground transition-colors placeholder:text-tertiary focus:border-accent-faint focus:outline-none focus:ring-2 focus:ring-accent-dim sm:h-7 sm:pr-12"
           data-testid="topbar-search"
         />
         <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 text-[10px] text-tertiary sm:flex">
@@ -747,7 +747,7 @@ function ChipSuggestions({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onAppend(c.chip)}
-          className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-secondary transition-colors hover:border-accent/40 hover:text-foreground"
+          className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-secondary transition-colors hover:border-reaction-pill hover:text-foreground"
         >
           {c.label}
         </button>

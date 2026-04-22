@@ -219,7 +219,7 @@ export function ChannelHeader({
             <span className="hidden sm:inline">{t("channel.startHuddle")}</span>
           </button>
         )}
-        <span className="mx-1 hidden h-5 w-px bg-border/70 sm:block" aria-hidden />
+        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
         <NotificationMenu channelId={channelId} pref={pref} />
         {!isDm && (
           <button
