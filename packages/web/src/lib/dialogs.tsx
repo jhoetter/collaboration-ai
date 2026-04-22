@@ -23,7 +23,9 @@ import {
   type ReactNode,
 } from "react";
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
+import { LinkPromptDialog } from "../components/LinkPromptDialog.tsx";
 import { PromptDialog } from "../components/PromptDialog.tsx";
+import { useTranslator } from "./i18n/index.ts";
 
 export interface ConfirmOptions {
   title: string;
@@ -44,11 +46,27 @@ export interface PromptOptions {
   readOnly?: boolean;
 }
 
+export interface LinkPromptOptions {
+  title?: string;
+  description?: string;
+  defaultLabel?: string;
+  defaultUrl?: string;
+  confirmLabel?: string;
+}
+
+export interface LinkPromptResult {
+  url: string;
+  /** Display label; empty when the user accepted with an empty label field. */
+  label: string;
+}
+
 interface DialogsApi {
   /** Returns `true` when the user confirms, `false` on cancel/dismiss. */
   confirm: (options: ConfirmOptions) => Promise<boolean>;
   /** Returns the entered string, or `null` when the user cancels/dismisses. */
   prompt: (options: PromptOptions) => Promise<string | null>;
+  /** Returns the URL + label pair, or `null` when the user cancels/dismisses. */
+  linkPrompt: (options?: LinkPromptOptions) => Promise<LinkPromptResult | null>;
 }
 
 const DialogsContext = createContext<DialogsApi | null>(null);
@@ -61,9 +79,15 @@ type PromptState = PromptOptions & {
   resolve: (value: string | null) => void;
 };
 
+type LinkPromptState = LinkPromptOptions & {
+  resolve: (value: LinkPromptResult | null) => void;
+};
+
 export function DialogProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslator();
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [promptState, setPromptState] = useState<PromptState | null>(null);
+  const [linkPromptState, setLinkPromptState] = useState<LinkPromptState | null>(null);
 
   const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
     return new Promise<boolean>((resolve) => {
@@ -77,7 +101,19 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const api = useMemo<DialogsApi>(() => ({ confirm, prompt }), [confirm, prompt]);
+  const linkPrompt = useCallback(
+    (options: LinkPromptOptions = {}): Promise<LinkPromptResult | null> => {
+      return new Promise<LinkPromptResult | null>((resolve) => {
+        setLinkPromptState({ ...options, resolve });
+      });
+    },
+    [],
+  );
+
+  const api = useMemo<DialogsApi>(
+    () => ({ confirm, prompt, linkPrompt }),
+    [confirm, prompt, linkPrompt],
+  );
 
   function closeConfirm(result: boolean) {
     if (!confirmState) return;
@@ -89,6 +125,12 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     if (!promptState) return;
     promptState.resolve(result);
     setPromptState(null);
+  }
+
+  function closeLinkPrompt(result: LinkPromptResult | null) {
+    if (!linkPromptState) return;
+    linkPromptState.resolve(result);
+    setLinkPromptState(null);
   }
 
   return (
@@ -119,6 +161,21 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           onConfirm={(value) =>
             closePrompt(promptState.readOnly ? null : value === "" ? null : value)
           }
+        />
+      )}
+      {linkPromptState && (
+        <LinkPromptDialog
+          title={linkPromptState.title ?? t("dialogs.linkTitle")}
+          description={linkPromptState.description ?? t("composer.linkPrompt")}
+          defaultLabel={linkPromptState.defaultLabel ?? ""}
+          defaultUrl={linkPromptState.defaultUrl ?? "https://"}
+          labelFieldLabel={t("dialogs.linkLabelField")}
+          urlFieldLabel={t("dialogs.linkUrlField")}
+          labelPlaceholder={t("dialogs.linkLabelPlaceholder")}
+          urlPlaceholder="https://example.com"
+          confirmLabel={linkPromptState.confirmLabel ?? t("dialogs.linkConfirm")}
+          onCancel={() => closeLinkPrompt(null)}
+          onConfirm={(value) => closeLinkPrompt(value)}
         />
       )}
     </DialogsContext.Provider>

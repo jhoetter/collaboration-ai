@@ -12,6 +12,8 @@
  * `./colors.ts` remain only as a documentation reference for preset
  * authors.
  */
+import plugin from "tailwindcss/plugin";
+
 export const collabAIPreset = {
   theme: {
     extend: {
@@ -97,4 +99,16 @@ export const collabAIPreset = {
       },
     },
   },
+  plugins: [
+    // `mobile-sheet:` — applies only on touch devices in a phone-sized
+    // viewport, i.e. when the modal should render as a bottom-sheet.
+    // Narrow desktop windows (mouse / trackpad) are intentionally
+    // excluded so resizing a browser doesn't switch to a bottom-sheet.
+    plugin(({ addVariant }) => {
+      addVariant(
+        "mobile-sheet",
+        "@media (pointer: coarse) and (max-width: 640px)",
+      );
+    }),
+  ],
 };

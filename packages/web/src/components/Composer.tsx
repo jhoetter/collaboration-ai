@@ -43,8 +43,9 @@ import {
   ToolbarDivider,
   ToolbarSpacer,
 } from "@collabai/ui";
-import { TOGGLE_LINK_COMMAND } from "@lexical/link";
+import { $createLinkNode } from "@lexical/link";
 import {
+  $isListItemNode,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
 } from "@lexical/list";
@@ -58,16 +59,20 @@ import { $createQuoteNode, $isQuoteNode } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import {
   $createParagraphNode,
+  $createTextNode,
   $getRoot,
   $getSelection,
   $isRangeSelection,
+  $setSelection,
   CLEAR_EDITOR_COMMAND,
   FORMAT_TEXT_COMMAND,
+  type BaseSelection,
   type LexicalEditor,
 } from "lexical";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sendTypingFrame } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
+import { findBareLinks } from "../lib/autolink.ts";
 import { useDialogs } from "../lib/dialogs.tsx";
 import {
   hasEmojiShortcode,
@@ -123,6 +128,13 @@ interface SlashCommand {
   id: string;
   name: string;
   hint: string;
+  /**
+   * `true` when the command is meaningless without trailing arguments
+   * (e.g. `/me <text>`). Picking such a command from the popover with
+   * no args yet just autocompletes the name and waits for the user to
+   * type the body instead of immediately sending or no-oping.
+   */
+  needsArgs?: boolean;
   /** Apply the command and return whether it was handled. `clear` resets the editor. */
   run(args: SlashRunArgs): SlashRunResult | Promise<SlashRunResult>;
 }
@@ -158,10 +170,19 @@ function ComposerInner({
   onSend,
 }: ComposerProps) {
   const { t } = useTranslator();
-  const { prompt } = useDialogs();
+  const { linkPrompt } = useDialogs();
   const [editor] = useLexicalComposerContext();
   const [text, setText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
+  // Inline link previews shown above the composer (Slack-style). Each
+  // card has an X to dismiss; dismissed URLs go into
+  // `dismissedUrlsRef` so re-triggering the same URL while the
+  // composer is open doesn't immediately reinstate the preview.
+  const [linkPreviews, setLinkPreviews] = useState<Attachment[]>([]);
+  const linkPreviewsRef = useRef<Attachment[]>([]);
+  linkPreviewsRef.current = linkPreviews;
+  const dismissedUrlsRef = useRef<Set<string>>(new Set());
+  const inflightUnfurlsRef = useRef<Set<string>>(new Set());
   const [showEmoji, setShowEmoji] = useState(false);
   // The formatting toolbar takes a row of vertical real estate that's a
   // luxury we can't afford on phones, so default it off below `md` and let
@@ -193,6 +214,11 @@ function ComposerInner({
   const plusMenuButtonRef = useRef<HTMLButtonElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  // Anchor for inline suggestion popovers (mention / slash / emoji).
+  // We point them at the bordered composer card rather than the outer
+  // wrapper so the popover's left edge aligns with the editor card,
+  // not with the surrounding page padding.
+  const composerCardRef = useRef<HTMLDivElement>(null);
 
   const usersById = useUsers((s) => s.byId);
   const userList = useMemo(() => Object.values(usersById), [usersById]);
@@ -212,6 +238,9 @@ function ComposerInner({
     draftHydrated.current = false;
     setText("");
     setPending([]);
+    setLinkPreviews([]);
+    dismissedUrlsRef.current = new Set();
+    inflightUnfurlsRef.current = new Set();
     setSlashState(null);
     setMentionState(null);
     setEmojiState(null);
@@ -229,6 +258,75 @@ function ComposerInner({
     window.addEventListener("collab:files-dropped", onFiles as EventListener);
     return () => window.removeEventListener("collab:files-dropped", onFiles as EventListener);
   }, [channelId]);
+
+  // Live link previews. Debounce against `text` so we don't hammer
+  // `link:unfurl` while the user is mid-keystroke. The effect:
+  //   1. Drops any preview whose URL has been deleted from the message.
+  //   2. Fires `link:unfurl` for new URLs that aren't dismissed and
+  //      aren't already loaded / in-flight, then appends them to the
+  //      `linkPreviews` strip rendered above the editor.
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const urls = extractUrls(text);
+      const wanted = new Set(urls);
+      // Prune previews whose URL no longer appears in the body. Also
+      // garbage-collect dismissed-URL bookkeeping so the user can
+      // re-trigger a preview by retyping a URL after a full delete.
+      setLinkPreviews((cur) => cur.filter((p) => p.url && wanted.has(p.url)));
+      for (const dismissed of Array.from(dismissedUrlsRef.current)) {
+        if (!wanted.has(dismissed)) dismissedUrlsRef.current.delete(dismissed);
+      }
+      for (const url of urls.slice(0, 3)) {
+        if (dismissedUrlsRef.current.has(url)) continue;
+        if (linkPreviewsRef.current.some((p) => p.url === url)) continue;
+        if (inflightUnfurlsRef.current.has(url)) continue;
+        inflightUnfurlsRef.current.add(url);
+        void (async () => {
+          try {
+            const meta = await callFunction<{
+              url: string;
+              title: string | null;
+              description: string | null;
+              image_url: string | null;
+              site_name: string | null;
+            }>("link:unfurl", { url });
+            if (!meta.title && !meta.description && !meta.image_url) return;
+            // Re-check dismissal / presence after the await — the user
+            // may have removed the URL or dismissed the preview while
+            // the fetch was in flight.
+            if (dismissedUrlsRef.current.has(url)) return;
+            if (linkPreviewsRef.current.some((p) => p.url === url)) return;
+            const att: Attachment = {
+              file_id: `link_${hashUrl(url)}`,
+              name: meta.title ?? url,
+              mime: "text/url",
+              size_bytes: 0,
+              kind: "link_preview",
+              url: meta.url,
+              title: meta.title,
+              description: meta.description,
+              image_url: meta.image_url,
+              site_name: meta.site_name,
+            };
+            setLinkPreviews((cur) =>
+              cur.some((p) => p.url === url) ? cur : [...cur, att],
+            );
+          } catch {
+            // Link previews are advisory; swallow so a failed unfurl
+            // never blocks composition.
+          } finally {
+            inflightUnfurlsRef.current.delete(url);
+          }
+        })();
+      }
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [text]);
+
+  function dismissLinkPreview(url: string) {
+    dismissedUrlsRef.current.add(url);
+    setLinkPreviews((cur) => cur.filter((p) => p.url !== url));
+  }
 
   const persistDraft = useCallback(
     (content: string) => {
@@ -267,9 +365,12 @@ function ComposerInner({
         lastTypingSentAt.current = now;
         sendTypingFrame(channelId);
       }
-      // Slash commands only at the very start of an empty editor.
-      if (md.startsWith("/")) {
-        const cmd = md.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
+      // Slash commands only fire when the message begins with `/`.
+      // We tolerate leading whitespace / blank paragraphs so a user who
+      // typed-then-deleted earlier content still sees the popover.
+      const slashHead = md.trimStart();
+      if (slashHead.startsWith("/")) {
+        const cmd = slashHead.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
         setSlashState({ query: cmd, index: 0 });
       } else {
         setSlashState(null);
@@ -333,6 +434,7 @@ function ComposerInner({
         id: "me",
         name: "/me",
         hint: t("composer.slash.me"),
+        needsArgs: true,
         run: ({ rest, setText: write }) => {
           if (!rest.trim()) return { handled: false };
           write(`*${rest.trim()}*`);
@@ -561,15 +663,18 @@ function ComposerInner({
     return result.handled;
   }
 
-  async function handleSend() {
-    const trimmed = replaceEmojiShortcodes(text.trim());
+  async function dispatchSend(rawText: string) {
+    const trimmed = replaceEmojiShortcodes(rawText.trim());
     const ready = pending.filter((p) => p.status === "ready");
     if (!trimmed && ready.length === 0) return;
     if (await maybeRunSlash(trimmed)) {
       const after = replaceEmojiShortcodes(readMarkdown(editor).trim());
       if (!after && ready.length === 0) return;
       const mentions = collectMentionedUserIds(after, userList);
-      const linkAttachments = await fetchLinkPreviews(after);
+      // Send any previews that survived the user's dismissals plus a
+      // best-effort fetch for URLs that appeared too recently for the
+      // debounced `useEffect` to have resolved them yet.
+      const linkAttachments = await collectLinkPreviewsForSend(after);
       await onSend({
         text: after,
         mentions,
@@ -578,10 +683,12 @@ function ComposerInner({
       });
       clearEditor();
       setPending([]);
+      setLinkPreviews([]);
+      dismissedUrlsRef.current = new Set();
       return;
     }
     const mentions = collectMentionedUserIds(trimmed, userList);
-    const linkAttachments = await fetchLinkPreviews(trimmed);
+    const linkAttachments = await collectLinkPreviewsForSend(trimmed);
     await onSend({
       text: trimmed,
       mentions,
@@ -590,14 +697,68 @@ function ComposerInner({
     });
     clearEditor();
     setPending([]);
+    setLinkPreviews([]);
+    dismissedUrlsRef.current = new Set();
   }
 
-  async function fetchLinkPreviews(content: string): Promise<Attachment[]> {
-    const urls = extractUrls(content);
+  /**
+   * Build the list of `link_preview` attachments to ship with the
+   * outgoing message:
+   *
+   *   1. Start with the previews the user actually sees in the
+   *      composer (already filtered by their X-button dismissals).
+   *   2. Top up with on-demand `link:unfurl` calls for URLs that
+   *      appear in the text but haven't yet been fetched (e.g. the
+   *      user typed a URL and hit Enter inside the 400 ms debounce
+   *      window) and that haven't been dismissed.
+   */
+  async function collectLinkPreviewsForSend(content: string): Promise<Attachment[]> {
+    const visible = linkPreviewsRef.current;
+    const haveUrls = new Set(visible.map((p) => p.url ?? ""));
+    const wanted = extractUrls(content);
+    const missing = wanted.filter(
+      (u) => !haveUrls.has(u) && !dismissedUrlsRef.current.has(u),
+    );
+    const fetched = missing.length > 0 ? await fetchLinkPreviews(missing) : [];
+    return [...visible, ...fetched];
+  }
+
+  async function handleSend() {
+    await dispatchSend(text);
+  }
+
+  /**
+   * Confirm a slash-command suggestion (Enter on the popover or
+   * mouse-click). For commands that need arguments we just complete
+   * the name and let the user keep typing; otherwise we replace the
+   * editor with the canonical form and run it through the send pipe
+   * so the actual side effect (open dialog, set presence, etc.) fires.
+   */
+  async function pickSlashCommand(cmd: SlashCommand) {
+    const cur = readMarkdown(editor).trimStart();
+    const rest = cur.replace(/^\/\S*\s*/, "");
+    if (cmd.needsArgs && !rest.trim()) {
+      const next = `${cmd.name} `;
+      writeMarkdown(editor, next);
+      setText(next);
+      setSlashState({ query: cmd.name.slice(1), index: 0 });
+      return;
+    }
+    const candidate = rest ? `${cmd.name} ${rest}` : cmd.name;
+    writeMarkdown(editor, candidate);
+    setText(candidate);
+    await dispatchSend(candidate);
+  }
+
+  async function fetchLinkPreviews(urls: string[]): Promise<Attachment[]> {
     if (urls.length === 0) return [];
     const out: Attachment[] = [];
     for (const url of urls.slice(0, 3)) {
       try {
+        // The unfurl endpoint may include extras like `fetched_at` that
+        // aren't part of the strict `Attachment` schema. Pick the OG
+        // fields explicitly so a stray new field on the server can't
+        // silently fail the whole `chat:send-message` validation.
         const meta = await callFunction<{
           url: string;
           title: string | null;
@@ -611,9 +772,13 @@ function ComposerInner({
           name: meta.title ?? url,
           mime: "text/url",
           size_bytes: 0,
-          ...(meta as object),
           kind: "link_preview",
-        } as Attachment);
+          url: meta.url,
+          title: meta.title,
+          description: meta.description,
+          image_url: meta.image_url,
+          site_name: meta.site_name,
+        });
       } catch {
         // Link previews are advisory.
       }
@@ -696,6 +861,12 @@ function ComposerInner({
         }
         return;
       }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const pick = filteredSlash[slashState.index];
+        if (pick) void pickSlashCommand(pick);
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         setSlashState(null);
@@ -709,6 +880,21 @@ function ComposerInner({
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
+      // Cmd/Ctrl+Enter is an explicit "send" override that fires even
+      // when the cursor sits inside a list / code block / quote where
+      // a bare Enter would otherwise extend the structure.
+      if (isMod) {
+        e.preventDefault();
+        void handleSend();
+        return;
+      }
+      // Inside a bullet/numbered list, fenced code block, or blockquote
+      // the user is mid-thought: defer to Lexical's native Enter so we
+      // get the next list item, a new line in code, etc. Empty list
+      // items still exit the list (Lexical's built-in behaviour).
+      if (isInsideStructuredBlock(editor)) {
+        return;
+      }
       e.preventDefault();
       void handleSend();
     }
@@ -719,15 +905,51 @@ function ComposerInner({
   }
 
   async function promptLink() {
-    const url = await prompt({
-      title: t("dialogs.linkTitle"),
-      description: t("composer.linkPrompt"),
-      defaultValue: "https://",
-      placeholder: "https://example.com",
-      confirmLabel: t("dialogs.linkConfirm"),
+    // Snapshot the live selection so we can restore it after the
+    // prompt has stolen focus. `clone()` detaches it from the
+    // editor's mutable state. The selected text (if any) becomes the
+    // default label so the standard "select word → ⌘⇧U → paste URL"
+    // flow Just Works.
+    let selectedText = "";
+    let savedSelection: BaseSelection | null = null;
+    editor.getEditorState().read(() => {
+      const sel = $getSelection();
+      if ($isRangeSelection(sel)) {
+        selectedText = sel.getTextContent();
+        savedSelection = sel.clone();
+      }
     });
-    if (!url) return;
-    editor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
+
+    const result = await linkPrompt({ defaultLabel: selectedText });
+    if (!result) return;
+
+    editor.focus();
+    editor.update(() => {
+      if (savedSelection) $setSelection(savedSelection.clone());
+      const sel = $getSelection();
+      if (!$isRangeSelection(sel)) {
+        // Fallback: append at the end of the document so the user
+        // doesn't lose their link if the editor somehow has no
+        // selection (e.g. completely empty + never focused).
+        const root = $getRoot();
+        const last = root.getLastChild();
+        const linkNode = $createLinkNode(result.url);
+        linkNode.append($createTextNode(result.label || result.url));
+        if (last && "append" in last && typeof last.append === "function") {
+          (last as unknown as { append(...nodes: unknown[]): void }).append(linkNode);
+        } else {
+          const para = $createParagraphNode();
+          para.append(linkNode);
+          root.append(para);
+        }
+        return;
+      }
+      const linkNode = $createLinkNode(result.url);
+      linkNode.append($createTextNode(result.label || result.url));
+      // `insertNodes` replaces the selected range with our link, or
+      // splices it in at the caret when the selection is collapsed.
+      sel.insertNodes([linkNode]);
+    });
   }
 
   function insertEmoji(emoji: string) {
@@ -791,7 +1013,7 @@ function ComposerInner({
   return (
     <div
       ref={editorContainerRef}
-      className="relative border-t border-border bg-surface px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:px-4 md:pb-4 md:pt-3"
+      className="relative px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:px-4 md:pb-4"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
@@ -806,7 +1028,19 @@ function ComposerInner({
           ))}
         </div>
       )}
+      {linkPreviews.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-start gap-2">
+          {linkPreviews.map((p) => (
+            <LinkPreviewChip
+              key={p.file_id}
+              attachment={p}
+              onRemove={() => p.url && dismissLinkPreview(p.url)}
+            />
+          ))}
+        </div>
+      )}
       <div
+        ref={composerCardRef}
         className="group/composer rounded-lg border border-border bg-background shadow-sm transition-all focus-within:border-accent/60 focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/20"
         onClick={focusEditor}
       >
@@ -957,7 +1191,7 @@ function ComposerInner({
         </PopoverPortal>
       )}
       {mentionState && filteredUsers.length > 0 && (
-        <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
+        <PopoverPortal anchor={composerCardRef.current} placement="bottom-start">
           <ul className="max-h-56 w-[min(16rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredUsers.map((u, i) => (
               <li key={u.user_id}>
@@ -982,7 +1216,7 @@ function ComposerInner({
         </PopoverPortal>
       )}
       {slashState && filteredSlash.length > 0 && (
-        <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
+        <PopoverPortal anchor={composerCardRef.current} placement="bottom-start">
           <ul className="max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredSlash.map((c, i) => (
               <li key={c.id}>
@@ -993,10 +1227,7 @@ function ComposerInner({
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    const cur = readMarkdown(editor);
-                    const tail = cur.replace(/^\/[\w-]*/, `${c.name} `);
-                    writeMarkdown(editor, tail);
-                    setText(tail);
+                    void pickSlashCommand(c);
                   }}
                 >
                   <span className="font-medium text-foreground">{c.name}</span>
@@ -1008,7 +1239,7 @@ function ComposerInner({
         </PopoverPortal>
       )}
       {emojiState && filteredEmoji.length > 0 && (
-        <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
+        <PopoverPortal anchor={composerCardRef.current} placement="bottom-start">
           <ul className="max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredEmoji.map((s, i) => (
               <li key={s.shortcode}>
@@ -1205,9 +1436,94 @@ function AttachmentChip({
   );
 }
 
+/**
+ * Compact card the composer renders above the editor for each
+ * resolved link preview. Mirrors the message-side `LinkPreviewCard`
+ * but is non-clickable (we don't want clicks while composing) and
+ * carries an X button for the user to dismiss the preview before
+ * sending — Slack-style.
+ */
+function LinkPreviewChip({
+  attachment,
+  onRemove,
+}: {
+  attachment: Attachment;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslator();
+  const meta = attachment as Attachment & {
+    title?: string | null;
+    description?: string | null;
+    site_name?: string | null;
+    image_url?: string | null;
+    url?: string | null;
+  };
+  return (
+    <div className="relative flex w-96 max-w-full overflow-hidden rounded-md border border-border bg-card pr-7 shadow-sm">
+      <span className="w-1 shrink-0 bg-accent" aria-hidden="true" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 text-xs">
+        {meta.site_name && (
+          <span className="truncate text-tertiary">{meta.site_name}</span>
+        )}
+        {meta.title && (
+          <span className="truncate text-sm font-medium text-foreground">
+            {meta.title}
+          </span>
+        )}
+        {meta.description && (
+          <span className="line-clamp-2 text-secondary">{meta.description}</span>
+        )}
+        {!meta.title && !meta.description && meta.url && (
+          <span className="truncate text-secondary">{meta.url}</span>
+        )}
+      </div>
+      {meta.image_url && (
+        <img
+          src={meta.image_url}
+          alt={meta.title ?? ""}
+          className="hidden max-h-24 w-32 flex-none object-cover sm:block"
+          loading="lazy"
+        />
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={t("composer.removeLinkPreview")}
+        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-tertiary shadow-sm ring-1 ring-border transition-colors hover:bg-background hover:text-destructive"
+      >
+        <span aria-hidden="true" className="text-[11px] leading-none">✕</span>
+      </button>
+    </div>
+  );
+}
+
 function stripUploadFields(att: PendingAttachment): Attachment {
   const { status: _status, localUrl: _localUrl, ...rest } = att;
   return rest;
+}
+
+/**
+ * Walk up from the current selection to see whether the caret sits
+ * inside a Lexical block where pressing Enter should extend the block
+ * (next list item, new line in a code fence, new line in a blockquote)
+ * rather than send the message.
+ */
+function isInsideStructuredBlock(editor: LexicalEditor): boolean {
+  let inside = false;
+  editor.getEditorState().read(() => {
+    const selection = $getSelection();
+    if (!$isRangeSelection(selection)) return;
+    let node: ReturnType<typeof selection.anchor.getNode> | null =
+      selection.anchor.getNode();
+    while (node) {
+      if ($isListItemNode(node) || $isCodeNode(node) || $isQuoteNode(node)) {
+        inside = true;
+        return;
+      }
+      node = node.getParent();
+    }
+  });
+  return inside;
 }
 
 function readImageDimensions(url: string): Promise<{ width: number; height: number }> {
@@ -1240,17 +1556,25 @@ function collectMentionedUserIds(
 
 const URL_RE = /\bhttps?:\/\/[^\s<>"]+/gi;
 
+/**
+ * Collect every URL in a message body that we should try to unfurl.
+ * Picks up both fully-qualified `https?://…` URLs and bare domains
+ * (`hpi.de`, `example.com/about`) — the latter via `findBareLinks`,
+ * which uses the same TLD allowlist that drives chat-side rendering
+ * so the preview card always matches what the reader sees inline.
+ */
 function extractUrls(text: string): string[] {
-  const hits = text.match(URL_RE) ?? [];
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const raw of hits) {
-    const cleaned = raw.replace(/[)\].,!?;:]+$/g, "");
+  function add(url: string) {
+    const cleaned = url.replace(/[)\].,!?;:]+$/g, "");
     if (!seen.has(cleaned)) {
       seen.add(cleaned);
       out.push(cleaned);
     }
   }
+  for (const raw of text.match(URL_RE) ?? []) add(raw);
+  for (const m of findBareLinks(text)) add(m.url);
   return out;
 }
 

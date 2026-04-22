@@ -27,6 +27,13 @@ export interface Attachment {
   width?: number | null;
   height?: number | null;
   thumbnail_url?: string | null;
+  /** Discriminator. `link_preview` carries the OpenGraph fields below. */
+  kind?: "file" | "link_preview";
+  url?: string | null;
+  title?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  site_name?: string | null;
 }
 
 export interface Event {

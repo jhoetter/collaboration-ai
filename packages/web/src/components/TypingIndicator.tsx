@@ -24,7 +24,10 @@ export function TypingIndicator({ channelId }: { channelId: string }) {
   }, [bucket, me]);
 
   if (userIds.length === 0) {
-    return <div className="h-5" aria-hidden="true" />;
+    // Tiny spacer so the composer sits flush against the chat without
+    // collapsing entirely; the active indicator is taller and will
+    // expand the row when someone actually starts typing.
+    return <div className="h-1" aria-hidden="true" />;
   }
   return (
     <div className="px-4 py-1 text-xs italic text-tertiary">

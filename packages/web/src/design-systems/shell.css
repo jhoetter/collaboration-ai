@@ -112,10 +112,15 @@ body {
   border-left: 2px solid var(--border);
   color: var(--muted-foreground);
 }
-.collab-prose ul,
+.collab-prose ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+/* Wider gutter for ordered lists so two-digit markers (10., 11., …) don't
+   get clipped against the parent edge. */
 .collab-prose ol {
   margin: 0;
-  padding-left: 1.25rem;
+  padding-left: 1.75rem;
 }
 
 /*

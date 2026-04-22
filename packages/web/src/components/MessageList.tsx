@@ -39,6 +39,7 @@ import remarkGfm from "remark-gfm";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { callFunction } from "../lib/api.ts";
+import { remarkAutolinkBareDomains } from "../lib/autolink.ts";
 import { useDialogs } from "../lib/dialogs.tsx";
 import { replaceEmojiShortcodes } from "../lib/emojiShortcodes.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
@@ -1211,7 +1212,9 @@ function MarkdownContent({ content, mentions }: { content: string; mentions: str
   }, [content, mentions, usersById]);
   return (
     <div className="collab-prose max-w-none break-words">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{enhanced}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkAutolinkBareDomains]}>
+        {enhanced}
+      </ReactMarkdown>
     </div>
   );
 }

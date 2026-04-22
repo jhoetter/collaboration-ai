@@ -75,6 +75,7 @@
     "addEmoji": "Add emoji",
     "attachFile": "Attach file",
     "removeAttachment": "Remove attachment",
+    "removeLinkPreview": "Remove link preview",
     "bold": "Bold",
     "italic": "Italic",
     "strikethrough": "Strikethrough",
@@ -277,6 +278,9 @@
     "signOutTitle": "Sign out",
     "linkTitle": "Insert link",
     "linkConfirm": "Insert",
+    "linkLabelField": "Text to display",
+    "linkUrlField": "URL",
+    "linkLabelPlaceholder": "Optional — defaults to the URL",
     "copyLinkFallback": "Couldn't access the clipboard. Select the link below and copy it manually."
   },
   "members": {

@@ -9,6 +9,7 @@
  * editor tree.
  */
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
 import { ClearEditorPlugin } from "@lexical/react/LexicalClearEditorPlugin";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
@@ -19,6 +20,8 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TRANSFORMERS } from "@lexical/markdown";
 import type { LexicalEditor } from "lexical";
+
+import { AUTO_LINK_MATCHERS } from "./autoLinkMatchers.ts";
 
 interface EditorSurfaceProps {
   ariaLabel: string;
@@ -59,6 +62,7 @@ export function EditorSurface({
       <HistoryPlugin />
       <ListPlugin />
       <LinkPlugin />
+      <AutoLinkPlugin matchers={AUTO_LINK_MATCHERS} />
       <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
       <ClearEditorPlugin />
       <OnChangePlugin

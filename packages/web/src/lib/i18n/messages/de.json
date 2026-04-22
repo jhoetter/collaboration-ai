@@ -75,6 +75,7 @@
     "addEmoji": "Emoji einfügen",
     "attachFile": "Datei anhängen",
     "removeAttachment": "Anhang entfernen",
+    "removeLinkPreview": "Link-Vorschau entfernen",
     "bold": "Fett",
     "italic": "Kursiv",
     "strikethrough": "Durchgestrichen",
@@ -277,6 +278,9 @@
     "signOutTitle": "Abmelden",
     "linkTitle": "Link einfügen",
     "linkConfirm": "Einfügen",
+    "linkLabelField": "Anzeigetext",
+    "linkUrlField": "URL",
+    "linkLabelPlaceholder": "Optional – fällt auf die URL zurück",
     "copyLinkFallback": "Zwischenablage nicht verfügbar. Markiere den Link unten und kopiere ihn manuell."
   },
   "members": {

@@ -75,4 +75,11 @@ describe("markdown round-trip", () => {
     await flush(editor);
     expect(readMarkdown(editor)).toBe("> quoted text");
   });
+
+  it("preserves an inline link with custom label", async () => {
+    const editor = makeEditor();
+    writeMarkdown(editor, "see [the docs](https://example.com)");
+    await flush(editor);
+    expect(readMarkdown(editor)).toBe("see [the docs](https://example.com)");
+  });
 });

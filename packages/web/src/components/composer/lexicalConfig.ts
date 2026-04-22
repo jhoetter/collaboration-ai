@@ -6,7 +6,7 @@
  * `MessageList` renders for sent messages.
  */
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
-import { LinkNode } from "@lexical/link";
+import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
@@ -27,8 +27,11 @@ const theme = {
     h3: "text-sm font-medium text-foreground",
   },
   list: {
-    ul: "list-disc pl-5",
-    ol: "list-decimal pl-5",
+    ul: "list-disc pl-6",
+    // `pl-7` (1.75rem) leaves enough room for two-digit markers like
+    // `10.` / `11.` to render without the browser clipping the leading
+    // digit against the parent's content edge.
+    ol: "list-decimal pl-7",
     listitem: "my-0",
   },
   quote: "border-l-2 border-border pl-3 text-muted-foreground",
@@ -50,6 +53,9 @@ export function buildEditorConfig(namespace: string): InitialConfigType {
       ListNode,
       ListItemNode,
       LinkNode,
+      // AutoLinkNode extends LinkNode and is required by AutoLinkPlugin
+      // so the editor can wrap typed URLs / bare domains as you go.
+      AutoLinkNode,
       CodeNode,
       CodeHighlightNode,
     ],

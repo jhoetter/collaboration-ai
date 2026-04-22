@@ -133,6 +133,15 @@ class Attachment(_StrictModel):
     width: int | None = None
     height: int | None = None
     thumbnail_url: str | None = None
+    # Optional discriminator. `file` (default) is a real uploaded blob.
+    # `link_preview` is an OpenGraph card produced by `link:unfurl` and
+    # carries the extra `url`/`title`/... fields below.
+    kind: Literal["file", "link_preview"] = "file"
+    url: str | None = None
+    title: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    site_name: str | None = None
 
 
 class MessageSend(_StrictModel):
