@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Code,
   Code2,
   Copy,
@@ -100,6 +101,7 @@ export const IconCheck = withDefaults(Check, "IconCheck");
 export const IconChevronDown = withDefaults(ChevronDown, "IconChevronDown");
 export const IconChevronLeft = withDefaults(ChevronLeft, "IconChevronLeft");
 export const IconChevronRight = withDefaults(ChevronRight, "IconChevronRight");
+export const IconClock = withDefaults(Clock, "IconClock");
 export const IconClose = withDefaults(X, "IconClose");
 export const IconCode = withDefaults(Code, "IconCode");
 export const IconCodeBlock = withDefaults(Code2, "IconCodeBlock");

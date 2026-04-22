@@ -42,8 +42,27 @@
     "mentionInChannel": "@you in #{channel}",
     "saved": "Saved",
     "activity": "Activity",
+    "later": "Later",
+    "files": "Files",
     "directMessage": "Direct message",
     "toggle": "Toggle navigation"
+  },
+  "sidebarPanel": {
+    "close": "Close panel",
+    "later": {
+      "title": "Later",
+      "emptyTitle": "Nothing saved yet",
+      "emptyBody": "Save messages for later by clicking the bookmark icon. They'll show up here so you can come back to them.",
+      "count": "{n} items"
+    },
+    "files": {
+      "title": "Files",
+      "emptyTitle": "No files yet",
+      "emptyBody": "Files shared in any of your channels or DMs will appear here.",
+      "count": "{n} files",
+      "inChannel": "in #{channel}",
+      "fromUser": "from {user}"
+    }
   },
   "userMenu": {
     "youAre": "You are",

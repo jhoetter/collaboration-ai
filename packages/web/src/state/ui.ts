@@ -71,6 +71,8 @@ function persistSectionState(state: Record<SectionId, boolean>) {
   }
 }
 
+export type SidebarPanelId = "activity" | "later" | "files";
+
 export interface UiState {
   readonly createChannelOpen: boolean;
   readonly newDmOpen: boolean;
@@ -81,6 +83,13 @@ export interface UiState {
    */
   readonly sidebarOpen: boolean;
   readonly sectionsOpen: Record<SectionId, boolean>;
+  /**
+   * Which floating sidebar panel (Activity / Later / Files) is open, or
+   * `null` when none. Mirrors Slack's icon-rail popovers — the panel
+   * floats over the channel area and can be dismissed via outside
+   * click, Escape, or by toggling its trigger again.
+   */
+  readonly openSidebarPanel: SidebarPanelId | null;
   /**
    * Optional pre-fill for the workspace top search bar. Components publish
    * a query (e.g. the channel header's "search in channel" button) and the
@@ -94,6 +103,8 @@ export interface UiState {
   toggleSidebar(): void;
   setSearchQuery(query: string | null): void;
   toggleSection(id: SectionId): void;
+  setOpenSidebarPanel(panel: SidebarPanelId | null): void;
+  toggleSidebarPanel(panel: SidebarPanelId): void;
 }
 
 export const useUi = create<UiState>((set, get) => ({
@@ -102,6 +113,7 @@ export const useUi = create<UiState>((set, get) => ({
   membersPanelOpen: false,
   sidebarOpen: false,
   searchQuery: null,
+  openSidebarPanel: null,
   sectionsOpen: loadSectionState(),
   setCreateChannelOpen(open) {
     set({ createChannelOpen: open });
@@ -125,6 +137,12 @@ export const useUi = create<UiState>((set, get) => ({
     const next = { ...get().sectionsOpen, [id]: !get().sectionsOpen[id] };
     persistSectionState(next);
     set({ sectionsOpen: next });
+  },
+  setOpenSidebarPanel(panel) {
+    set({ openSidebarPanel: panel });
+  },
+  toggleSidebarPanel(panel) {
+    set({ openSidebarPanel: get().openSidebarPanel === panel ? null : panel });
   },
 }));
 

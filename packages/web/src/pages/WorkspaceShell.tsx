@@ -3,6 +3,7 @@ import { Route, Routes, useLocation, useParams } from "react-router";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
+import { SidebarPanel } from "../components/SidebarPanel.tsx";
 import { ThreadPane } from "../components/ThreadPane.tsx";
 import { ToastHost } from "../components/ToastHost.tsx";
 import { TopBar } from "../components/TopBar.tsx";
@@ -14,7 +15,6 @@ import { useAuth } from "../state/auth.ts";
 import { useSync } from "../state/sync.ts";
 import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
-import { Activity } from "./Activity.tsx";
 import { ChannelPage } from "./ChannelPage.tsx";
 
 interface UnreadRow {
@@ -134,11 +134,11 @@ export function WorkspaceShell() {
           <Routes>
             <Route index element={<EmptyState />} />
             <Route path="c/:channelId" element={<ChannelPage />} />
-            <Route path="activity" element={<Activity />} />
           </Routes>
         </main>
         {threadOpen && <ThreadPane />}
         <MembersRail />
+        <SidebarPanel />
       </div>
       <CommandPalette />
       <ToastHost />

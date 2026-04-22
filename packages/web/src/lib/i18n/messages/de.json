@@ -42,8 +42,27 @@
     "mentionInChannel": "@dich in #{channel}",
     "saved": "Gespeichert",
     "activity": "Aktivität",
+    "later": "Später",
+    "files": "Dateien",
     "directMessage": "Direktnachricht",
     "toggle": "Navigation umschalten"
+  },
+  "sidebarPanel": {
+    "close": "Panel schließen",
+    "later": {
+      "title": "Später",
+      "emptyTitle": "Noch nichts gespeichert",
+      "emptyBody": "Speichere Nachrichten für später, indem du auf das Lesezeichen-Symbol klickst. Sie tauchen hier auf, damit du später darauf zurückkommen kannst.",
+      "count": "{n} Einträge"
+    },
+    "files": {
+      "title": "Dateien",
+      "emptyTitle": "Noch keine Dateien",
+      "emptyBody": "Dateien, die in deinen Kanälen oder DMs geteilt werden, erscheinen hier.",
+      "count": "{n} Dateien",
+      "inChannel": "in #{channel}",
+      "fromUser": "von {user}"
+    }
   },
   "userMenu": {
     "youAre": "Du bist",

@@ -4,9 +4,14 @@
  * Sections (collapsible, persisted to localStorage):
  *  - Channels (public + private the user joined, archived hidden)
  *  - Direct Messages (DMs + group DMs, presence dots inline, group cluster)
- *  - Saved (starred messages — Phase 3)
  *  - Mentions (unread mention notifications)
  *  - Drafts (channels with persisted drafts)
+ *
+ * Below the channel/DM lists sit Slack-style trigger buttons that
+ * toggle floating panels (see `SidebarPanel.tsx`):
+ *  - Activity (notifications inbox)
+ *  - Later     (messages saved for later — formerly "starred")
+ *  - Files     (every attachment shared in any visible channel)
  *
  * Each channel row shows its unread + mention badge, derived from
  * `notifications`, `notificationPrefByChannel` and `readUpToByChannel`
@@ -17,10 +22,11 @@ import {
   Avatar,
   ChannelIcon,
   IconActivity,
-  IconBookmark,
   IconChevronDown,
   IconChevronRight,
+  IconClock,
   IconClose,
+  IconFile,
   PresenceDot,
   type PresenceStatus as DotStatus,
 } from "@collabai/ui";
@@ -31,7 +37,7 @@ import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Channel, type PresenceStatus } from "../state/sync.ts";
-import { useUi, type SectionId } from "../state/ui.ts";
+import { useUi, type SectionId, type SidebarPanelId } from "../state/ui.ts";
 import { ChannelCreateModal } from "./ChannelCreateModal.tsx";
 import { NewDmModal } from "./NewDmModal.tsx";
 import { UserMenu } from "./UserMenu.tsx";
@@ -55,6 +61,8 @@ export function Sidebar() {
   const sectionsOpen = useUi((s) => s.sectionsOpen);
   const toggleSection = useUi((s) => s.toggleSection);
   const setSidebarOpen = useUi((s) => s.setSidebarOpen);
+  const openSidebarPanel = useUi((s) => s.openSidebarPanel);
+  const toggleSidebarPanel = useUi((s) => s.toggleSidebarPanel);
   const setNotificationRead = useSync((s) => s.setNotificationRead);
 
   const mutePrefs = me ? notificationPrefByChannel[me] ?? {} : {};
@@ -112,13 +120,21 @@ export function Sidebar() {
   );
 
   const savedIds = me ? starsByUser[me] ?? [] : [];
-  const savedRows = useMemo(
-    () =>
-      savedIds
-        .map((id) => messageById[id])
-        .filter((m): m is NonNullable<typeof m> => Boolean(m)),
+  const savedCount = useMemo(
+    () => savedIds.filter((id) => Boolean(messageById[id])).length,
     [savedIds, messageById],
   );
+
+  const filesCount = useMemo(() => {
+    let n = 0;
+    for (const m of Object.values(messageById)) {
+      if (m.redacted) continue;
+      for (const a of m.attachments ?? []) {
+        if (a.kind !== "link_preview") n++;
+      }
+    }
+    return n;
+  }, [messageById]);
 
   const totalUnreadActivity = mentionRows.length;
 
@@ -137,21 +153,6 @@ export function Sidebar() {
           <IconClose size={16} />
         </button>
       </div>
-
-      <Link
-        to={`/w/${params.workspaceId}/activity`}
-        className="mt-2 flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-secondary transition-colors duration-150 hover:bg-hover hover:text-foreground lg:py-1.5"
-      >
-        <span className="flex items-center gap-2">
-          <IconActivity size={14} />
-          {t("sidebar.activity")}
-        </span>
-        {totalUnreadActivity > 0 && (
-          <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
-            {totalUnreadActivity}
-          </span>
-        )}
-      </Link>
 
       <SectionHeader
         id="channels"
@@ -203,39 +204,34 @@ export function Sidebar() {
         </>
       )}
 
-      {savedRows.length > 0 && (
-        <>
-          <SectionHeader
-            id="saved"
-            label={t("sidebar.saved")}
-            open={sectionsOpen.saved}
-            onToggle={() => toggleSection("saved")}
-          />
-          {sectionsOpen.saved &&
-            savedRows.slice(0, 8).map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() =>
-                  navigate(`/w/${params.workspaceId}/c/${m.channel_id}#message-${m.id}`)
-                }
-                className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs text-secondary transition-colors duration-150 hover:bg-hover"
-              >
-                <IconBookmark
-                  size={12}
-                  fill="currentColor"
-                  className="mt-0.5 flex-none text-accent"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-foreground">
-                    #{channelLabel(channels[m.channel_id])}
-                  </span>
-                  <span className="block truncate text-tertiary">{m.content}</span>
-                </span>
-              </button>
-            ))}
-        </>
-      )}
+      <div className="mt-3 flex flex-col gap-0.5 border-t border-border pt-2">
+        <PanelTrigger
+          panel="activity"
+          icon={<IconActivity size={14} />}
+          label={t("sidebar.activity")}
+          badge={totalUnreadActivity}
+          active={openSidebarPanel === "activity"}
+          onToggle={() => toggleSidebarPanel("activity")}
+        />
+        <PanelTrigger
+          panel="later"
+          icon={<IconClock size={14} />}
+          label={t("sidebar.later")}
+          badge={savedCount}
+          badgeTone="muted"
+          active={openSidebarPanel === "later"}
+          onToggle={() => toggleSidebarPanel("later")}
+        />
+        <PanelTrigger
+          panel="files"
+          icon={<IconFile size={14} />}
+          label={t("sidebar.files")}
+          badge={filesCount}
+          badgeTone="muted"
+          active={openSidebarPanel === "files"}
+          onToggle={() => toggleSidebarPanel("files")}
+        />
+      </div>
 
       {mentionRows.length > 0 && (
         <>
@@ -298,6 +294,56 @@ export function Sidebar() {
       {createOpen && <ChannelCreateModal onClose={() => setCreateOpen(false)} />}
       {newDmOpen && <NewDmModal onClose={() => setNewDmOpen(false)} />}
     </aside>
+  );
+}
+
+function PanelTrigger({
+  panel,
+  icon,
+  label,
+  badge,
+  badgeTone = "alert",
+  active,
+  onToggle,
+}: {
+  panel: SidebarPanelId;
+  icon: React.ReactNode;
+  label: string;
+  badge: number;
+  badgeTone?: "alert" | "muted";
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      data-sidebar-panel-trigger={panel}
+      aria-pressed={active}
+      className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-sm transition-colors duration-150 lg:py-1.5 ${
+        active
+          ? "bg-accent font-medium text-accent-foreground hover:bg-accent/90"
+          : "text-secondary hover:bg-hover hover:text-foreground"
+      }`}
+    >
+      <span className="flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      {badge > 0 && (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+            active
+              ? "bg-accent-foreground/20 text-accent-foreground"
+              : badgeTone === "alert"
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-tertiary/70 text-background"
+          }`}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }
 
