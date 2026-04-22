@@ -8,6 +8,7 @@
 import { Avatar, PresenceDot, ThemeToggle, type PresenceStatus as DotStatus } from "@collabai/ui";
 import { useEffect, useRef, useState } from "react";
 import { callFunction } from "../lib/api.ts";
+import { useDialogs } from "../lib/dialogs.tsx";
 import { clearIdentity } from "../lib/identity.ts";
 import { LocaleToggle, useTranslator } from "../lib/i18n/index.ts";
 import { useColorScheme } from "../lib/theme/index.ts";
@@ -18,6 +19,7 @@ export function UserMenu() {
   const identity = useAuth((s) => s.identity);
   const presence = useSync((s) => s.presence);
   const { t } = useTranslator();
+  const { confirm } = useDialogs();
   const { colorScheme, setColorScheme } = useColorScheme();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -63,8 +65,14 @@ export function UserMenu() {
     await callFunction("users:set-presence", { status: target });
   }
 
-  function signOut() {
-    if (!confirm(t("userMenu.signOutConfirm"))) return;
+  async function signOut() {
+    const ok = await confirm({
+      title: t("dialogs.signOutTitle"),
+      description: t("userMenu.signOutConfirm"),
+      confirmLabel: t("userMenu.signOut"),
+      destructive: true,
+    });
+    if (!ok) return;
     clearIdentity();
     location.reload();
   }
@@ -166,7 +174,7 @@ export function UserMenu() {
           <hr className="my-2 border-border" />
           <button
             type="button"
-            onClick={signOut}
+            onClick={() => void signOut()}
             className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-destructive-bg"
           >
             {t("userMenu.signOut")}

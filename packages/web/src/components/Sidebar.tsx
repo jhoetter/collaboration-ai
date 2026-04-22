@@ -344,9 +344,10 @@ function ChannelRow({
   return (
     <Link
       to={to}
+      aria-current={active ? "page" : undefined}
       className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-150 ${dim} ${
         active
-          ? "bg-accent-light text-accent"
+          ? "bg-accent font-medium text-accent-foreground hover:bg-accent/90"
           : hasUnread
           ? "text-foreground hover:bg-hover"
           : "text-secondary hover:bg-hover hover:text-foreground"
@@ -354,14 +355,20 @@ function ChannelRow({
     >
       <span className="flex min-w-0 items-center gap-2">
         <ChannelIcon kind={channel.private ? "private" : "public"} />
-        <span className={`truncate ${hasUnread ? "font-semibold" : ""}`}>{channel.name}</span>
+        <span className={`truncate ${hasUnread || active ? "font-semibold" : ""}`}>
+          {channel.name}
+        </span>
       </span>
       {(unread?.mentions ?? 0) > 0 && !muted ? (
         <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
           {unread!.mentions}
         </span>
       ) : hasUnread ? (
-        <span className="rounded-full bg-tertiary/70 px-1.5 py-0.5 text-[10px] text-background">
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+            active ? "bg-accent-foreground/20 text-accent-foreground" : "bg-tertiary/70 text-background"
+          }`}
+        >
           {unread!.unread}
         </span>
       ) : null}
@@ -406,15 +413,16 @@ function DmRow({
     return (
       <Link
         to={to}
+        aria-current={active ? "page" : undefined}
         className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-150 ${dim} ${
           active
-            ? "bg-accent-light text-accent"
+            ? "bg-accent font-medium text-accent-foreground hover:bg-accent/90"
             : "text-secondary hover:bg-hover hover:text-foreground"
         }`}
       >
         <span className="flex min-w-0 items-center gap-2">
           <GroupAvatarCluster ids={ids.slice(0, 3)} />
-          <GroupDmLabel ids={ids} hasUnread={hasUnread} />
+          <GroupDmLabel ids={ids} hasUnread={hasUnread || active} />
         </span>
         {hasUnread && (
           <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
@@ -471,9 +479,10 @@ function DmRowSingle({
   return (
     <Link
       to={to}
+      aria-current={active ? "page" : undefined}
       className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-150 ${dim} ${
         active
-          ? "bg-accent-light text-accent"
+          ? "bg-accent font-medium text-accent-foreground hover:bg-accent/90"
           : "text-secondary hover:bg-hover hover:text-foreground"
       }`}
     >
@@ -486,7 +495,9 @@ function DmRowSingle({
             </span>
           )}
         </span>
-        <span className={`truncate ${hasUnread ? "font-semibold text-foreground" : ""}`}>
+        <span
+          className={`truncate ${hasUnread && !active ? "font-semibold text-foreground" : ""}`}
+        >
           {label}
         </span>
       </span>

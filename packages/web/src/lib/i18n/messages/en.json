@@ -237,7 +237,20 @@
     "groupMessages": "Messages",
     "groupFiles": "Files",
     "groupChannels": "Channels",
-    "groupPeople": "People"
+    "groupPeople": "People",
+    "tabAll": "All",
+    "tabMessages": "Messages",
+    "tabFiles": "Files",
+    "tabPeople": "People",
+    "tabChannels": "Channels",
+    "recentSearches": "Recent searches",
+    "chipInCurrentChannel": "In #{name}",
+    "chipHasFile": "Has file",
+    "chipHasLink": "Has link",
+    "footerNavigate": "navigate",
+    "footerOpen": "open",
+    "footerClose": "close",
+    "footerFocus": "focus search"
   },
   "toasts": {
     "jump": "Jump",
@@ -246,6 +259,18 @@
     "reaction": "Someone reacted",
     "reply": "New thread reply",
     "invite": "New channel invite"
+  },
+  "dialogs": {
+    "confirm": "Confirm",
+    "busy": "Working…",
+    "deleteMessageTitle": "Delete message",
+    "leaveChannelTitle": "Leave channel",
+    "removeMemberTitle": "Remove member",
+    "archiveChannelTitle": "Archive channel",
+    "signOutTitle": "Sign out",
+    "linkTitle": "Insert link",
+    "linkConfirm": "Insert",
+    "copyLinkFallback": "Couldn't access the clipboard. Select the link below and copy it manually."
   },
   "members": {
     "title": "Members",

@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, useNavigate } from "react-router";
 import "./index.css";
+import { DialogProvider } from "./lib/dialogs.tsx";
 import { I18nProvider, useTranslator } from "./lib/i18n/index.ts";
 import { ThemeProvider } from "./lib/theme/index.ts";
 import { useAuth } from "./state/auth.ts";
@@ -15,12 +16,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <I18nProvider>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Bootstrap />} />
-              <Route path="/w/:workspaceId/*" element={<WorkspaceShell />} />
-            </Routes>
-          </BrowserRouter>
+          <DialogProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Bootstrap />} />
+                <Route path="/w/:workspaceId/*" element={<WorkspaceShell />} />
+              </Routes>
+            </BrowserRouter>
+          </DialogProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </I18nProvider>

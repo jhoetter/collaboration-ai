@@ -26,6 +26,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
+import { useDialogs } from "../lib/dialogs.tsx";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { type Channel, type NotificationPref, useSync, type PresenceStatus } from "../state/sync.ts";
@@ -53,6 +54,7 @@ export function ChannelHeader({
   const setMembersOpen = useUi((s) => s.setMembersPanelOpen);
   const setSearchQuery = useUi((s) => s.setSearchQuery);
   const { t } = useTranslator();
+  const { confirm } = useDialogs();
   const [detailTab, setDetailTab] = useState<DetailTab | null>(null);
   const [showHuddle, setShowHuddle] = useState(false);
   const navigate = useNavigate();
@@ -85,9 +87,13 @@ export function ChannelHeader({
 
   async function leaveChannel() {
     if (!channel) return;
-    if (!confirm(t("members.leaveConfirm", { channel: channel.name ?? channelId }))) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("dialogs.leaveChannelTitle"),
+      description: t("members.leaveConfirm", { channel: channel.name ?? channelId }),
+      confirmLabel: t("members.leaveChannel"),
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await callFunction("channel:leave", { channel_id: channelId });
       await qc.invalidateQueries({ queryKey: ["channel-members", channelId] });
@@ -178,17 +184,19 @@ export function ChannelHeader({
           <button
             type="button"
             onClick={() => setMembersOpen(true)}
-            className="mr-1 flex items-center -space-x-2 rounded-md px-1 py-0.5 transition-colors hover:bg-hover"
+            className="mr-1 flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-hover"
             aria-label={`${members.length} members`}
             title={t("members.title")}
           >
-            {members.slice(0, 3).map((m) => (
-              <span key={m.user_id} className="ring-2 ring-surface">
-                <Avatar name={m.display_name} kind="human" size={20} />
-              </span>
-            ))}
-            <span className="!ml-1.5 text-xs text-secondary tabular-nums">
-              {members.length}
+            <span className="flex items-center -space-x-1.5">
+              {members.slice(0, 3).map((m) => (
+                <span key={m.user_id} className="rounded-full ring-2 ring-surface">
+                  <Avatar name={m.display_name} kind="human" size={20} />
+                </span>
+              ))}
+            </span>
+            <span className="text-xs text-secondary tabular-nums">
+              {members.length.toLocaleString()}
             </span>
           </button>
         )}
@@ -439,12 +447,9 @@ function ChannelKebab({
 function GroupDmAvatarStack({ peers }: { peers: MemberRow[] }) {
   const visible = peers.slice(0, 3);
   return (
-    <span className="relative inline-flex items-center">
-      {visible.map((m, i) => (
-        <span
-          key={m.user_id}
-          className={i === 0 ? "" : "-ml-2 ring-2 ring-surface rounded-full"}
-        >
+    <span className="inline-flex items-center -space-x-2">
+      {visible.map((m) => (
+        <span key={m.user_id} className="rounded-full ring-2 ring-surface">
           <Avatar name={m.display_name} kind="human" size={28} />
         </span>
       ))}

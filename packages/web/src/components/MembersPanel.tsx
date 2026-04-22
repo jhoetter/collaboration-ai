@@ -25,6 +25,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
+import { useDialogs } from "../lib/dialogs.tsx";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type PresenceStatus } from "../state/sync.ts";
@@ -50,6 +51,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
   const pushToast = useToasts((s) => s.push);
   const qc = useQueryClient();
   const { t } = useTranslator();
+  const { confirm } = useDialogs();
   const [query, setQuery] = useState("");
   const [showInvite, setShowInvite] = useState(false);
 
@@ -86,9 +88,16 @@ export function MembersPanel({ channelId }: { channelId: string }) {
   }
 
   async function remove(target: MemberRow) {
-    if (!confirm(t("members.removeConfirm", { name: target.display_name, channel: channel?.name ?? channelId }))) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("dialogs.removeMemberTitle"),
+      description: t("members.removeConfirm", {
+        name: target.display_name,
+        channel: channel?.name ?? channelId,
+      }),
+      confirmLabel: t("members.remove"),
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       // The backend `channel:kick` function takes the target as `user_id`
       // (see `app/domain/channels/functions.py`). Anything else 422s.
@@ -103,9 +112,13 @@ export function MembersPanel({ channelId }: { channelId: string }) {
   }
 
   async function leave() {
-    if (!confirm(t("members.leaveConfirm", { channel: channel?.name ?? channelId }))) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("dialogs.leaveChannelTitle"),
+      description: t("members.leaveConfirm", { channel: channel?.name ?? channelId }),
+      confirmLabel: t("members.leaveChannel"),
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await callFunction("channel:leave", { channel_id: channelId });
       setOpen(false);

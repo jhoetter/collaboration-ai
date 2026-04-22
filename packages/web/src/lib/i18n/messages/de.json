@@ -237,7 +237,20 @@
     "groupMessages": "Nachrichten",
     "groupFiles": "Dateien",
     "groupChannels": "Kanäle",
-    "groupPeople": "Personen"
+    "groupPeople": "Personen",
+    "tabAll": "Alle",
+    "tabMessages": "Nachrichten",
+    "tabFiles": "Dateien",
+    "tabPeople": "Personen",
+    "tabChannels": "Kanäle",
+    "recentSearches": "Letzte Suchen",
+    "chipInCurrentChannel": "In #{name}",
+    "chipHasFile": "Mit Datei",
+    "chipHasLink": "Mit Link",
+    "footerNavigate": "navigieren",
+    "footerOpen": "öffnen",
+    "footerClose": "schließen",
+    "footerFocus": "Suche fokussieren"
   },
   "toasts": {
     "jump": "Springen",
@@ -246,6 +259,18 @@
     "reaction": "Jemand hat reagiert",
     "reply": "Neue Thread-Antwort",
     "invite": "Neue Kanal-Einladung"
+  },
+  "dialogs": {
+    "confirm": "Bestätigen",
+    "busy": "Bitte warten…",
+    "deleteMessageTitle": "Nachricht löschen",
+    "leaveChannelTitle": "Kanal verlassen",
+    "removeMemberTitle": "Mitglied entfernen",
+    "archiveChannelTitle": "Kanal archivieren",
+    "signOutTitle": "Abmelden",
+    "linkTitle": "Link einfügen",
+    "linkConfirm": "Einfügen",
+    "copyLinkFallback": "Zwischenablage nicht verfügbar. Markiere den Link unten und kopiere ihn manuell."
   },
   "members": {
     "title": "Mitglieder",

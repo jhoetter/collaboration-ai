@@ -27,6 +27,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
+import { useDialogs } from "../lib/dialogs.tsx";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment, type Channel } from "../state/sync.ts";
@@ -157,6 +158,7 @@ function AboutTab({
   onClose: () => void;
 }) {
   const { t } = useTranslator();
+  const { confirm } = useDialogs();
   const qc = useQueryClient();
   const [name, setName] = useState(channel.name);
   const [topic, setTopic] = useState(channel.topic ?? "");
@@ -179,7 +181,13 @@ function AboutTab({
   }
 
   async function archive() {
-    if (!confirm(t("channelDetail.archiveConfirm", { channel: channel.name }))) return;
+    const ok = await confirm({
+      title: t("dialogs.archiveChannelTitle"),
+      description: t("channelDetail.archiveConfirm", { channel: channel.name }),
+      confirmLabel: t("channelDetail.archive"),
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await callFunction("channel:archive", { channel_id: channel.id });

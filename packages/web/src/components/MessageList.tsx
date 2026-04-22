@@ -36,6 +36,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
+import { replaceEmojiShortcodes } from "../lib/emojiShortcodes.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment, type Message } from "../state/sync.ts";
@@ -832,7 +833,7 @@ function MarkdownContent({ content, mentions }: { content: string; mentions: str
   const usersById = useUsers((s) => s.byId);
   const enhanced = useMemo(() => {
     if (!content) return "";
-    let next = content;
+    let next = replaceEmojiShortcodes(content);
     for (const userId of mentions) {
       const display = usersById[userId]?.display_name ?? userId;
       const escaped = display.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

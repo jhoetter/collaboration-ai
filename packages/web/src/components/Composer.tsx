@@ -68,6 +68,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sendTypingFrame } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
+import {
+  hasEmojiShortcode,
+  replaceEmojiShortcodes,
+  replaceShortcodesInEditor,
+} from "../lib/emojiShortcodes.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment } from "../state/sync.ts";
@@ -231,6 +236,13 @@ function ComposerInner({
 
   const handleEditorChange = useCallback(
     (ed: LexicalEditor) => {
+      // Slack-style `:shortcode:` → native emoji conversion. We mutate
+      // the editor in place so the user sees the substitution as soon
+      // as they close the second colon. The rewrite is idempotent so
+      // the follow-up onChange this triggers is a no-op.
+      if (hasEmojiShortcode(readMarkdown(ed))) {
+        replaceShortcodesInEditor(ed);
+      }
       const md = readMarkdown(ed);
       setText(md);
       persistDraft(md);
@@ -490,11 +502,11 @@ function ComposerInner({
   }
 
   async function handleSend() {
-    const trimmed = text.trim();
+    const trimmed = replaceEmojiShortcodes(text.trim());
     const ready = pending.filter((p) => p.status === "ready");
     if (!trimmed && ready.length === 0) return;
     if (await maybeRunSlash(trimmed)) {
-      const after = readMarkdown(editor).trim();
+      const after = replaceEmojiShortcodes(readMarkdown(editor).trim());
       if (!after && ready.length === 0) return;
       const mentions = collectMentionedUserIds(after, userList);
       const linkAttachments = await fetchLinkPreviews(after);
@@ -606,7 +618,7 @@ function ComposerInner({
       }
     }
     const isMod = e.metaKey || e.ctrlKey;
-    if (isMod && (e.key === "k" || e.key === "K")) {
+    if (isMod && e.shiftKey && (e.key === "u" || e.key === "U")) {
       e.preventDefault();
       promptLink();
       return;
@@ -734,7 +746,7 @@ function ComposerInner({
             >
               <IconStrike />
             </ToolbarButton>
-            <ToolbarButton label={t("composer.link")} shortcut="⌘K" onClick={promptLink}>
+            <ToolbarButton label={t("composer.link")} shortcut="⌘⇧U" onClick={promptLink}>
               <IconLink />
             </ToolbarButton>
             <ToolbarDivider />
