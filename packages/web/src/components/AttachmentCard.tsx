@@ -72,7 +72,7 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
         <button
           type="button"
           onClick={() => setPdfOpen(true)}
-          className="group flex w-72 items-stretch overflow-hidden rounded-md border border-border bg-card text-left transition-shadow hover:shadow-md"
+          className="group flex w-full max-w-[18rem] items-stretch overflow-hidden rounded-md border border-border bg-card text-left transition-shadow hover:shadow-md sm:w-72"
         >
           <PdfThumb url={url} />
           <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 p-2.5 text-xs">
@@ -96,7 +96,7 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
   }
 
   return (
-    <div className="flex w-72 items-center gap-3 rounded-md border border-border bg-card p-2.5 transition-shadow hover:shadow-md">
+    <div className="flex w-full max-w-[18rem] items-center gap-3 rounded-md border border-border bg-card p-2.5 transition-shadow hover:shadow-md sm:w-72">
       <FileTypeIcon mime={attachment.mime} filename={attachment.name} size={40} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{attachment.name}</p>

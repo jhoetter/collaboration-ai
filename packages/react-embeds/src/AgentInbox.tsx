@@ -17,11 +17,15 @@ export function AgentInbox({ workspaceId, channel, className }: AgentInboxProps)
       )}
       aria-label="collaboration-ai agent inbox"
     >
-      <header className="flex items-center justify-between border-b border-divider bg-surface px-3 py-2">
-        <span className="text-sm font-semibold">Agent inbox</span>
-        <Badge tone="agent">{channel ? `#${channel}` : workspaceId}</Badge>
+      <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-divider bg-surface px-3 py-2">
+        <span className="min-w-0 truncate text-sm font-semibold">Agent inbox</span>
+        <Badge tone="agent">
+          <span className="max-w-[12rem] truncate">
+            {channel ? `#${channel}` : workspaceId}
+          </span>
+        </Badge>
       </header>
-      <div className="flex flex-1 items-center justify-center px-3 py-6 text-center text-sm text-secondary">
+      <div className="flex min-w-0 flex-1 items-center justify-center px-3 py-6 text-center text-sm text-secondary">
         No pending proposals.
       </div>
     </aside>

@@ -10,8 +10,9 @@
  * - Hover toolbar v2: 5 quick reactions, full picker, reply in thread,
  *   share (copy permalink), save (star), more menu (edit/delete/pin/
  *   mark unread/copy link).
- * - Reactions strip v2: pill with emoji + count + reactor tooltip
- *   ("Alice, Bob and 2 others reacted").
+ * - Reactions strip v2: pill with emoji + count and a Slack-style
+ *   hover popover that lists every reactor by name ("You, Alice and 2
+ *   others reacted with 👋") with a click-to-add/remove hint.
  * - Auto-scroll on new messages when already at bottom; preserves
  *   position when reading older history.
  */
@@ -33,9 +34,12 @@ import {
 } from "@collabai/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useLocation, useNavigate } from "react-router";
 import remarkGfm from "remark-gfm";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
+import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { callFunction } from "../lib/api.ts";
+import { useDialogs } from "../lib/dialogs.tsx";
 import { replaceEmojiShortcodes } from "../lib/emojiShortcodes.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
@@ -64,16 +68,59 @@ const GROUP_GAP_MS = 5 * 60 * 1000;
 export function MessageList({ messages, channelId, onOpenThread }: MessageListProps) {
   const { t } = useTranslator();
   const ref = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const identity = useAuth((s) => s.identity);
   const setReadUpTo = useSync((s) => s.setReadUpTo);
   const readUpTo = useSync((s) => s.readUpToByChannel[channelId] ?? 0);
   const lightbox = useLightbox();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  // Whether the bottom sentinel (placed after the last message) is in
+  // the viewport. Drives pill visibility: if the latest message is on
+  // screen, neither "X new" nor "jump to latest" makes sense.
+  const [bottomVisible, setBottomVisible] = useState(true);
 
   const visible = useMemo(() => messages.filter((m) => !m.thread_root), [messages]);
   const grouped = useMemo(() => groupMessages(visible), [visible]);
   const dividers = useMemo(() => buildDividers(grouped), [grouped]);
-  const [, forceTick] = useState(0);
+
+  // Parse `#message-${id}` out of the URL hash. Set by the top-bar
+  // search, the activity feed, the sidebar's saved/star list, and
+  // permalinks copied via the message hover toolbar.
+  const targetMessageId = useMemo(() => {
+    const m = location.hash.match(/^#message-(.+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }, [location.hash]);
+
+  // When the requested target is in the rendered list, scroll to it,
+  // mark it highlighted, then clear the hash so the highlight is a
+  // one-shot effect (and revisiting the same anchor re-fires it).
+  useEffect(() => {
+    if (!targetMessageId) return;
+    if (!visible.some((m) => m.id === targetMessageId)) return;
+    const handle = requestAnimationFrame(() => {
+      const node = document.getElementById(`message-${targetMessageId}`);
+      if (!node) return;
+      stickToBottom.current = false;
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedId(targetMessageId);
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true },
+      );
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [targetMessageId, visible, navigate, location.pathname, location.search]);
+
+  // Auto-clear the highlight a moment after the CSS flash finishes so
+  // the marker doesn't linger if the user idles on the channel.
+  useEffect(() => {
+    if (!highlightedId) return;
+    const tid = window.setTimeout(() => setHighlightedId(null), 2600);
+    return () => window.clearTimeout(tid);
+  }, [highlightedId]);
 
   // Count unread messages from someone else above the current read marker.
   const unreadCount = useMemo(() => {
@@ -102,8 +149,23 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
-    forceTick((n) => n + 1);
   }
+
+  // Track whether the bottom of the message list is on screen. We use
+  // this (not the 32px stickToBottom threshold) to decide if the
+  // floating pills are useful — if the latest message is already in
+  // view, jumping there is a no-op.
+  useEffect(() => {
+    const root = ref.current;
+    const sentinel = bottomSentinelRef.current;
+    if (!root || !sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setBottomVisible(entry.isIntersecting),
+      { root, threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visible.length === 0]);
 
   function jumpToBottom() {
     const el = ref.current;
@@ -122,8 +184,8 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
     }
   }
 
-  const showJumpPill = !stickToBottom.current && unreadCount > 0;
-  const showLatestPill = !stickToBottom.current && unreadCount === 0 && visible.length > 0;
+  const showJumpPill = !bottomVisible && unreadCount > 0;
+  const showLatestPill = !bottomVisible && unreadCount === 0 && visible.length > 0;
   const firstUnreadId = useMemo(() => {
     for (const m of visible) {
       if (m.sequence > readUpTo && (!identity || m.sender_id !== identity.user_id)) {
@@ -135,33 +197,41 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
 
   return (
     <div className="relative flex-1 overflow-hidden">
-      <div ref={ref} className="h-full overflow-y-auto px-4 py-3" onScroll={handleScroll}>
+      <div
+        ref={ref}
+        className="h-full overflow-y-auto px-2 py-2 sm:px-4 sm:py-3"
+        onScroll={handleScroll}
+      >
         {visible.length === 0 ? (
           <EmptyChannelState channelId={channelId} />
         ) : (
-          <ul className="flex flex-col gap-0.5">
-            {grouped.map((group, idx) => {
-              const divider = dividers[idx];
-              return (
-                <Fragment key={group.head.id}>
-                  {divider && <DateDivider ts={divider.ts} />}
-                  <MessageGroup
-                    group={group}
-                    onOpenThread={onOpenThread}
-                    firstUnreadId={firstUnreadId}
-                    onPreviewImage={(att, peers) => lightbox.open(att, peers)}
-                  />
-                </Fragment>
-              );
-            })}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-0.5">
+              {grouped.map((group, idx) => {
+                const divider = dividers[idx];
+                return (
+                  <Fragment key={group.head.id}>
+                    {divider && <DateDivider ts={divider.ts} />}
+                    <MessageGroup
+                      group={group}
+                      onOpenThread={onOpenThread}
+                      firstUnreadId={firstUnreadId}
+                      highlightedId={highlightedId}
+                      onPreviewImage={(att, peers) => lightbox.open(att, peers)}
+                    />
+                  </Fragment>
+                );
+              })}
+            </ul>
+            <div ref={bottomSentinelRef} aria-hidden="true" className="h-px w-full" />
+          </>
         )}
       </div>
       {showJumpPill && (
         <button
           type="button"
           onClick={jumpToFirstUnread}
-          className="absolute right-6 top-3 inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground shadow-lg transition-transform hover:-translate-y-0.5"
+          className="absolute bottom-20 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground shadow-lg transition-transform hover:-translate-y-0.5 md:bottom-auto md:left-auto md:right-6 md:top-3 md:translate-x-0"
         >
           <IconArrowDown size={14} />
           {unreadCount === 1
@@ -173,7 +243,7 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
         <button
           type="button"
           onClick={jumpToBottom}
-          className="absolute bottom-4 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-secondary shadow-lg transition-colors hover:bg-hover hover:text-foreground"
+          className="absolute bottom-20 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-secondary shadow-lg transition-colors hover:bg-hover hover:text-foreground md:bottom-4"
         >
           <IconArrowDown size={14} />
           {t("messageList.jumpToLatest")}
@@ -257,25 +327,30 @@ function MessageGroup({
   group,
   onOpenThread,
   firstUnreadId,
+  highlightedId,
   onPreviewImage,
 }: {
   group: Group;
   onOpenThread?: (rootId: string) => void;
   firstUnreadId: string | null;
+  highlightedId: string | null;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
   const name = useDisplayName(group.head.sender_id);
   const displayName = name || group.head.sender_id;
+  const isMd = useMediaQuery("(min-width: 768px)");
+  const avatarSize = isMd ? 32 : 28;
   return (
     <li className="flex flex-col">
       <MessageRow
         message={group.head}
         onOpenThread={onOpenThread}
         isFirstUnread={firstUnreadId === group.head.id}
+        isHighlighted={highlightedId === group.head.id}
         onPreviewImage={onPreviewImage}
         leading={
           <div className="pt-0.5">
-            <Avatar name={displayName} kind={group.head.sender_type} size={32} />
+            <Avatar name={displayName} kind={group.head.sender_type} size={avatarSize} />
           </div>
         }
         header={
@@ -296,6 +371,7 @@ function MessageGroup({
           message={m}
           onOpenThread={onOpenThread}
           isFirstUnread={firstUnreadId === m.id}
+          isHighlighted={highlightedId === m.id}
           onPreviewImage={onPreviewImage}
           compact
           leading={
@@ -316,6 +392,7 @@ function MessageRow({
   compact,
   onOpenThread,
   isFirstUnread,
+  isHighlighted,
   onPreviewImage,
 }: {
   message: Message;
@@ -324,10 +401,12 @@ function MessageRow({
   compact?: boolean;
   onOpenThread?: (rootId: string) => void;
   isFirstUnread?: boolean;
+  isHighlighted?: boolean;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
   return (
     <div
+      data-highlight={isHighlighted ? "true" : undefined}
       className={`group/msg relative flex items-start gap-2 rounded-md px-2 transition-colors duration-150 hover:bg-hover ${
         compact ? "py-0.5" : "py-1"
       }`}
@@ -358,6 +437,7 @@ function MessageBody({
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
   const { t } = useTranslator();
+  const { confirm, prompt } = useDialogs();
   const identity = useAuth((s) => s.identity);
   const reactions = useSync((s) => s.reactionsByMessage[message.id]);
   const starredBy = useSync(
@@ -372,7 +452,9 @@ function MessageBody({
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
   const inlineAddRef = useRef<HTMLButtonElement>(null);
   const toolbarSmileRef = useRef<HTMLButtonElement>(null);
+  const mobileMoreRef = useRef<HTMLButtonElement>(null);
   const [showMore, setShowMore] = useState(false);
+  const [showMobileSheet, setShowMobileSheet] = useState(false);
 
   function togglePicker(anchor: HTMLElement | null) {
     setPickerAnchor((prev) => (prev ? null : anchor));
@@ -408,7 +490,13 @@ function MessageBody({
   }
 
   async function deleteMessage() {
-    if (!confirm(t("messageActions.deleteConfirm"))) return;
+    const ok = await confirm({
+      title: t("dialogs.deleteMessageTitle"),
+      description: t("messageActions.deleteConfirm"),
+      confirmLabel: t("messageActions.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
     await callFunction("chat:delete-message", { target_event_id: message.id });
   }
 
@@ -444,7 +532,12 @@ function MessageBody({
       await navigator.clipboard?.writeText(link);
       pushToast({ title: t("messageActions.linkCopied"), tone: "info", durationMs: 2000 });
     } catch {
-      window.prompt(t("messageActions.copyLink"), link);
+      await prompt({
+        title: t("messageActions.copyLink"),
+        description: t("dialogs.copyLinkFallback"),
+        defaultValue: link,
+        readOnly: true,
+      });
     }
   }
 
@@ -563,7 +656,18 @@ function MessageBody({
       )}
 
       {!message.redacted && !editing && (
-        <div className="absolute -top-3.5 right-2 z-10 hidden group-hover/msg:block">
+        <button
+          ref={mobileMoreRef}
+          type="button"
+          onClick={() => setShowMobileSheet(true)}
+          aria-label={t("messageActions.more")}
+          className="absolute -top-2 right-1 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-secondary shadow-sm transition-colors hover:bg-hover hover:text-foreground md:hidden"
+        >
+          <IconMore size={14} />
+        </button>
+      )}
+      {!message.redacted && !editing && (
+        <div className="absolute -top-3.5 right-2 z-10 hidden md:group-hover/msg:block">
           <Toolbar density="compact" surface="floating">
             {QUICK_REACTIONS.map((emoji) => (
               <button
@@ -658,7 +762,206 @@ function MessageBody({
           />
         </PopoverPortal>
       )}
+      {showMobileSheet && (
+        <MobileActionSheet
+          isOwn={isOwn}
+          isStarred={isStarred}
+          canReply={Boolean(onOpenThread)}
+          onClose={() => setShowMobileSheet(false)}
+          onReact={(emoji) => {
+            setShowMobileSheet(false);
+            void toggleReaction(emoji);
+          }}
+          onOpenPicker={() => {
+            setShowMobileSheet(false);
+            setPickerAnchor(mobileMoreRef.current);
+          }}
+          onReply={() => {
+            setShowMobileSheet(false);
+            if (onOpenThread) onOpenThread(message.id);
+          }}
+          onSave={() => {
+            setShowMobileSheet(false);
+            void toggleStar();
+          }}
+          onShare={() => {
+            setShowMobileSheet(false);
+            void copyLink();
+          }}
+          onPin={() => {
+            setShowMobileSheet(false);
+            void pinMessage();
+          }}
+          onMarkUnread={() => {
+            setShowMobileSheet(false);
+            void markUnread();
+          }}
+          onCopyLink={() => {
+            setShowMobileSheet(false);
+            void copyLink();
+          }}
+          onEdit={() => {
+            setShowMobileSheet(false);
+            setEditing(true);
+          }}
+          onDelete={() => {
+            setShowMobileSheet(false);
+            void deleteMessage();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function MobileActionSheet({
+  isOwn,
+  isStarred,
+  canReply,
+  onClose,
+  onReact,
+  onOpenPicker,
+  onReply,
+  onSave,
+  onShare,
+  onPin,
+  onMarkUnread,
+  onCopyLink,
+  onEdit,
+  onDelete,
+}: {
+  isOwn: boolean;
+  isStarred: boolean;
+  canReply: boolean;
+  onClose: () => void;
+  onReact: (emoji: string) => void;
+  onOpenPicker: () => void;
+  onReply: () => void;
+  onSave: () => void;
+  onShare: () => void;
+  onPin: () => void;
+  onMarkUnread: () => void;
+  onCopyLink: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslator();
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
+      <button
+        type="button"
+        aria-label={t("common.close")}
+        onClick={onClose}
+        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-10 w-full max-w-md rounded-t-xl border border-border bg-card pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-2xl"
+      >
+        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-border" />
+        <div className="flex items-center gap-1 overflow-x-auto px-3 pb-2 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {QUICK_REACTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onReact(emoji)}
+              aria-label={`React ${emoji}`}
+              className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-full text-xl transition-transform active:scale-95"
+            >
+              <span aria-hidden="true">{emoji}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onOpenPicker}
+            aria-label={t("messageActions.addReaction")}
+            className="ml-1 inline-flex h-10 w-10 flex-none items-center justify-center rounded-full border border-border bg-background text-secondary"
+          >
+            <IconSmile size={18} />
+          </button>
+        </div>
+        <div className="border-t border-border py-1">
+          {canReply && (
+            <SheetItem
+              icon={<IconReply />}
+              label={t("messageActions.replyInThread")}
+              onClick={onReply}
+            />
+          )}
+          <SheetItem
+            icon={
+              <IconBookmark
+                fill={isStarred ? "currentColor" : "none"}
+                style={isStarred ? { color: "var(--color-accent)" } : undefined}
+              />
+            }
+            label={isStarred ? t("messageActions.saved") : t("messageActions.save")}
+            onClick={onSave}
+          />
+          <SheetItem icon={<IconCopy />} label={t("messageActions.share")} onClick={onShare} />
+          <SheetItem icon={<IconPin />} label={t("messageActions.pin")} onClick={onPin} />
+          <SheetItem
+            icon={<IconBookmark />}
+            label={t("messageActions.markUnread")}
+            onClick={onMarkUnread}
+          />
+          <SheetItem
+            icon={<IconCopy />}
+            label={t("messageActions.copyLink")}
+            onClick={onCopyLink}
+          />
+          {isOwn && (
+            <>
+              <div className="my-1 border-t border-border" />
+              <SheetItem
+                icon={<IconPencil />}
+                label={t("messageActions.edit")}
+                onClick={onEdit}
+              />
+              <SheetItem
+                icon={<IconTrash />}
+                label={t("messageActions.delete")}
+                tone="danger"
+                onClick={onDelete}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SheetItem({
+  icon,
+  label,
+  tone,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  tone?: "danger";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors active:bg-hover ${
+        tone === "danger" ? "text-destructive" : "text-foreground"
+      }`}
+    >
+      <span className={tone === "danger" ? "text-destructive" : "text-secondary"}>{icon}</span>
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -801,31 +1104,96 @@ function ReactionChip({
   onClick: () => void;
 }) {
   const usersById = useUsers((s) => s.byId);
-  const { t } = useTranslator();
+  const { t, locale } = useTranslator();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [hovered, setHovered] = useState(false);
   const mine = meId ? users.includes(meId) : false;
-  const names = users
-    .map((id) => (id === meId ? t("messageActions.you") : usersById[id]?.display_name ?? id))
-    .slice(0, 3)
-    .join(", ");
-  const tooltip =
-    users.length > 3
-      ? `${names} ${t("messageActions.andOthers", { n: users.length - 3 })}`
-      : names;
+
+  // Sort the reactor list so I always appear first, mirroring Slack's
+  // tooltip behaviour ("You and 3 others reacted").
+  const orderedUserIds = useMemo(() => {
+    if (!meId) return users;
+    if (!users.includes(meId)) return users;
+    return [meId, ...users.filter((id) => id !== meId)];
+  }, [users, meId]);
+
+  const reactorNames = useMemo(
+    () =>
+      orderedUserIds.map((id, i) => {
+        if (id === meId) {
+          return i === 0 ? t("messageActions.youCapital") : t("messageActions.you");
+        }
+        return usersById[id]?.display_name ?? id;
+      }),
+    [orderedUserIds, meId, usersById, t],
+  );
+
+  // Render names as a localised conjunction list ("A, B and C" in en;
+  // "A, B und C" in de) — keep at most 3 names inline and collapse the
+  // tail into "and N others" so the popover stays narrow.
+  const summary = useMemo(() => {
+    const all = reactorNames;
+    if (all.length === 0) return "";
+    const formatter = new Intl.ListFormat(locale, {
+      style: "long",
+      type: "conjunction",
+    });
+    if (all.length <= 3) return formatter.format(all);
+    const head = formatter.format(all.slice(0, 2));
+    return t("messageActions.reactionAndOthers", {
+      names: head,
+      n: all.length - 2,
+    });
+  }, [reactorNames, locale, t]);
+
+  const reactedLine =
+    users.length === 1
+      ? t("messageActions.reactedWithOne", { names: summary, emoji })
+      : t("messageActions.reactedWith", { names: summary, emoji });
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={tooltip}
-      aria-label={`${emoji} ${users.length}`}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all duration-100 ${
-        mine
-          ? "border-accent/40 bg-accent-light text-accent"
-          : "border-border bg-card text-secondary hover:border-accent/30 hover:bg-hover hover:text-foreground"
-      }`}
-    >
-      <span aria-hidden="true">{emoji}</span>
-      <span className="font-medium tabular-nums">{users.length}</span>
-    </button>
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
+        aria-label={`${emoji} ${users.length} — ${reactedLine}`}
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all duration-100 ${
+          mine
+            ? "border-accent/40 bg-accent-light text-accent"
+            : "border-border bg-card text-secondary hover:border-accent/30 hover:bg-hover hover:text-foreground"
+        }`}
+      >
+        <span aria-hidden="true">{emoji}</span>
+        <span className="font-medium tabular-nums">{users.length}</span>
+      </button>
+      {hovered && (
+        <PopoverPortal anchor={buttonRef.current} placement="bottom-start">
+          <div
+            role="tooltip"
+            className="pointer-events-none w-max max-w-xs rounded-md border border-border bg-card px-3 py-2 text-xs shadow-xl"
+          >
+            <div className="flex items-start gap-2">
+              <span aria-hidden="true" className="text-base leading-none">
+                {emoji}
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <p className="text-foreground">{reactedLine}</p>
+                <p className="text-tertiary">
+                  {mine
+                    ? t("messageActions.clickToRemoveReaction")
+                    : t("messageActions.clickToAddReaction")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </PopoverPortal>
+      )}
+    </>
   );
 }
 

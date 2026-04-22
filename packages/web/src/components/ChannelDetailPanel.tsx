@@ -81,7 +81,10 @@ export function ChannelDetailPanel({
   return (
     <Modal onClose={onClose} title={title} size="lg" className="!max-w-3xl">
       <div className="border-b border-border">
-        <nav className="flex" role="tablist">
+        <nav
+          className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
           <TabButton
             active={tab === "about"}
             onClick={() => setTab("about")}
@@ -135,7 +138,7 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`px-4 py-2 text-sm transition-colors duration-150 ${
+      className={`flex-none whitespace-nowrap px-4 py-2 text-sm transition-colors duration-150 ${
         active
           ? "border-b-2 border-accent text-foreground"
           : "border-b-2 border-transparent text-secondary hover:text-foreground"
@@ -198,7 +201,13 @@ function AboutTab({
   }
 
   async function leave() {
-    if (!confirm(t("members.leaveConfirm", { channel: channel.name }))) return;
+    const ok = await confirm({
+      title: t("dialogs.leaveChannelTitle"),
+      description: t("members.leaveConfirm", { channel: channel.name }),
+      confirmLabel: t("members.leaveChannel"),
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await callFunction("channel:leave", { channel_id: channel.id });
@@ -288,11 +297,16 @@ function MembersTab({
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const { t } = useTranslator();
+  const { confirm } = useDialogs();
 
   async function kick(userId: string) {
-    if (!confirm(t("members.removeConfirm", { name: userId, channel: channel.name }))) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("dialogs.removeMemberTitle"),
+      description: t("members.removeConfirm", { name: userId, channel: channel.name }),
+      confirmLabel: t("members.remove"),
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await callFunction("channel:kick", { channel_id: channel.id, user_id: userId });
@@ -303,7 +317,7 @@ function MembersTab({
   }
 
   return (
-    <ul className="max-h-[60vh] overflow-y-auto p-2">
+    <ul className="max-h-[60dvh] overflow-y-auto p-2 sm:max-h-[60vh]">
       {members.map((m) => (
         <li
           key={m.user_id}
@@ -363,7 +377,7 @@ function FilesTab({ channelId }: { channelId: string }) {
   }
 
   return (
-    <ul className="max-h-[60vh] overflow-y-auto divide-y divide-border">
+    <ul className="max-h-[60dvh] overflow-y-auto divide-y divide-border sm:max-h-[60vh]">
       {entries.map((e) => (
         <FileRow key={`${e.message_id}-${e.attachment.file_id}`} entry={e} />
       ))}
@@ -455,7 +469,7 @@ function PinnedTab({
   }
 
   return (
-    <ul className="max-h-[60vh] overflow-y-auto divide-y divide-border">
+    <ul className="max-h-[60dvh] overflow-y-auto divide-y divide-border sm:max-h-[60vh]">
       {data.map((p) => (
         <PinnedRowView key={p.message_id} row={p} onJump={() => jump(p.message_id)} />
       ))}

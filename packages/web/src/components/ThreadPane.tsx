@@ -86,7 +86,7 @@ export function ThreadPane() {
   }
 
   return (
-    <aside className="flex w-96 flex-col border-l border-border bg-background">
+    <aside className="fixed inset-0 z-40 flex flex-col bg-background lg:static lg:z-auto lg:w-96 lg:border-l lg:border-border">
       <header className="flex items-center justify-between border-b border-border px-3 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">Thread</p>

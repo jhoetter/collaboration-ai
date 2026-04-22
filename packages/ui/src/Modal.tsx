@@ -53,14 +53,14 @@ export function Modal({
       role="dialog"
       aria-modal="true"
       aria-label={typeof title === "string" ? title : ariaLabel}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         className={cn(
-          "w-full overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-2xl",
+          "flex w-full max-h-[92dvh] flex-col overflow-hidden rounded-t-xl border border-border bg-card text-foreground shadow-2xl sm:max-h-[85vh] sm:rounded-lg",
           SIZE_CLASS[size],
           className,
         )}

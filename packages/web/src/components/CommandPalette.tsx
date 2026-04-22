@@ -307,7 +307,7 @@ export function CommandPalette() {
       role="dialog"
       aria-modal="true"
       aria-label={t("palette.title")}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 px-4 pt-[18vh] backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 px-3 pt-[10vh] backdrop-blur-sm sm:px-4 sm:pt-[18vh]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) close();
       }}
@@ -326,7 +326,7 @@ export function CommandPalette() {
             aria-label={t("palette.search")}
           />
         </div>
-        <div className="max-h-[55vh] overflow-y-auto p-1">
+        <div className="max-h-[60dvh] overflow-y-auto p-1 sm:max-h-[55vh]">
           {filtered.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-tertiary">
               {t("palette.empty")}

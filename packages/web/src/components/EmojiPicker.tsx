@@ -90,7 +90,10 @@ export function EmojiPicker({ onPick, onClose }: EmojiPickerProps) {
   const categoryIcons = useMemo(() => ({ ...CATEGORY_ICONS }), []);
 
   return (
-    <div ref={ref} className="rounded-md border border-border bg-card shadow-2xl">
+    <div
+      ref={ref}
+      className="w-[min(20rem,calc(100vw-1rem))] max-h-[70dvh] overflow-hidden rounded-md border border-border bg-card shadow-2xl"
+    >
       <Picker
         data={data}
         theme={resolvedScheme}

@@ -37,6 +37,7 @@ import {
   ListOrdered,
   Lock,
   LogOut,
+  Menu,
   Mic,
   MoreHorizontal,
   Paperclip,
@@ -114,6 +115,7 @@ export const IconListBullet = withDefaults(List, "IconListBullet");
 export const IconListNumbered = withDefaults(ListOrdered, "IconListNumbered");
 export const IconLock = withDefaults(Lock, "IconLock");
 export const IconLogOut = withDefaults(LogOut, "IconLogOut");
+export const IconMenu = withDefaults(Menu, "IconMenu");
 export const IconMic = withDefaults(Mic, "IconMic");
 export const IconMore = withDefaults(MoreHorizontal, "IconMore");
 export const IconPaperclip = withDefaults(Paperclip, "IconPaperclip");

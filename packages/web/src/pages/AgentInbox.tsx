@@ -40,7 +40,7 @@ export function AgentInbox() {
   }
 
   return (
-    <aside className="w-80 border-l border-border bg-surface p-3">
+    <aside className="w-full max-w-full border-l border-border bg-surface p-3 lg:w-80">
       <h2 className="mb-2 text-xs uppercase tracking-wide text-tertiary">
         {t("agentInbox.title")}
       </h2>

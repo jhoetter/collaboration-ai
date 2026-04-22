@@ -42,7 +42,8 @@
     "mentionInChannel": "@you in #{channel}",
     "saved": "Saved",
     "activity": "Activity",
-    "directMessage": "Direct message"
+    "directMessage": "Direct message",
+    "toggle": "Toggle navigation"
   },
   "userMenu": {
     "youAre": "You are",
@@ -119,7 +120,13 @@
     "deleteConfirm": "Delete this message?",
     "reactedBy": "Reacted: {names}",
     "andOthers": "+{n} more",
-    "you": "you"
+    "you": "you",
+    "youCapital": "You",
+    "reactedWith": "{names} reacted with {emoji}",
+    "reactedWithOne": "{names} reacted with {emoji}",
+    "reactionAndOthers": "{names} and {n} others",
+    "clickToAddReaction": "Click to add your reaction",
+    "clickToRemoveReaction": "Click to remove your reaction"
   },
   "messageList": {
     "newMessages": "{n} new messages",

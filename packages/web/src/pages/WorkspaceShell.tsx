@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Route, Routes, useParams } from "react-router";
+import { Route, Routes, useLocation, useParams } from "react-router";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
@@ -70,17 +70,36 @@ export function WorkspaceShell() {
   }, [effectiveWorkspaceId, authStatus, hydrateUnread]);
 
   const threadOpen = useThread((s) => s.rootId !== null);
+  const sidebarOpen = useUi((s) => s.sidebarOpen);
+  const setSidebarOpen = useUi((s) => s.setSidebarOpen);
+  const location = useLocation();
+
+  // Close the mobile drawer whenever the user navigates so tapping a
+  // channel doesn't leave the sidebar covering the new pane.
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname, setSidebarOpen]);
+
+  // Escape closes the drawer (desktop ignores the flag entirely).
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSidebarOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sidebarOpen, setSidebarOpen]);
 
   if (authStatus === "joining" || authStatus === "idle") {
     return (
-      <main className="flex h-screen items-center justify-center bg-background text-sm text-tertiary">
+      <main className="flex h-[100dvh] items-center justify-center bg-background text-sm text-tertiary">
         {t("common.joiningWorkspace")}
       </main>
     );
   }
   if (authStatus === "error") {
     return (
-      <main className="flex h-screen items-center justify-center bg-background p-6">
+      <main className="flex h-[100dvh] items-center justify-center bg-background p-6">
         <div className="max-w-md rounded-lg border border-destructive/40 bg-destructive-bg p-4 text-sm text-destructive">
           <p className="mb-2 font-semibold">{t("common.joinWorkspaceError")}</p>
           <p className="mb-3 opacity-80">{authError}</p>
@@ -93,11 +112,25 @@ export function WorkspaceShell() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-[100dvh] flex-col">
       <TopBar />
-      <div className="flex flex-1 min-h-0">
-        <Sidebar />
-        <main className="flex flex-1 flex-col">
+      <div className="relative flex flex-1 min-h-0">
+        {sidebarOpen && (
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 z-30 bg-foreground/40 backdrop-blur-sm lg:hidden"
+          />
+        )}
+        <div
+          className={`fixed inset-y-0 left-0 z-40 w-72 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <Sidebar />
+        </div>
+        <main className="flex min-w-0 flex-1 flex-col">
           <Routes>
             <Route index element={<EmptyState />} />
             <Route path="c/:channelId" element={<ChannelPage />} />

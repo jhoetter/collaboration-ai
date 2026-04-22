@@ -82,7 +82,7 @@ export function HuddlePanel({
   }
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 flex w-[min(820px,92vw)] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
+    <div className="fixed inset-x-2 bottom-2 z-40 flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl md:inset-x-auto md:bottom-4 md:left-1/2 md:w-[min(820px,92vw)] md:-translate-x-1/2">
       <header className="flex items-center justify-between border-b border-border px-3 py-2">
         <div>
           <p className="text-sm font-semibold text-foreground">{t("huddle.title")}</p>
@@ -109,8 +109,7 @@ export function HuddlePanel({
           audio
           video={false}
           data-lk-theme="default"
-          className="flex flex-col"
-          style={{ height: 460 }}
+          className="flex h-[60dvh] flex-col md:h-[460px]"
         >
           <LayoutContextProvider>
             <div className="flex-1 overflow-hidden bg-background">

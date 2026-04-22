@@ -11,6 +11,7 @@ import {
   EMOJI_SHORTCODE_RE,
   hasEmojiShortcode,
   replaceEmojiShortcodes,
+  searchEmojiShortcodes,
   shortcodeToNative,
 } from "./emojiShortcodes.ts";
 
@@ -56,5 +57,39 @@ describe("emoji shortcodes", () => {
     EMOJI_SHORTCODE_RE.lastIndex = 0;
     const matches = "a :wave: b :+1: c".match(EMOJI_SHORTCODE_RE);
     expect(matches).toEqual([":wave:", ":+1:"]);
+  });
+
+  describe("searchEmojiShortcodes", () => {
+    it("returns prefix matches first", () => {
+      const out = searchEmojiShortcodes("wav", 5);
+      expect(out.length).toBeGreaterThan(0);
+      expect(out[0].shortcode).toBe("wave");
+      expect(out[0].native).toBe("👋");
+    });
+
+    it("respects the limit", () => {
+      const out = searchEmojiShortcodes("a", 3);
+      expect(out.length).toBeLessThanOrEqual(3);
+    });
+
+    it("falls back to substring matches when prefix matches run dry", () => {
+      const out = searchEmojiShortcodes("smil", 5);
+      // `smile` is a prefix match.
+      expect(out.some((s) => s.shortcode === "smile")).toBe(true);
+    });
+
+    it("returns alphabetised entries for an empty query", () => {
+      const out = searchEmojiShortcodes("", 5);
+      expect(out.length).toBe(5);
+      const codes = out.map((s) => s.shortcode);
+      const expected = [...codes].sort((a, b) => a.localeCompare(b));
+      expect(codes).toEqual(expected);
+    });
+
+    it("is case-insensitive", () => {
+      const a = searchEmojiShortcodes("WAVE", 1);
+      const b = searchEmojiShortcodes("wave", 1);
+      expect(a).toEqual(b);
+    });
   });
 });

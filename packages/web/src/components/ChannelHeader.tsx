@@ -113,12 +113,12 @@ export function ChannelHeader({
   }
 
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
+    <header className="flex items-center justify-between gap-2 border-b border-border bg-surface px-2 py-2 sm:gap-3 lg:px-4 lg:py-3">
       <button
         type="button"
         onClick={() => openDetail("about")}
         title={t("channelHeader.openDetail")}
-        className="group flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1 -ml-1.5 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="group flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 -ml-1.5 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         {isGroupDm ? (
           <>
@@ -168,14 +168,14 @@ export function ChannelHeader({
           </>
         )}
       </button>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-none items-center gap-1">
         {!isDm && (
           <button
             type="button"
             onClick={searchInChannel}
             aria-label={t("channelHeader.searchInChannel")}
             title={t("channelHeader.searchInChannel")}
-            className="rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="hidden rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:inline-flex"
           >
             <IconSearch size={14} />
           </button>
@@ -184,7 +184,7 @@ export function ChannelHeader({
           <button
             type="button"
             onClick={() => setMembersOpen(true)}
-            className="mr-1 flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-hover"
+            className="mr-1 hidden items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-hover md:inline-flex"
             aria-label={`${members.length} members`}
             title={t("members.title")}
           >
@@ -203,7 +203,9 @@ export function ChannelHeader({
         {huddle ? (
           <Button variant="primary" size="sm" onClick={() => setShowHuddle(true)} className="gap-1.5">
             <IconVideo size={14} />
-            {t("channel.joinHuddle", { n: huddle.participants.length })}
+            <span className="hidden sm:inline">
+              {t("channel.joinHuddle", { n: huddle.participants.length })}
+            </span>
           </Button>
         ) : (
           <button
@@ -217,7 +219,7 @@ export function ChannelHeader({
             <span className="hidden sm:inline">{t("channel.startHuddle")}</span>
           </button>
         )}
-        <span className="mx-1 h-5 w-px bg-border/70" aria-hidden />
+        <span className="mx-1 hidden h-5 w-px bg-border/70 sm:block" aria-hidden />
         <NotificationMenu channelId={channelId} pref={pref} />
         {!isDm && (
           <button
@@ -225,7 +227,7 @@ export function ChannelHeader({
             onClick={() => setMembersOpen(true)}
             aria-label={t("members.title")}
             title={t("members.title")}
-            className="rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="hidden rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:inline-flex"
           >
             <IconUsers size={14} />
           </button>
@@ -234,6 +236,9 @@ export function ChannelHeader({
           isDm={isDm}
           onSettings={() => openDetail("about")}
           onLeave={() => void leaveChannel()}
+          onSearch={!isDm ? searchInChannel : undefined}
+          onMembers={!isDm ? () => setMembersOpen(true) : undefined}
+          memberCount={members.length}
         />
       </div>
       {detailTab && channel && (
@@ -359,10 +364,16 @@ function ChannelKebab({
   isDm,
   onSettings,
   onLeave,
+  onSearch,
+  onMembers,
+  memberCount,
 }: {
   isDm: boolean;
   onSettings: () => void;
   onLeave: () => void;
+  onSearch?: () => void;
+  onMembers?: () => void;
+  memberCount?: number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -400,8 +411,44 @@ function ChannelKebab({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg"
+          className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg"
         >
+          {onSearch && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onSearch();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-hover md:hidden"
+            >
+              <IconSearch size={14} className="text-tertiary" />
+              {t("channelHeader.searchInChannel")}
+            </button>
+          )}
+          {onMembers && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onMembers();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-hover md:hidden"
+            >
+              <IconUsers size={14} className="text-tertiary" />
+              {t("members.title")}
+              {memberCount !== undefined && memberCount > 0 && (
+                <span className="ml-auto text-xs tabular-nums text-tertiary">
+                  {memberCount.toLocaleString()}
+                </span>
+              )}
+            </button>
+          )}
+          {(onSearch || onMembers) && !isDm && (
+            <div className="my-1 h-px bg-border md:hidden" />
+          )}
           {!isDm && (
             <button
               type="button"

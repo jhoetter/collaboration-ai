@@ -75,6 +75,11 @@ export interface UiState {
   readonly createChannelOpen: boolean;
   readonly newDmOpen: boolean;
   readonly membersPanelOpen: boolean;
+  /**
+   * Mobile/tablet only: drives the sidebar slide-in drawer. At ≥lg the
+   * sidebar is always rendered via CSS so this flag is a no-op there.
+   */
+  readonly sidebarOpen: boolean;
   readonly sectionsOpen: Record<SectionId, boolean>;
   /**
    * Optional pre-fill for the workspace top search bar. Components publish
@@ -85,6 +90,8 @@ export interface UiState {
   setCreateChannelOpen(open: boolean): void;
   setNewDmOpen(open: boolean): void;
   setMembersPanelOpen(open: boolean): void;
+  setSidebarOpen(open: boolean): void;
+  toggleSidebar(): void;
   setSearchQuery(query: string | null): void;
   toggleSection(id: SectionId): void;
 }
@@ -93,6 +100,7 @@ export const useUi = create<UiState>((set, get) => ({
   createChannelOpen: false,
   newDmOpen: false,
   membersPanelOpen: false,
+  sidebarOpen: false,
   searchQuery: null,
   sectionsOpen: loadSectionState(),
   setCreateChannelOpen(open) {
@@ -103,6 +111,12 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setMembersPanelOpen(open) {
     set({ membersPanelOpen: open });
+  },
+  setSidebarOpen(open) {
+    set({ sidebarOpen: open });
+  },
+  toggleSidebar() {
+    set({ sidebarOpen: !get().sidebarOpen });
   },
   setSearchQuery(query) {
     set({ searchQuery: query });

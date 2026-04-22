@@ -42,7 +42,8 @@
     "mentionInChannel": "@dich in #{channel}",
     "saved": "Gespeichert",
     "activity": "Aktivität",
-    "directMessage": "Direktnachricht"
+    "directMessage": "Direktnachricht",
+    "toggle": "Navigation umschalten"
   },
   "userMenu": {
     "youAre": "Du bist",
@@ -119,7 +120,13 @@
     "deleteConfirm": "Diese Nachricht löschen?",
     "reactedBy": "Reaktionen: {names}",
     "andOthers": "+{n} weitere",
-    "you": "du"
+    "you": "du",
+    "youCapital": "Du",
+    "reactedWith": "{names} reagierten mit {emoji}",
+    "reactedWithOne": "{names} reagierte mit {emoji}",
+    "reactionAndOthers": "{names} und {n} weitere",
+    "clickToAddReaction": "Klicken, um zu reagieren",
+    "clickToRemoveReaction": "Klicken, um Reaktion zu entfernen"
   },
   "messageList": {
     "newMessages": "{n} neue Nachrichten",

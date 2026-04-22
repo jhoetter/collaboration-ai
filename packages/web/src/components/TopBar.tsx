@@ -30,7 +30,14 @@
  *   - Keyboard navigation (↑/↓ to move, ↵ to open, Esc to clear/close)
  *   - Footer hint bar with the same shortcuts.
  */
-import { Avatar, ChannelIcon, IconFile, IconHash, IconSearch } from "@collabai/ui";
+import {
+  Avatar,
+  ChannelIcon,
+  IconFile,
+  IconHash,
+  IconMenu,
+  IconSearch,
+} from "@collabai/ui";
 import {
   useCallback,
   useEffect,
@@ -172,6 +179,7 @@ export function TopBar() {
   const usersById = useUsers((s) => s.byId);
   const seedQuery = useUi((s) => s.searchQuery);
   const setSeedQuery = useUi((s) => s.setSearchQuery);
+  const toggleSidebar = useUi((s) => s.toggleSidebar);
 
   // Pull seed pre-fills published from elsewhere (e.g. ChannelHeader's
   // "search in channel" button) and clear the slot so we don't loop.
@@ -512,9 +520,18 @@ export function TopBar() {
   return (
     <div
       ref={containerRef}
-      className="relative flex h-11 items-center justify-center border-b border-border bg-surface px-3"
+      className="relative flex h-11 items-center gap-2 border-b border-border bg-surface px-2 sm:px-3 lg:justify-center"
     >
-      <div className="relative w-full max-w-2xl">
+      <button
+        type="button"
+        onClick={toggleSidebar}
+        aria-label={t("sidebar.toggle")}
+        title={t("sidebar.toggle")}
+        className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-secondary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 lg:hidden"
+      >
+        <IconMenu size={18} />
+      </button>
+      <div className="relative min-w-0 flex-1 md:max-w-2xl">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-tertiary">
           <IconSearch size={14} />
         </span>
@@ -536,7 +553,7 @@ export function TopBar() {
           aria-activedescendant={
             visibleRows[active] ? `topbar-row-${visibleRows[active].key}` : undefined
           }
-          className="h-7 w-full rounded-md border border-border/60 bg-background pl-8 pr-12 text-sm text-foreground transition-colors placeholder:text-tertiary focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20"
+          className="h-8 w-full rounded-md border border-border/60 bg-background pl-8 pr-3 text-sm text-foreground transition-colors placeholder:text-tertiary focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20 sm:h-7 sm:pr-12"
           data-testid="topbar-search"
         />
         <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 text-[10px] text-tertiary sm:flex">
@@ -548,7 +565,7 @@ export function TopBar() {
         <div
           id="topbar-search-listbox"
           role="listbox"
-          className="absolute left-1/2 top-full z-40 mt-1 w-[min(48rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-md border border-border bg-card shadow-2xl"
+          className="absolute left-1/2 top-full z-40 mt-1 flex max-h-[80dvh] w-[min(48rem,calc(100vw-1rem))] -translate-x-1/2 flex-col overflow-hidden rounded-md border border-border bg-card shadow-2xl"
         >
           <Tabs
             tab={tab}
@@ -562,12 +579,14 @@ export function TopBar() {
               params.workspaceId ? findCurrentChannelName(channels, location.pathname) : null
             }
             onAppend={(chip) => {
-              setQuery((q) => (q.endsWith(" ") || q.length === 0 ? `${q}${chip} ` : `${q} ${chip} `));
+              setQuery((q) =>
+                q.endsWith(" ") || q.length === 0 ? `${q}${chip} ` : `${q} ${chip} `,
+              );
               inputRef.current?.focus();
             }}
             t={t}
           />
-          <div ref={listRef} className="max-h-[60vh] overflow-y-auto py-1">
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto py-1">
             {showEmptyState && recents.length > 0 && (
               <Group label={t("topbar.recentSearches")}>
                 {recents.map((r) => (
@@ -931,12 +950,21 @@ function formatRelative(ts: number): string {
   return date.toLocaleDateString();
 }
 
+/**
+ * Resolve the channel name for the URL the user is currently on, but
+ * only for "real" rooms — DM/group-DM channel names are synthesized
+ * server-side as `DM dm_<id>` and would render as a cryptic chip
+ * (e.g. "In #DM dm_4aa3f3de7188"). For those rooms we'd advertise no
+ * scope chip; the user can still type `from:@partner` themselves.
+ */
 function findCurrentChannelName(
-  channels: Record<string, { id: string; name: string }>,
+  channels: ReturnType<typeof useSync.getState>["channels"],
   pathname: string,
 ): string | null {
   const m = pathname.match(/\/c\/([^/?#]+)/);
   if (!m) return null;
-  const id = m[1];
-  return channels[id]?.name ?? null;
+  const channel = channels[m[1]];
+  if (!channel) return null;
+  if (channel.type === "dm" || channel.type === "group_dm") return null;
+  return channel.name ?? null;
 }

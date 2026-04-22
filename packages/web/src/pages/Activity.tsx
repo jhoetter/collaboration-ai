@@ -43,7 +43,7 @@ export function Activity() {
 
   return (
     <section className="flex h-full flex-1 flex-col overflow-hidden">
-      <header className="flex items-center gap-2 border-b border-border bg-surface px-4 py-3">
+      <header className="flex items-center gap-2 border-b border-border bg-surface px-3 py-3 sm:px-4">
         <IconActivity size={16} />
         <h1 className="text-sm font-semibold text-foreground">
           {t("activity.title")}
@@ -100,7 +100,7 @@ function ActivityRow({
       <button
         type="button"
         onClick={onJump}
-        className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-hover ${
+        className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-hover sm:px-4 ${
           row.read ? "" : "bg-accent-light/30"
         }`}
       >
@@ -108,16 +108,16 @@ function ActivityRow({
           <KindIcon size={14} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-sm">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             {senderName && (
-              <span className="flex items-center gap-1.5">
+              <span className="flex min-w-0 items-center gap-1.5">
                 <Avatar name={senderName} kind="human" size={16} />
-                <span className="font-semibold text-foreground">{senderName}</span>
+                <span className="truncate font-semibold text-foreground">{senderName}</span>
               </span>
             )}
             <span className="text-tertiary">{labelForKind(row.kind, t)}</span>
             {channelName && (
-              <span className="inline-flex items-center gap-0.5 text-tertiary">
+              <span className="inline-flex min-w-0 items-center gap-0.5 text-tertiary">
                 <IconHash size={10} />
                 <span className="truncate">{channelName}</span>
               </span>

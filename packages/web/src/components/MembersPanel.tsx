@@ -149,7 +149,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
   }
 
   return (
-    <aside className="flex w-80 flex-col border-l border-border bg-surface">
+    <aside className="fixed inset-0 z-40 flex flex-col bg-surface lg:static lg:z-auto lg:w-80 lg:border-l lg:border-border">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">
           {t("members.title")}{" "}

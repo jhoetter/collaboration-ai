@@ -68,10 +68,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sendTypingFrame } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
+import { useDialogs } from "../lib/dialogs.tsx";
 import {
   hasEmojiShortcode,
   replaceEmojiShortcodes,
   replaceShortcodesInEditor,
+  searchEmojiShortcodes,
+  type EmojiSuggestion,
 } from "../lib/emojiShortcodes.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
@@ -155,11 +158,18 @@ function ComposerInner({
   onSend,
 }: ComposerProps) {
   const { t } = useTranslator();
+  const { prompt } = useDialogs();
   const [editor] = useLexicalComposerContext();
   const [text, setText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
-  const [showFormatting, setShowFormatting] = useState(true);
+  // The formatting toolbar takes a row of vertical real estate that's a
+  // luxury we can't afford on phones, so default it off below `md` and let
+  // the user opt in via the `<IconType />` toggle.
+  const [showFormatting, setShowFormatting] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [mentionState, setMentionState] = useState<{
     query: string;
@@ -167,6 +177,11 @@ function ComposerInner({
     range: { node: Text; offset: number } | null;
   } | null>(null);
   const [slashState, setSlashState] = useState<{ query: string; index: number } | null>(
+    null,
+  );
+  // Emoji shortcode autocomplete: `query` is the chars typed *after*
+  // the triggering `:` (empty right after the user types `:`).
+  const [emojiState, setEmojiState] = useState<{ query: string; index: number } | null>(
     null,
   );
   const draftFromServer = useSync((s) => s.draftsByChannel[channelId]?.content ?? "");
@@ -199,6 +214,7 @@ function ComposerInner({
     setPending([]);
     setSlashState(null);
     setMentionState(null);
+    setEmojiState(null);
     editor.dispatchCommand(CLEAR_EDITOR_COMMAND, undefined);
   }, [channelId, editor]);
 
@@ -258,27 +274,41 @@ function ComposerInner({
       } else {
         setSlashState(null);
       }
-      // Mention detection: walk the current selection back to the most
-      // recent `@` and extract the query token.
+      // Mention + emoji detection: walk the current selection back to
+      // the most recent trigger char (`@` or `:`) and extract the
+      // query token. Both popovers anchor on the editor card, so they
+      // never share a frame: the most recent trigger wins.
       ed.getEditorState().read(() => {
         const selection = $getSelection();
         if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
           setMentionState(null);
+          setEmojiState(null);
           return;
         }
         const anchor = selection.anchor;
         const node = anchor.getNode();
         const nodeText = node.getTextContent();
         const upTo = nodeText.slice(0, anchor.offset);
-        const m = upTo.match(/(^|\s)@([\w-]*)$/);
-        if (m) {
+
+        const mention = upTo.match(/(^|\s)@([\w-]*)$/);
+        if (mention) {
           setMentionState({
-            query: m[2].toLowerCase(),
+            query: mention[2].toLowerCase(),
             index: 0,
             range: null,
           });
         } else {
           setMentionState(null);
+        }
+
+        // Emoji trigger: a `:` at the start of the line or after
+        // whitespace, followed by 0+ shortcode-allowed chars (and no
+        // closing `:` — that path is handled by inline replacement).
+        const emoji = upTo.match(/(^|\s):([a-z0-9_+\-]*)$/i);
+        if (emoji && !mention) {
+          setEmojiState({ query: emoji[2].toLowerCase(), index: 0 });
+        } else {
+          setEmojiState(null);
         }
       });
     },
@@ -364,6 +394,11 @@ function ComposerInner({
     return slashCommands.filter((c) => c.name.startsWith(`/${slashState.query}`));
   }, [slashState, slashCommands]);
 
+  const filteredEmoji = useMemo<EmojiSuggestion[]>(() => {
+    if (!emojiState) return [];
+    return searchEmojiShortcodes(emojiState.query, 8);
+  }, [emojiState]);
+
   function applyMention(displayName: string) {
     editor.update(() => {
       const selection = $getSelection();
@@ -387,6 +422,31 @@ function ComposerInner({
       selection.focus.set(node.getKey(), newOffset, "text");
     });
     setMentionState(null);
+  }
+
+  function applyEmoji(native: string) {
+    editor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection) || !selection.isCollapsed()) return;
+      const anchor = selection.anchor;
+      const node = anchor.getNode();
+      if (node.getType() !== "text") return;
+      const nodeText = node.getTextContent();
+      const upTo = nodeText.slice(0, anchor.offset);
+      // Strip the `:query` token (no closing colon) we replaced from
+      // and splice the native emoji in its place.
+      const m = upTo.match(/:([a-z0-9_+\-]*)$/i);
+      if (!m) return;
+      const start = anchor.offset - m[0].length;
+      const after = nodeText.slice(anchor.offset);
+      (node as unknown as { setTextContent(t: string): void }).setTextContent(
+        nodeText.slice(0, start) + native + after,
+      );
+      const newOffset = start + native.length;
+      selection.anchor.set(node.getKey(), newOffset, "text");
+      selection.focus.set(node.getKey(), newOffset, "text");
+    });
+    setEmojiState(null);
   }
 
   async function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
@@ -587,6 +647,31 @@ function ComposerInner({
         return;
       }
     }
+    if (emojiState && filteredEmoji.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setEmojiState((s) =>
+          s ? { ...s, index: Math.min(filteredEmoji.length - 1, s.index + 1) } : s,
+        );
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setEmojiState((s) => (s ? { ...s, index: Math.max(0, s.index - 1) } : s));
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const pick = filteredEmoji[emojiState.index];
+        if (pick) applyEmoji(pick.native);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setEmojiState(null);
+        return;
+      }
+    }
     if (slashState && filteredSlash.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -620,7 +705,7 @@ function ComposerInner({
     const isMod = e.metaKey || e.ctrlKey;
     if (isMod && e.shiftKey && (e.key === "u" || e.key === "U")) {
       e.preventDefault();
-      promptLink();
+      void promptLink();
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
@@ -633,8 +718,14 @@ function ComposerInner({
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
   }
 
-  function promptLink() {
-    const url = window.prompt(t("composer.linkPrompt"), "https://");
+  async function promptLink() {
+    const url = await prompt({
+      title: t("dialogs.linkTitle"),
+      description: t("composer.linkPrompt"),
+      defaultValue: "https://",
+      placeholder: "https://example.com",
+      confirmLabel: t("dialogs.linkConfirm"),
+    });
     if (!url) return;
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
   }
@@ -700,7 +791,7 @@ function ComposerInner({
   return (
     <div
       ref={editorContainerRef}
-      className="relative border-t border-border bg-surface px-4 pb-4 pt-3"
+      className="relative border-t border-border bg-surface px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:px-4 md:pb-4 md:pt-3"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
@@ -746,7 +837,7 @@ function ComposerInner({
             >
               <IconStrike />
             </ToolbarButton>
-            <ToolbarButton label={t("composer.link")} shortcut="⌘⇧U" onClick={promptLink}>
+            <ToolbarButton label={t("composer.link")} shortcut="⌘⇧U" onClick={() => void promptLink()}>
               <IconLink />
             </ToolbarButton>
             <ToolbarDivider />
@@ -792,7 +883,7 @@ function ComposerInner({
           />
         </div>
         <div
-          className="flex items-center gap-2 border-t border-border/60 px-3 pb-2.5 pt-2"
+          className="flex items-center gap-2 overflow-x-auto border-t border-border/60 px-3 pb-2.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onClick={(e) => e.stopPropagation()}
         >
           <ToolbarButton
@@ -835,7 +926,7 @@ function ComposerInner({
             disabled={!canSend}
             aria-label={t("common.send")}
             title={`${t("common.send")} (⏎)`}
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-all ${
+            className={`inline-flex h-8 w-8 flex-none items-center justify-center rounded-md transition-all md:h-7 md:w-7 ${
               canSend
                 ? "bg-accent text-accent-foreground shadow-sm hover:brightness-110"
                 : "bg-hover text-tertiary"
@@ -867,7 +958,7 @@ function ComposerInner({
       )}
       {mentionState && filteredUsers.length > 0 && (
         <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
-          <ul className="w-64 max-h-56 overflow-auto rounded-md border border-border bg-card shadow-xl">
+          <ul className="max-h-56 w-[min(16rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredUsers.map((u, i) => (
               <li key={u.user_id}>
                 <button
@@ -892,7 +983,7 @@ function ComposerInner({
       )}
       {slashState && filteredSlash.length > 0 && (
         <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
-          <ul className="w-72 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-xl">
+          <ul className="max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredSlash.map((c, i) => (
               <li key={c.id}>
                 <button
@@ -910,6 +1001,33 @@ function ComposerInner({
                 >
                   <span className="font-medium text-foreground">{c.name}</span>
                   <span className="text-xs text-tertiary">{c.hint}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </PopoverPortal>
+      )}
+      {emojiState && filteredEmoji.length > 0 && (
+        <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
+          <ul className="max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
+            {filteredEmoji.map((s, i) => (
+              <li key={s.shortcode}>
+                <button
+                  type="button"
+                  className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-sm transition-colors ${
+                    i === emojiState.index
+                      ? "bg-accent-light text-accent"
+                      : "hover:bg-hover"
+                  }`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    applyEmoji(s.native);
+                  }}
+                >
+                  <span className="text-base leading-none" aria-hidden="true">
+                    {s.native}
+                  </span>
+                  <span className="font-medium text-foreground">:{s.shortcode}:</span>
                 </button>
               </li>
             ))}
@@ -1062,7 +1180,7 @@ function AttachmentChip({
 
   if (isPdf) {
     return (
-      <div className="relative flex w-64 items-stretch overflow-hidden rounded-md border border-border bg-card shadow-sm">
+      <div className="relative flex w-full max-w-[16rem] items-stretch overflow-hidden rounded-md border border-border bg-card shadow-sm sm:w-64">
         <PdfThumb url={attachment.localUrl ?? null} size={64} />
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2.5 pr-7 text-xs">
           <p className="truncate font-medium text-foreground">{attachment.name}</p>
@@ -1075,7 +1193,7 @@ function AttachmentChip({
   }
 
   return (
-    <div className="relative flex w-64 items-center gap-3 rounded-md border border-border bg-card p-2.5 pr-7 shadow-sm">
+    <div className="relative flex w-full max-w-[16rem] items-center gap-3 rounded-md border border-border bg-card p-2.5 pr-7 shadow-sm sm:w-64">
       <FileTypeIcon mime={attachment.mime} filename={attachment.name} size={36} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{attachment.name}</p>

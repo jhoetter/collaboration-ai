@@ -53,6 +53,17 @@ def unread_for_user(
                 continue
             if msg.get("redacted"):
                 continue
+            # Thread replies are surfaced via the thread reply indicator,
+            # not the channel's unread badge — matches the client logic in
+            # `MessageList`/`Sidebar`. Without this, any later thread reply
+            # would keep the channel name bold forever, since the client
+            # marks read up to the last top-level message only.
+            if msg.get("thread_root"):
+                continue
+            # Don't count the actor's own messages — you can't be "unread"
+            # on something you sent.
+            if msg.get("sender_id") == user_id:
+                continue
             seq = int(msg.get("sequence") or 0)
             if seq <= marker:
                 continue

@@ -28,7 +28,16 @@ interface EmojiData {
   aliases: Record<string, string>;
 }
 
+/** A single suggestion shown in the autocomplete popover. */
+export interface EmojiSuggestion {
+  /** Canonical shortcode without colons. */
+  shortcode: string;
+  /** Native unicode emoji. */
+  native: string;
+}
+
 let lookup: Map<string, string> | null = null;
+let suggestions: EmojiSuggestion[] | null = null;
 
 function buildLookup(): Map<string, string> {
   const map = new Map<string, string>();
@@ -44,11 +53,57 @@ function buildLookup(): Map<string, string> {
   return map;
 }
 
+/**
+ * Build a flat, alphabetised list of `(shortcode, native)` pairs once
+ * so the autocomplete popover can filter without re-walking the data
+ * payload on every keystroke.
+ */
+function buildSuggestions(): EmojiSuggestion[] {
+  const typed = data as unknown as EmojiData;
+  const out: EmojiSuggestion[] = [];
+  for (const [id, entry] of Object.entries(typed.emojis ?? {})) {
+    const native = entry.skins?.[0]?.native;
+    if (native) out.push({ shortcode: id.toLowerCase(), native });
+  }
+  out.sort((a, b) => a.shortcode.localeCompare(b.shortcode));
+  return out;
+}
+
 /** Returns the native emoji for a shortcode (without the colons), or null. */
 export function shortcodeToNative(code: string): string | null {
   if (!code) return null;
   if (!lookup) lookup = buildLookup();
   return lookup.get(code.toLowerCase()) ?? null;
+}
+
+/**
+ * Filter the shortcode index by `query` (without the leading colon).
+ *
+ * Ranks `startsWith` matches above substring matches and caps the
+ * result so the popover stays a manageable size. An empty query
+ * returns the first `limit` entries alphabetically — handy for the
+ * "I just typed `:`" case so the user immediately sees there is
+ * something to pick.
+ */
+export function searchEmojiShortcodes(
+  query: string,
+  limit = 8,
+): EmojiSuggestion[] {
+  if (!suggestions) suggestions = buildSuggestions();
+  const q = query.toLowerCase();
+  if (!q) return suggestions.slice(0, limit);
+  const prefix: EmojiSuggestion[] = [];
+  const contains: EmojiSuggestion[] = [];
+  for (const entry of suggestions) {
+    if (entry.shortcode.startsWith(q)) {
+      prefix.push(entry);
+      if (prefix.length >= limit) break;
+    } else if (entry.shortcode.includes(q)) {
+      contains.push(entry);
+    }
+  }
+  if (prefix.length >= limit) return prefix;
+  return prefix.concat(contains).slice(0, limit);
 }
 
 /** Token regex: `:` then 1+ allowed chars then `:`. Not anchored. */
