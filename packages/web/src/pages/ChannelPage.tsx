@@ -34,10 +34,15 @@ export function ChannelPage() {
   const channel = useSync((s) => (channelId ? s.channels[channelId] : undefined));
   const applyOptimistic = useSync((s) => s.applyOptimistic);
   const reconcile = useSync((s) => s.reconcileOptimistic);
+  const dropOptimistic = useSync((s) => s.dropOptimistic);
   const openThread = useThread((s) => s.open);
 
   async function handleSend(payload: ComposerSendPayload) {
-    if (!channelId || !identity) return;
+    if (!channelId) return;
+    if (!identity) {
+      console.warn("send dropped — no identity yet; bootstrap still running");
+      return;
+    }
     const localId = `local-${crypto.randomUUID()}`;
     applyOptimistic({
       id: localId,
@@ -59,7 +64,8 @@ export function ChannelPage() {
         attachments: payload.attachments,
       });
       if (result.status !== "applied" || result.events.length === 0) {
-        console.error("send rejected", result.error);
+        console.error("send rejected", result.error ?? result.status);
+        dropOptimistic(channelId, localId);
         return;
       }
       const event = result.events[0];
@@ -77,6 +83,7 @@ export function ChannelPage() {
       });
     } catch (err) {
       console.error(err);
+      dropOptimistic(channelId, localId);
     }
   }
 

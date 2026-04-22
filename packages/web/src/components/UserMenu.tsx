@@ -9,12 +9,14 @@ import { Avatar, PresenceDot, type PresenceStatus as DotStatus } from "@collabai
 import { useEffect, useRef, useState } from "react";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
+import { LocaleToggle, useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type PresenceStatus } from "../state/sync.ts";
 
 export function UserMenu() {
   const identity = useAuth((s) => s.identity);
   const presence = useSync((s) => s.presence);
+  const { t } = useTranslator();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(identity?.display_name ?? "");
@@ -60,7 +62,7 @@ export function UserMenu() {
   }
 
   function signOut() {
-    if (!confirm("Sign out and forget this identity?")) return;
+    if (!confirm(t("userMenu.signOutConfirm"))) return;
     clearIdentity();
     location.reload();
   }
@@ -79,9 +81,9 @@ export function UserMenu() {
           </span>
         </span>
         <span className="min-w-0">
-          <p className="truncate text-xs text-slate-500">You are</p>
+          <p className="truncate text-xs text-slate-500">{t("userMenu.youAre")}</p>
           <p className="truncate text-sm font-medium text-collab-teal-300">
-            {identity?.display_name ?? "Anonymous"}
+            {identity?.display_name ?? t("userMenu.anonymous")}
           </p>
         </span>
       </button>
@@ -100,7 +102,7 @@ export function UserMenu() {
                 onClick={() => void saveName()}
                 className="text-xs text-collab-teal-300 hover:underline"
               >
-                Save
+                {t("common.save")}
               </button>
             </div>
           ) : (
@@ -109,11 +111,11 @@ export function UserMenu() {
               onClick={() => setEditing(true)}
               className="block w-full text-left text-sm text-slate-100 hover:text-collab-teal-300"
             >
-              Edit display name
+              {t("userMenu.editDisplayName")}
             </button>
           )}
           <hr className="my-2 border-slate-800" />
-          <p className="text-xs uppercase text-slate-500">Set a status</p>
+          <p className="text-xs uppercase text-slate-500">{t("userMenu.setStatus")}</p>
           <div className="mt-1 flex items-center gap-1">
             <input
               value={statusEmoji}
@@ -125,7 +127,7 @@ export function UserMenu() {
             <input
               value={statusText}
               onChange={(e) => setStatusText(e.target.value)}
-              placeholder="What's up?"
+              placeholder={t("userMenu.statusPlaceholder")}
               className="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
             />
             <button
@@ -133,7 +135,7 @@ export function UserMenu() {
               onClick={() => void setStatus()}
               className="text-xs text-collab-teal-300 hover:underline"
             >
-              Save
+              {t("common.save")}
             </button>
           </div>
           <hr className="my-2 border-slate-800" />
@@ -142,14 +144,19 @@ export function UserMenu() {
             onClick={() => void toggleAway()}
             className="block w-full text-left text-sm text-slate-100 hover:text-collab-teal-300"
           >
-            {status === "idle" ? "Set as Active" : "Set as Away"}
+            {status === "idle" ? t("userMenu.setActive") : t("userMenu.setAway")}
           </button>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-xs uppercase text-slate-500">{t("common.language")}</span>
+            <LocaleToggle />
+          </div>
+          <hr className="my-2 border-slate-800" />
           <button
             type="button"
             onClick={signOut}
-            className="mt-1 block w-full text-left text-sm text-rose-300 hover:underline"
+            className="block w-full text-left text-sm text-rose-300 hover:underline"
           >
-            Sign out
+            {t("userMenu.signOut")}
           </button>
         </div>
       )}

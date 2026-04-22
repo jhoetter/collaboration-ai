@@ -9,6 +9,7 @@ import { Avatar, Button } from "@collabai/ui";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
+import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useUsers } from "../state/users.ts";
 import { ModalShell } from "./ChannelSettingsModal.tsx";
@@ -16,6 +17,7 @@ import { ModalShell } from "./ChannelSettingsModal.tsx";
 interface DmOpenResponse {
   status: string;
   events: Array<{ room_id: string }>;
+  dm_channel_id?: string;
   error?: { code: string; message: string };
 }
 
@@ -24,6 +26,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const usersById = useUsers((s) => s.byId);
+  const { t } = useTranslator();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -54,20 +57,24 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
 
   async function open() {
     if (picked.size === 0) {
-      setError("Pick at least one person.");
+      setError(t("dm.pickAtLeastOne"));
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const res = await callFunction<DmOpenResponse>("dm:open", {
-        user_ids: Array.from(picked),
+        participant_ids: Array.from(picked),
       });
-      if (res.status !== "applied" || res.events.length === 0) {
-        setError(res.error?.message ?? "Could not open DM.");
+      if (res.status !== "applied") {
+        setError(res.error?.message ?? t("dm.couldNotOpen"));
         return;
       }
-      const newId = res.events[0].room_id;
+      const newId = res.dm_channel_id ?? res.events[0]?.room_id;
+      if (!newId) {
+        setError(t("dm.couldNotResolve"));
+        return;
+      }
       onClose();
       navigate(`/w/${params.workspaceId}/c/${newId}`);
     } catch (err) {
@@ -78,12 +85,12 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalShell title="New message" onClose={onClose}>
+    <ModalShell title={t("dm.newTitle")} onClose={onClose}>
       <div className="flex flex-col gap-3 p-4">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="To: someone…"
+          placeholder={t("dm.to")}
           className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
           autoFocus
         />
@@ -107,7 +114,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
         )}
         <ul className="max-h-72 overflow-y-auto rounded border border-slate-800">
           {candidates.length === 0 ? (
-            <li className="p-3 text-xs text-slate-500">No matches.</li>
+            <li className="p-3 text-xs text-slate-500">{t("common.noMatches")}</li>
           ) : (
             candidates.map((u) => (
               <li key={u.user_id}>
@@ -129,10 +136,10 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
         {error && <p className="text-xs text-rose-400">{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" size="sm" onClick={() => void open()} disabled={busy}>
-            Open
+            {t("dm.open")}
           </Button>
         </div>
       </div>

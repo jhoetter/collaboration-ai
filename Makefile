@@ -123,6 +123,12 @@ dev: db-up kill-ports
 	  "$(MAKE) dev-web"
 
 dev-api:
+	@# Python 3.13's sqlite-backed dbm corrupts the celery beat shelf if
+	@# the previous run left a stale WAL behind, which floods the dev
+	@# console with `dbm.sqlite3.error: disk I/O error`. Nuking the
+	@# scheduler state at startup is safe — beat reseeds it from the
+	@# tasks registered in code.
+	@cd $(APP_DIR) && rm -f celerybeat-schedule celerybeat-schedule-shm celerybeat-schedule-wal celerybeat.pid
 	cd $(APP_DIR) && .venv/bin/hof dev --no-ui --port $(API_PORT)
 
 dev-web:

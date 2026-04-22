@@ -1,0 +1,122 @@
+{
+  "common": {
+    "appName": "collaboration-ai",
+    "cancel": "Cancel",
+    "save": "Save",
+    "send": "Send",
+    "open": "Open",
+    "close": "Close",
+    "create": "Create",
+    "delete": "Delete",
+    "edit": "Edit",
+    "rename": "Rename",
+    "leave": "Leave",
+    "join": "Join",
+    "add": "Add",
+    "new": "New",
+    "remove": "Remove",
+    "name": "Name",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading…",
+    "joiningWorkspace": "Joining workspace…",
+    "joinWorkspaceError": "Couldn't join the demo workspace.",
+    "didYouRunSeed": "Did you run {cmd} on the backend?",
+    "noMatches": "No matches.",
+    "language": "Language",
+    "english": "English",
+    "german": "German"
+  },
+  "sidebar": {
+    "channels": "Channels",
+    "directMessages": "Direct messages",
+    "mentions": "Mentions",
+    "drafts": "Drafts",
+    "noChannels": "No channels yet.",
+    "noDms": "No DMs yet.",
+    "addChannel": "Add channel",
+    "newDm": "New direct message",
+    "mentionInChannel": "@you in #{channel}"
+  },
+  "userMenu": {
+    "youAre": "You are",
+    "anonymous": "Anonymous",
+    "editDisplayName": "Edit display name",
+    "setStatus": "Set a status",
+    "statusPlaceholder": "What's up?",
+    "setActive": "Set as Active",
+    "setAway": "Set as Away",
+    "signOut": "Sign out",
+    "signOutConfirm": "Sign out and forget this identity?"
+  },
+  "channel": {
+    "messagePrefix": "Message #{name}",
+    "startHuddle": "🎧 Start huddle",
+    "joinHuddle": "🎧 Join huddle ({n})",
+    "topicPlaceholder": "Add a topic",
+    "members": "{n} members",
+    "membersOne": "1 member"
+  },
+  "composer": {
+    "placeholder": "Send a message",
+    "sending": "sending…",
+    "uploading": "uploading…",
+    "uploadFailed": "failed",
+    "addEmoji": "Add emoji",
+    "attachFile": "Attach file",
+    "removeAttachment": "Remove attachment"
+  },
+  "thread": {
+    "title": "Thread",
+    "replyPlaceholder": "Reply…",
+    "replyCount": "{n} replies",
+    "replyCountOne": "1 reply"
+  },
+  "dm": {
+    "newTitle": "New message",
+    "to": "To: someone…",
+    "open": "Open",
+    "pickAtLeastOne": "Pick at least one person.",
+    "couldNotOpen": "Could not open DM.",
+    "couldNotResolve": "Could not resolve DM channel."
+  },
+  "channelCreate": {
+    "title": "Create a channel",
+    "namePlaceholder": "e.g. project-launch",
+    "private": "Private",
+    "privateHint": "Only invited members can find or join.",
+    "topicPlaceholder": "Topic (optional)"
+  },
+  "huddle": {
+    "title": "Huddle",
+    "connecting": "Connecting…",
+    "onCall": "{n} on call",
+    "leave": "Leave",
+    "couldNotStart": "Could not start huddle: {error}"
+  },
+  "palette": {
+    "title": "Command palette",
+    "placeholder": "Jump to a channel, person, or run a command…",
+    "empty": "No commands match.",
+    "search": "Search",
+    "sectionActions": "Actions",
+    "sectionChannels": "Channels",
+    "sectionPeople": "People",
+    "sectionMessages": "Messages",
+    "actionCreateChannel": "Create channel",
+    "actionCreateChannelHint": "Open the new-channel dialog",
+    "actionNewDm": "New direct message",
+    "actionNewDmHint": "Start a DM with someone in the workspace",
+    "actionToggleLanguage": "Switch language",
+    "actionToggleLanguageHint": "Toggle between {a} and {b}",
+    "actionSignOut": "Sign out",
+    "actionSignOutHint": "Forget this anonymous identity and reload",
+    "actionSetAway": "Set status: Away",
+    "actionSetActive": "Set status: Active",
+    "shortcutCmdK": "⌘K"
+  },
+  "agentInbox": {
+    "title": "Agent inbox",
+    "empty": "Nothing waiting on you."
+  }
+}

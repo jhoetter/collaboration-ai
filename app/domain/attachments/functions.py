@@ -17,19 +17,37 @@ from ..shared.runtime import open_session
 from ..events.ids import make_uuid7, now_ms
 
 
+# Sensible dev defaults that match `infra/docker-compose.yml` so the
+# upload flow "just works" after `make install` without forcing the
+# operator to copy `.env.example` to `.env`. In real deployments the
+# env vars below are set by the orchestrator and these defaults are
+# never touched.
+_DEFAULT_DEV_S3_ENDPOINT = "http://localhost:9100"
+_DEFAULT_DEV_S3_BUCKET = "collabai-attachments"
+_DEFAULT_DEV_S3_REGION = "us-east-1"
+_DEFAULT_DEV_S3_KEY = "collabai"
+_DEFAULT_DEV_S3_SECRET = "collabai-dev-password"
+
+
 def _bucket() -> str:
-    return os.environ.get("S3_BUCKET_NAME", "collabai-attachments")
+    return os.environ.get("S3_BUCKET_NAME", _DEFAULT_DEV_S3_BUCKET)
 
 
 def _client():  # type: ignore[no-untyped-def]
     import boto3
+    from botocore.config import Config
 
     return boto3.client(
         "s3",
-        endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
-        region_name=os.environ.get("S3_REGION", "us-east-1"),
-        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        endpoint_url=os.environ.get("S3_ENDPOINT_URL", _DEFAULT_DEV_S3_ENDPOINT),
+        region_name=os.environ.get("S3_REGION", _DEFAULT_DEV_S3_REGION),
+        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID", _DEFAULT_DEV_S3_KEY),
+        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", _DEFAULT_DEV_S3_SECRET),
+        # MinIO requires path-style addressing (the SDK's default
+        # virtual-host style would resolve `bucket.localhost:9100`,
+        # which doesn't exist) and the SigV4 signer that LiveKit-style
+        # presigned PUTs depend on.
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
     )
 
 

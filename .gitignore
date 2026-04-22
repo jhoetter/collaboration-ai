@@ -48,6 +48,11 @@ htmlcov/
 !*.db.example
 *.pid
 
+# Celery beat scheduler shelf (regenerated each run by hof dev)
+celerybeat-schedule
+celerybeat-schedule-*
+celerybeat.pid
+
 # --- Environment ---
 .env
 .env.*

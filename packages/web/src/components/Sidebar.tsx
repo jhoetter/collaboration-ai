@@ -11,11 +11,13 @@
  * `notifications` and `readUpToByChannel` slices of the sync store.
  */
 import { Avatar, ChannelIcon, PresenceDot, type PresenceStatus as DotStatus } from "@collabai/ui";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
+import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Channel, type PresenceStatus } from "../state/sync.ts";
+import { useUi } from "../state/ui.ts";
 import { ChannelCreateModal } from "./ChannelCreateModal.tsx";
 import { NewDmModal } from "./NewDmModal.tsx";
 import { UserMenu } from "./UserMenu.tsx";
@@ -29,8 +31,11 @@ export function Sidebar() {
   const draftsByChannel = useSync((s) => s.draftsByChannel);
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const navigate = useNavigate();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newDmOpen, setNewDmOpen] = useState(false);
+  const { t } = useTranslator();
+  const createOpen = useUi((s) => s.createChannelOpen);
+  const newDmOpen = useUi((s) => s.newDmOpen);
+  const setCreateOpen = useUi((s) => s.setCreateChannelOpen);
+  const setNewDmOpen = useUi((s) => s.setNewDmOpen);
 
   const { rooms, dms } = useMemo(() => {
     const rooms: Channel[] = [];
@@ -82,11 +87,11 @@ export function Sidebar() {
       <UserMenu />
 
       <SectionHeader
-        label="Channels"
-        action={{ label: "Add", onClick: () => setCreateOpen(true) }}
+        label={t("sidebar.channels")}
+        action={{ label: t("sidebar.addChannel"), onClick: () => setCreateOpen(true) }}
       />
       {rooms.length === 0 && (
-        <p className="px-2 text-xs text-slate-500">No channels yet.</p>
+        <p className="px-2 text-xs text-slate-500">{t("sidebar.noChannels")}</p>
       )}
       {rooms.map((c) => (
         <ChannelRow
@@ -99,11 +104,11 @@ export function Sidebar() {
       ))}
 
       <SectionHeader
-        label="Direct messages"
-        action={{ label: "New", onClick: () => setNewDmOpen(true) }}
+        label={t("sidebar.directMessages")}
+        action={{ label: t("sidebar.newDm"), onClick: () => setNewDmOpen(true) }}
       />
       {dms.length === 0 && (
-        <p className="px-2 text-xs text-slate-500">No DMs yet.</p>
+        <p className="px-2 text-xs text-slate-500">{t("sidebar.noDms")}</p>
       )}
       {dms.map((c) => (
         <DmRow
@@ -117,7 +122,7 @@ export function Sidebar() {
 
       {mentionRows.length > 0 && (
         <>
-          <SectionHeader label="Mentions" />
+          <SectionHeader label={t("sidebar.mentions")} />
           {mentionRows.slice(0, 8).map((m) => (
             <button
               key={m.id}
@@ -127,7 +132,9 @@ export function Sidebar() {
               }}
               className="flex flex-col items-start rounded px-2 py-1 text-left text-xs text-amber-300 hover:bg-slate-800"
             >
-              <span className="truncate">@you in #{channelLabel(channels[m.channel_id ?? ""])}</span>
+              <span className="truncate">
+                {t("sidebar.mentionInChannel", { channel: channelLabel(channels[m.channel_id ?? ""]) })}
+              </span>
               {m.body && <span className="truncate text-slate-500">{m.body}</span>}
             </button>
           ))}
@@ -136,7 +143,7 @@ export function Sidebar() {
 
       {draftRows.length > 0 && (
         <>
-          <SectionHeader label="Drafts" />
+          <SectionHeader label={t("sidebar.drafts")} />
           {draftRows.map((d) => (
             <Link
               key={d.id}

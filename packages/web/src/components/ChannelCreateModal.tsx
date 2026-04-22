@@ -10,6 +10,7 @@ import { Button } from "@collabai/ui";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
+import { useTranslator } from "../lib/i18n/index.ts";
 import { ModalShell } from "./ChannelSettingsModal.tsx";
 
 interface CreateChannelResponse {
@@ -21,6 +22,7 @@ interface CreateChannelResponse {
 export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
   const params = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslator();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -56,23 +58,20 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalShell title="Create a channel" onClose={onClose}>
+    <ModalShell title={t("channelCreate.title")} onClose={onClose}>
       <div className="flex flex-col gap-3 p-4">
         <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-500">
-          <span>Name</span>
+          <span>{t("common.name")}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. design-reviews"
+            placeholder={t("channelCreate.namePlaceholder")}
             className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
             autoFocus
           />
-          <span className="text-[10px] normal-case text-slate-500">
-            Lowercase, no spaces. We'll slugify it for you.
-          </span>
         </label>
         <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-500">
-          <span>Description (optional)</span>
+          <span>{t("channelCreate.topicPlaceholder")}</span>
           <textarea
             rows={2}
             value={description}
@@ -86,15 +85,15 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
             checked={isPrivate}
             onChange={(e) => setIsPrivate(e.target.checked)}
           />
-          <span>Make private — invite only.</span>
+          <span>{t("channelCreate.private")} — {t("channelCreate.privateHint")}</span>
         </label>
         {error && <p className="text-xs text-rose-400">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" size="sm" onClick={() => void submit()} disabled={busy}>
-            Create
+            {t("common.create")}
           </Button>
         </div>
       </div>

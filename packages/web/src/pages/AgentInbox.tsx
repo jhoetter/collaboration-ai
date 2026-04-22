@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@collabai/ui";
 import { callFunction } from "../lib/api.ts";
+import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 
 interface ProposalRow {
@@ -17,6 +18,7 @@ interface ProposalRow {
 export function AgentInbox() {
   const workspaceId = useAuth((s) => s.workspaceId);
   const qc = useQueryClient();
+  const { t } = useTranslator();
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-inbox", workspaceId],
@@ -39,10 +41,12 @@ export function AgentInbox() {
 
   return (
     <aside className="w-80 border-l border-slate-800 bg-slate-900 p-3">
-      <h2 className="mb-2 text-xs uppercase tracking-wide text-slate-500">Agent inbox</h2>
-      {isLoading && <p className="text-sm text-slate-500">Loading…</p>}
+      <h2 className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+        {t("agentInbox.title")}
+      </h2>
+      {isLoading && <p className="text-sm text-slate-500">{t("common.loading")}</p>}
       {!isLoading && proposals.length === 0 && (
-        <p className="text-sm text-slate-500">No pending proposals.</p>
+        <p className="text-sm text-slate-500">{t("agentInbox.empty")}</p>
       )}
       <ul className="flex flex-col gap-3">
         {proposals.map((p) => (

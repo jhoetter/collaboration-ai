@@ -18,6 +18,7 @@ import { Button } from "@collabai/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sendTypingFrame } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
+import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment } from "../state/sync.ts";
 import { useUsers } from "../state/users.ts";
@@ -50,6 +51,7 @@ interface PendingAttachment extends Attachment {
 }
 
 export function Composer({ channelId, threadRoot = null, placeholder, onSend }: ComposerProps) {
+  const { t } = useTranslator();
   const editorRef = useRef<HTMLDivElement>(null);
   const [text, setText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
@@ -300,7 +302,7 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
           />
           {!text && (
             <div className="pointer-events-none absolute inset-0 text-sm text-slate-500">
-              {placeholder ?? "Send a message"}
+              {placeholder ?? t("composer.placeholder")}
             </div>
           )}
           {mentionState && filteredUsers.length > 0 && (
@@ -332,7 +334,7 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
           <button
             type="button"
             className="h-7 rounded px-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-            aria-label="Add emoji"
+            aria-label={t("composer.addEmoji")}
             onClick={() => setShowEmoji((v) => !v)}
           >
             😀
@@ -349,7 +351,7 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
           onClick={handleSend}
           disabled={!text.trim() && pending.filter((p) => p.status === "ready").length === 0}
         >
-          Send
+          {t("common.send")}
         </Button>
       </div>
     </div>
@@ -357,6 +359,7 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
 }
 
 function FilePickerButton({ onFile }: { onFile: (file: File) => void | Promise<void> }) {
+  const { t } = useTranslator();
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -364,7 +367,7 @@ function FilePickerButton({ onFile }: { onFile: (file: File) => void | Promise<v
         type="button"
         className="h-7 rounded px-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-100"
         onClick={() => ref.current?.click()}
-        aria-label="Attach file"
+        aria-label={t("composer.attachFile")}
       >
         📎
       </button>
@@ -390,6 +393,7 @@ function AttachmentChip({
   attachment: PendingAttachment;
   onRemove: () => void;
 }) {
+  const { t } = useTranslator();
   const isImage = attachment.mime.startsWith("image/");
   return (
     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200">
@@ -403,13 +407,17 @@ function AttachmentChip({
         <span aria-hidden="true">📄</span>
       )}
       <span className="max-w-[12rem] truncate">{attachment.name}</span>
-      {attachment.status === "uploading" && <span className="text-amber-400">uploading…</span>}
-      {attachment.status === "error" && <span className="text-rose-400">failed</span>}
+      {attachment.status === "uploading" && (
+        <span className="text-amber-400">{t("composer.uploading")}</span>
+      )}
+      {attachment.status === "error" && (
+        <span className="text-rose-400">{t("composer.uploadFailed")}</span>
+      )}
       <button
         type="button"
         className="text-slate-500 hover:text-rose-400"
         onClick={onRemove}
-        aria-label="Remove attachment"
+        aria-label={t("composer.removeAttachment")}
       >
         ✕
       </button>

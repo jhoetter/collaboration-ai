@@ -1,0 +1,122 @@
+{
+  "common": {
+    "appName": "collaboration-ai",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "send": "Senden",
+    "open": "Öffnen",
+    "close": "Schließen",
+    "create": "Erstellen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "rename": "Umbenennen",
+    "leave": "Verlassen",
+    "join": "Beitreten",
+    "add": "Hinzufügen",
+    "new": "Neu",
+    "remove": "Entfernen",
+    "name": "Name",
+    "yes": "Ja",
+    "no": "Nein",
+    "loading": "Lädt…",
+    "joiningWorkspace": "Trete Workspace bei…",
+    "joinWorkspaceError": "Beitritt zum Demo-Workspace fehlgeschlagen.",
+    "didYouRunSeed": "Wurde {cmd} im Backend ausgeführt?",
+    "noMatches": "Keine Treffer.",
+    "language": "Sprache",
+    "english": "Englisch",
+    "german": "Deutsch"
+  },
+  "sidebar": {
+    "channels": "Kanäle",
+    "directMessages": "Direktnachrichten",
+    "mentions": "Erwähnungen",
+    "drafts": "Entwürfe",
+    "noChannels": "Noch keine Kanäle.",
+    "noDms": "Noch keine DMs.",
+    "addChannel": "Kanal hinzufügen",
+    "newDm": "Neue Direktnachricht",
+    "mentionInChannel": "@dich in #{channel}"
+  },
+  "userMenu": {
+    "youAre": "Du bist",
+    "anonymous": "Anonym",
+    "editDisplayName": "Anzeigenamen bearbeiten",
+    "setStatus": "Status setzen",
+    "statusPlaceholder": "Was ist los?",
+    "setActive": "Auf aktiv setzen",
+    "setAway": "Auf abwesend setzen",
+    "signOut": "Abmelden",
+    "signOutConfirm": "Abmelden und diese Identität vergessen?"
+  },
+  "channel": {
+    "messagePrefix": "Nachricht an #{name}",
+    "startHuddle": "🎧 Huddle starten",
+    "joinHuddle": "🎧 Huddle beitreten ({n})",
+    "topicPlaceholder": "Thema hinzufügen",
+    "members": "{n} Mitglieder",
+    "membersOne": "1 Mitglied"
+  },
+  "composer": {
+    "placeholder": "Nachricht senden",
+    "sending": "sende…",
+    "uploading": "lade hoch…",
+    "uploadFailed": "fehlgeschlagen",
+    "addEmoji": "Emoji einfügen",
+    "attachFile": "Datei anhängen",
+    "removeAttachment": "Anhang entfernen"
+  },
+  "thread": {
+    "title": "Thread",
+    "replyPlaceholder": "Antworten…",
+    "replyCount": "{n} Antworten",
+    "replyCountOne": "1 Antwort"
+  },
+  "dm": {
+    "newTitle": "Neue Nachricht",
+    "to": "An: jemand…",
+    "open": "Öffnen",
+    "pickAtLeastOne": "Wähle mindestens eine Person.",
+    "couldNotOpen": "DM konnte nicht geöffnet werden.",
+    "couldNotResolve": "DM-Kanal konnte nicht aufgelöst werden."
+  },
+  "channelCreate": {
+    "title": "Kanal erstellen",
+    "namePlaceholder": "z. B. projekt-launch",
+    "private": "Privat",
+    "privateHint": "Nur eingeladene Mitglieder können diesen Kanal finden oder beitreten.",
+    "topicPlaceholder": "Thema (optional)"
+  },
+  "huddle": {
+    "title": "Huddle",
+    "connecting": "Verbinde…",
+    "onCall": "{n} im Anruf",
+    "leave": "Verlassen",
+    "couldNotStart": "Huddle konnte nicht gestartet werden: {error}"
+  },
+  "palette": {
+    "title": "Befehlspalette",
+    "placeholder": "Zu Kanal, Person springen oder Befehl ausführen…",
+    "empty": "Keine passenden Befehle.",
+    "search": "Suchen",
+    "sectionActions": "Aktionen",
+    "sectionChannels": "Kanäle",
+    "sectionPeople": "Personen",
+    "sectionMessages": "Nachrichten",
+    "actionCreateChannel": "Kanal erstellen",
+    "actionCreateChannelHint": "Dialog für neuen Kanal öffnen",
+    "actionNewDm": "Neue Direktnachricht",
+    "actionNewDmHint": "DM mit einer Person im Workspace starten",
+    "actionToggleLanguage": "Sprache wechseln",
+    "actionToggleLanguageHint": "Zwischen {a} und {b} umschalten",
+    "actionSignOut": "Abmelden",
+    "actionSignOutHint": "Anonyme Identität vergessen und neu laden",
+    "actionSetAway": "Status: Abwesend",
+    "actionSetActive": "Status: Aktiv",
+    "shortcutCmdK": "⌘K"
+  },
+  "agentInbox": {
+    "title": "Agent-Posteingang",
+    "empty": "Nichts wartet auf dich."
+  }
+}

@@ -19,7 +19,7 @@ def dm_open(
     idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     bus = get_command_bus()
-    return bus.dispatch(
+    result = bus.dispatch(
         Command(
             type="dm:open",
             payload={"participant_ids": participant_ids},
@@ -29,6 +29,26 @@ def dm_open(
             idempotency_key=idempotency_key,
         )
     ).to_dict()
+
+    # The handler returns no events when the DM already exists (idempotent
+    # re-open). Resolve the channel id from the projection so the caller
+    # can navigate to it without a follow-up round-trip.
+    if result.get("status") == "applied" and not result.get("events"):
+        from ..events.functions import get_projected_state
+
+        merged = sorted({actor_id, *participant_ids})
+        key = "|".join(merged)
+        state = get_projected_state(workspace_id)
+        existing_id = state.dm_index.get(key)
+        if existing_id:
+            result["dm_channel_id"] = existing_id
+    elif result.get("status") == "applied" and result.get("events"):
+        for ev in result["events"]:
+            if ev.get("type") == "dm.create":
+                result["dm_channel_id"] = ev.get("room_id")
+                break
+
+    return result
 
 
 @function(name="threads:list-replies", mcp_expose=True, mcp_scope="read:messages")

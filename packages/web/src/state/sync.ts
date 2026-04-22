@@ -119,6 +119,7 @@ export interface SyncState {
   setCursor(cursor: string | null): void;
   applyOptimistic(message: Message): void;
   reconcileOptimistic(localId: string, real: Message): void;
+  dropOptimistic(channelId: string, localId: string): void;
   upsertChannel(channel: Channel): void;
   setReadUpTo(channelId: string, sequence: number): void;
   applyPresence(updates: Array<{ user_id: string; status: PresenceStatus }>): void;
@@ -501,6 +502,17 @@ export const useSync = create<SyncState>((set, get) => ({
       return {
         messagesByChannel: { ...s.messagesByChannel, [real.channel_id]: updated },
         messageById: { ...s.messageById, [real.id]: real },
+      };
+    });
+  },
+
+  dropOptimistic(channelId, localId) {
+    set((s) => {
+      const list = s.messagesByChannel[channelId] ?? _empty;
+      const filtered = list.filter((m) => m.id !== localId);
+      if (filtered.length === list.length) return s;
+      return {
+        messagesByChannel: { ...s.messagesByChannel, [channelId]: filtered },
       };
     });
   },

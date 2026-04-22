@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "../state/auth.ts";
 import { type Event, useSync } from "../state/sync.ts";
+import { useUsers } from "../state/users.ts";
 
 /**
  * Bring the local sync state up to date with the workspace event log.
@@ -69,6 +70,16 @@ export function useEventStream(workspaceId: string | undefined) {
       }
       if (env.events && env.events.length) {
         applyMany(env.events, env.cursor);
+        // Refresh the workspace user directory whenever a new member is
+        // added so the "New DM" picker / @-mention popover surface them
+        // immediately. Cheap because `users:list` is a single query and
+        // only fires for membership-changing events.
+        const touchesMembership = env.events.some(
+          (e) => e.type === "workspace.member.add" || e.type === "workspace.member.role-set",
+        );
+        if (touchesMembership && workspaceId) {
+          void useUsers.getState().hydrate(workspaceId);
+        }
       } else if (env.cursor) {
         setCursor(env.cursor);
       }

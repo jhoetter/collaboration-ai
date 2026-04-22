@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
+import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { type Channel, useSync, type PresenceStatus } from "../state/sync.ts";
 import { ChannelSettingsModal } from "./ChannelSettingsModal.tsx";
@@ -31,6 +32,7 @@ export function ChannelHeader({
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const huddle = useSync((s) => s.huddlesByChannel[channelId]);
   const presence = useSync((s) => s.presence);
+  const { t } = useTranslator();
   const [showSettings, setShowSettings] = useState(false);
   const [showHuddle, setShowHuddle] = useState(false);
 
@@ -111,11 +113,11 @@ export function ChannelHeader({
         )}
         {huddle ? (
           <Button variant="primary" size="sm" onClick={() => setShowHuddle(true)}>
-            🎧 Join huddle ({huddle.participants.length})
+            {t("channel.joinHuddle", { n: huddle.participants.length })}
           </Button>
         ) : (
           <Button variant="ghost" size="sm" onClick={() => void startHuddle()}>
-            🎧 Start huddle
+            {t("channel.startHuddle")}
           </Button>
         )}
         {!isDm && (

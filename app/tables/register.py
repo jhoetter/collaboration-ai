@@ -10,7 +10,9 @@ from domain.agents.table import Agent, Proposal
 from domain.attachments.table import Attachment
 from domain.channels.table import Channel, ChannelMember
 from domain.events.table import EventRow, WorkspaceSequence
+from domain.huddles.table import Huddle, HuddleParticipant
 from domain.messages.table import Draft, Message, Pinned, ReadMarker, Reaction
+from domain.notifications.table import Notification
 from domain.users.table import User
 from domain.workspaces.table import Workspace, WorkspaceMember
 
@@ -21,7 +23,10 @@ __all__ = [
     "ChannelMember",
     "Draft",
     "EventRow",
+    "Huddle",
+    "HuddleParticipant",
     "Message",
+    "Notification",
     "Pinned",
     "Proposal",
     "ReadMarker",
