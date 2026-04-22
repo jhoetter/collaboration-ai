@@ -98,6 +98,22 @@ export const collabAIPreset = {
         DEFAULT: "var(--ring)",
         accent: "var(--accent)",
       },
+      /*
+       * Tailwind v3 falls back to `gray-200` (#e5e7eb) for the global
+       * preflight `border-color` on `*, ::before, ::after` whenever the
+       * preset replaces `colors`. That hard-codes a *light* border on
+       * every element that uses `.border` without an explicit colour
+       * utility, which reads as a bright stroke in dark mode (composer
+       * card, search input, modals, …). Re-point both `borderColor` and
+       * `divideColor` defaults at the active theme `--border` so unstyled
+       * borders honour the theme.
+       */
+      borderColor: {
+        DEFAULT: "var(--border)",
+      },
+      divideColor: {
+        DEFAULT: "var(--border)",
+      },
       maxWidth: {
         content: "1200px",
         prose: "65ch",
