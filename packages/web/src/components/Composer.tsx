@@ -1,26 +1,28 @@
 /**
- * Slack-style composer.
+ * Slack-style composer (Lexical-backed).
  *
- * Layout: optional formatting toolbar on top, contenteditable input,
- * action row (plus-menu, smile, mention, send) at the bottom.
+ * Layout: optional formatting toolbar on top, Lexical-powered rich
+ * content editable, action row (plus-menu, type, paperclip, smile,
+ * mention, send) at the bottom.
  *
- * - Plain-text contenteditable with markdown shortcuts. Selection-aware
- *   formatting buttons wrap the current selection (Cmd/Ctrl + B / I / E
- *   work too).
- * - `@` triggers a user-suggest popover that walks `useUsers`.
- * - `/` at the start of an empty message opens a slash-command popover.
+ * - WYSIWYG markdown via `@lexical/react`'s `MarkdownShortcutPlugin`:
+ *   typing `**foo**` instantly bolds, `1. ` starts an ordered list,
+ *   `> ` becomes a blockquote, etc. Cmd/Ctrl + B/I/E route through
+ *   Lexical's `FORMAT_TEXT_COMMAND`.
+ * - The chat protocol is markdown end-to-end, so we serialise to/from
+ *   a markdown string for drafts (`chat:set-draft`) and the wire send
+ *   payload (`chat:send-message`).
+ * - `@` triggers a user-suggest popover; `/` at the start of an empty
+ *   message opens the slash-command popover. Both popovers render
+ *   through `PopoverPortal` so they escape the composer card and
+ *   never get clipped.
  * - Drag/drop, paste, plus-menu and inline button reach the attachment
  *   tray which uploads files via `attachment:upload-init` + direct PUT
  *   to the presigned URL, then `attachment:upload-finalise`.
  * - Per-channel drafts persist to the server through `chat:set-draft`;
  *   typing emits a debounced `{type:typing}` frame over the WS.
- *
- * Lexical was the original target; we hand-roll on `contenteditable`
- * for deterministic mention/draft handling — Lexical's plugin set adds
- * a lot of bundle weight for marginal benefit at this scale.
  */
 import {
-  Button,
   IconAt,
   IconBold,
   IconCode,
@@ -41,7 +43,29 @@ import {
   ToolbarDivider,
   ToolbarSpacer,
 } from "@collabai/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { TOGGLE_LINK_COMMAND } from "@lexical/link";
+import {
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
+} from "@lexical/list";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  $createCodeNode,
+  $isCodeNode,
+} from "@lexical/code";
+import { $createQuoteNode, $isQuoteNode } from "@lexical/rich-text";
+import { $setBlocksType } from "@lexical/selection";
+import {
+  $createParagraphNode,
+  $getRoot,
+  $getSelection,
+  $isRangeSelection,
+  CLEAR_EDITOR_COMMAND,
+  FORMAT_TEXT_COMMAND,
+  type LexicalEditor,
+} from "lexical";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sendTypingFrame } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
@@ -49,7 +73,17 @@ import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment } from "../state/sync.ts";
 import { useUi } from "../state/ui.ts";
 import { useUsers } from "../state/users.ts";
+import { PdfThumb, formatBytes } from "./AttachmentCard.tsx";
 import { EmojiPicker } from "./EmojiPicker.tsx";
+import { FileTypeIcon } from "./FileTypeIcon.tsx";
+import { PopoverPortal } from "./PopoverPortal.tsx";
+import { EditorSurface } from "./composer/EditorSurface.tsx";
+import { buildEditorConfig } from "./composer/lexicalConfig.ts";
+import {
+  isMarkdownEmpty,
+  readMarkdown,
+  writeMarkdown,
+} from "./composer/markdown.ts";
 
 export interface ComposerSendPayload {
   text: string;
@@ -81,16 +115,14 @@ interface SlashCommand {
   id: string;
   name: string;
   hint: string;
-  /** Apply the command to the current text and return the next textbox content (or undefined to no-op). */
+  /** Apply the command and return whether it was handled. `clear` resets the editor. */
   run(args: SlashRunArgs): SlashRunResult | Promise<SlashRunResult>;
 }
 
 interface SlashRunArgs {
-  /** Text after the slash command itself, e.g. "@alice hi" for "/dm @alice hi". */
   rest: string;
   channelId: string;
   setText(next: string): void;
-  setMentionState(s: { query: string; index: number } | null): void;
   openNewDm(): void;
   openInvite(): void;
   setAway(): Promise<void>;
@@ -99,22 +131,48 @@ interface SlashRunArgs {
 
 type SlashRunResult = { handled: true; clear?: boolean } | { handled: false };
 
-export function Composer({ channelId, threadRoot = null, placeholder, onSend }: ComposerProps) {
+export function Composer(props: ComposerProps) {
+  const config = useMemo(
+    () => buildEditorConfig(`composer-${props.channelId}-${props.threadRoot ?? "main"}`),
+    [props.channelId, props.threadRoot],
+  );
+  return (
+    <LexicalComposer initialConfig={config}>
+      <ComposerInner {...props} />
+    </LexicalComposer>
+  );
+}
+
+function ComposerInner({
+  channelId,
+  threadRoot = null,
+  placeholder,
+  onSend,
+}: ComposerProps) {
   const { t } = useTranslator();
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [editor] = useLexicalComposerContext();
   const [text, setText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showFormatting, setShowFormatting] = useState(true);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
-  const [mentionState, setMentionState] = useState<{ query: string; index: number } | null>(null);
-  const [slashState, setSlashState] = useState<{ query: string; index: number } | null>(null);
+  const [mentionState, setMentionState] = useState<{
+    query: string;
+    index: number;
+    range: { node: Text; offset: number } | null;
+  } | null>(null);
+  const [slashState, setSlashState] = useState<{ query: string; index: number } | null>(
+    null,
+  );
   const draftFromServer = useSync((s) => s.draftsByChannel[channelId]?.content ?? "");
   const draftHydrated = useRef(false);
   const lastTypingSentAt = useRef(0);
   const draftSaveTimer = useRef<number | null>(null);
   const setNewDmOpen = useUi((s) => s.setNewDmOpen);
   const messagesByChannel = useSync((s) => s.messagesByChannel);
+  const plusMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   const usersById = useUsers((s) => s.byId);
   const userList = useMemo(() => Object.values(usersById), [usersById]);
@@ -123,11 +181,11 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
   useEffect(() => {
     if (draftHydrated.current) return;
     if (draftFromServer) {
+      writeMarkdown(editor, draftFromServer);
       setText(draftFromServer);
-      if (editorRef.current) editorRef.current.textContent = draftFromServer;
     }
     draftHydrated.current = true;
-  }, [channelId, draftFromServer]);
+  }, [channelId, draftFromServer, editor]);
 
   // Reset hydrated flag when channel changes so we reload draft for new channel.
   useEffect(() => {
@@ -136,8 +194,8 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
     setPending([]);
     setSlashState(null);
     setMentionState(null);
-    if (editorRef.current) editorRef.current.textContent = "";
-  }, [channelId]);
+    editor.dispatchCommand(CLEAR_EDITOR_COMMAND, undefined);
+  }, [channelId, editor]);
 
   // Listen for the channel-pane drag-drop overlay so the upload pipeline
   // is the single source of truth for attachment uploads.
@@ -149,65 +207,80 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
     }
     window.addEventListener("collab:files-dropped", onFiles as EventListener);
     return () => window.removeEventListener("collab:files-dropped", onFiles as EventListener);
-    // `uploadFile` is closed-over but stable enough — it doesn't depend on
-    // any state that's bound at hook-call time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
-  function persistDraft(content: string) {
-    if (draftSaveTimer.current) window.clearTimeout(draftSaveTimer.current);
-    draftSaveTimer.current = window.setTimeout(() => {
-      const trimmed = content.trim();
-      if (trimmed.length === 0) {
-        void callFunction("chat:clear-draft", { channel_id: channelId }).catch(() => undefined);
+  const persistDraft = useCallback(
+    (content: string) => {
+      if (draftSaveTimer.current) window.clearTimeout(draftSaveTimer.current);
+      draftSaveTimer.current = window.setTimeout(() => {
+        const trimmed = content.trim();
+        if (trimmed.length === 0) {
+          void callFunction("chat:clear-draft", { channel_id: channelId }).catch(
+            () => undefined,
+          );
+        } else {
+          void callFunction("chat:set-draft", {
+            channel_id: channelId,
+            content: trimmed,
+          }).catch(() => undefined);
+        }
+      }, 800);
+    },
+    [channelId],
+  );
+
+  const handleEditorChange = useCallback(
+    (ed: LexicalEditor) => {
+      const md = readMarkdown(ed);
+      setText(md);
+      persistDraft(md);
+      const now = Date.now();
+      if (now - lastTypingSentAt.current > 2_000 && !isMarkdownEmpty(md)) {
+        lastTypingSentAt.current = now;
+        sendTypingFrame(channelId);
+      }
+      // Slash commands only at the very start of an empty editor.
+      if (md.startsWith("/")) {
+        const cmd = md.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
+        setSlashState({ query: cmd, index: 0 });
       } else {
-        void callFunction("chat:set-draft", { channel_id: channelId, content: trimmed }).catch(
-          () => undefined,
-        );
+        setSlashState(null);
       }
-    }, 800);
-  }
-
-  function syncFromEditor() {
-    const value = (editorRef.current?.textContent ?? "").replace(/\u00a0/g, " ");
-    setText(value);
-    persistDraft(value);
-  }
-
-  function handleInput() {
-    syncFromEditor();
-    const now = Date.now();
-    if (now - lastTypingSentAt.current > 2_000) {
-      lastTypingSentAt.current = now;
-      sendTypingFrame(channelId);
-    }
-    const value = editorRef.current?.textContent ?? "";
-    if (value.startsWith("/")) {
-      const cmd = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
-      setSlashState({ query: cmd, index: 0 });
-    } else {
-      setSlashState(null);
-    }
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      const nodeText = range.startContainer.textContent ?? "";
-      const upTo = nodeText.slice(0, range.startOffset);
-      const match = upTo.match(/@([\w-]*)$/);
-      if (match) {
-        setMentionState({ query: match[1].toLowerCase(), index: 0 });
-        return;
-      }
-    }
-    setMentionState(null);
-  }
+      // Mention detection: walk the current selection back to the most
+      // recent `@` and extract the query token.
+      ed.getEditorState().read(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+          setMentionState(null);
+          return;
+        }
+        const anchor = selection.anchor;
+        const node = anchor.getNode();
+        const nodeText = node.getTextContent();
+        const upTo = nodeText.slice(0, anchor.offset);
+        const m = upTo.match(/(^|\s)@([\w-]*)$/);
+        if (m) {
+          setMentionState({
+            query: m[2].toLowerCase(),
+            index: 0,
+            range: null,
+          });
+        } else {
+          setMentionState(null);
+        }
+      });
+    },
+    [channelId, persistDraft],
+  );
 
   const filteredUsers = useMemo(() => {
     if (!mentionState) return [];
     const q = mentionState.query;
     return userList
-      .filter((u) =>
-        u.user_id.toLowerCase().includes(q) || u.display_name.toLowerCase().includes(q),
+      .filter(
+        (u) =>
+          u.user_id.toLowerCase().includes(q) ||
+          u.display_name.toLowerCase().includes(q),
       )
       .slice(0, 6);
   }, [mentionState, userList]);
@@ -279,15 +352,29 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
     return slashCommands.filter((c) => c.name.startsWith(`/${slashState.query}`));
   }, [slashState, slashCommands]);
 
-  function applyMention(userId: string, displayName: string) {
-    if (!editorRef.current) return;
-    const node = editorRef.current;
-    const current = node.textContent ?? "";
-    const replaced = current.replace(/@([\w-]*)$/, `@${displayName} `);
-    node.textContent = replaced;
-    setText(replaced);
+  function applyMention(displayName: string) {
+    editor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection) || !selection.isCollapsed()) return;
+      const anchor = selection.anchor;
+      const node = anchor.getNode();
+      if (node.getType() !== "text") return;
+      const nodeText = node.getTextContent();
+      const upTo = nodeText.slice(0, anchor.offset);
+      const m = upTo.match(/@([\w-]*)$/);
+      if (!m) return;
+      const start = anchor.offset - m[0].length;
+      const replacement = `@${displayName} `;
+      // Replace [start, anchor.offset) with the mention text.
+      const after = nodeText.slice(anchor.offset);
+      (node as unknown as { setTextContent(t: string): void }).setTextContent(
+        nodeText.slice(0, start) + replacement + after,
+      );
+      const newOffset = start + replacement.length;
+      selection.anchor.set(node.getKey(), newOffset, "text");
+      selection.focus.set(node.getKey(), newOffset, "text");
+    });
     setMentionState(null);
-    placeCaretAtEnd(node);
   }
 
   async function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
@@ -372,8 +459,9 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
 
   function clearEditor() {
     setText("");
-    if (editorRef.current) editorRef.current.textContent = "";
+    editor.dispatchCommand(CLEAR_EDITOR_COMMAND, undefined);
     setSlashState(null);
+    setMentionState(null);
     persistDraft("");
   }
 
@@ -388,11 +476,9 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
       rest,
       channelId,
       setText: (next) => {
-        if (editorRef.current) editorRef.current.textContent = next;
+        writeMarkdown(editor, next);
         setText(next);
-        placeCaretAtEnd(editorRef.current!);
       },
-      setMentionState,
       openNewDm: () => setNewDmOpen(true),
       openInvite: () => useUi.getState().setMembersPanelOpen(true),
       setAway,
@@ -408,17 +494,14 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
     const ready = pending.filter((p) => p.status === "ready");
     if (!trimmed && ready.length === 0) return;
     if (await maybeRunSlash(trimmed)) {
-      const after = (editorRef.current?.textContent ?? "").trim();
+      const after = readMarkdown(editor).trim();
       if (!after && ready.length === 0) return;
       const mentions = collectMentionedUserIds(after, userList);
       const linkAttachments = await fetchLinkPreviews(after);
       await onSend({
         text: after,
         mentions,
-        attachments: [
-          ...ready.map(({ status, localUrl, ...a }) => a),
-          ...linkAttachments,
-        ],
+        attachments: [...ready.map(stripUploadFields), ...linkAttachments],
         threadRoot,
       });
       clearEditor();
@@ -430,10 +513,7 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
     await onSend({
       text: trimmed,
       mentions,
-      attachments: [
-        ...ready.map(({ status, localUrl, ...a }) => a),
-        ...linkAttachments,
-      ],
+      attachments: [...ready.map(stripUploadFields), ...linkAttachments],
       threadRoot,
     });
     clearEditor();
@@ -459,16 +539,11 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
           name: meta.title ?? url,
           mime: "text/url",
           size_bytes: 0,
-          // The frontend AttachmentCard widens the type via a runtime
-          // duck-type check (`kind === "link_preview"`), so casting here
-          // is safe and avoids leaking the union into the canonical
-          // backend `Attachment` schema.
           ...(meta as object),
           kind: "link_preview",
         } as Attachment);
       } catch {
-        // Link previews are advisory — never block the send on a fetch
-        // failure (private links, dead servers, captchas, …).
+        // Link previews are advisory.
       }
     }
     return out;
@@ -491,10 +566,11 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         const pick = filteredUsers[mentionState.index];
-        if (pick) applyMention(pick.user_id, pick.display_name);
+        if (pick) applyMention(pick.display_name);
         return;
       }
       if (e.key === "Escape") {
+        e.preventDefault();
         setMentionState(null);
         return;
       }
@@ -515,41 +591,21 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
       if (e.key === "Tab") {
         e.preventDefault();
         const pick = filteredSlash[slashState.index];
-        if (pick && editorRef.current) {
-          const cur = editorRef.current.textContent ?? "";
+        if (pick) {
+          const cur = readMarkdown(editor);
           const tail = cur.replace(/^\/[\w-]*/, `${pick.name} `);
-          editorRef.current.textContent = tail;
+          writeMarkdown(editor, tail);
           setText(tail);
-          placeCaretAtEnd(editorRef.current);
         }
         return;
       }
       if (e.key === "Escape") {
+        e.preventDefault();
         setSlashState(null);
         return;
       }
     }
     const isMod = e.metaKey || e.ctrlKey;
-    if (isMod && (e.key === "b" || e.key === "B")) {
-      e.preventDefault();
-      wrapSelection("**", "**");
-      return;
-    }
-    if (isMod && (e.key === "i" || e.key === "I")) {
-      e.preventDefault();
-      wrapSelection("*", "*");
-      return;
-    }
-    if (isMod && (e.key === "e" || e.key === "E")) {
-      e.preventDefault();
-      wrapSelection("`", "`");
-      return;
-    }
-    if (isMod && e.shiftKey && (e.key === "x" || e.key === "X")) {
-      e.preventDefault();
-      wrapSelection("~~", "~~");
-      return;
-    }
     if (isMod && (e.key === "k" || e.key === "K")) {
       e.preventDefault();
       promptLink();
@@ -561,134 +617,83 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
     }
   }
 
-  function getSelectionInEditor(): { start: number; end: number } {
-    const node = editorRef.current;
-    if (!node) return { start: 0, end: 0 };
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) {
-      const len = node.textContent?.length ?? 0;
-      return { start: len, end: len };
-    }
-    const range = sel.getRangeAt(0);
-    const pre = range.cloneRange();
-    pre.selectNodeContents(node);
-    pre.setEnd(range.startContainer, range.startOffset);
-    const start = pre.toString().length;
-    const end = start + range.toString().length;
-    return { start, end };
-  }
-
-  function setSelectionInEditor(start: number, end: number) {
-    const node = editorRef.current;
-    if (!node) return;
-    const range = document.createRange();
-    let remaining = start;
-    let endRemaining = end;
-    let startSet = false;
-    let endSet = false;
-    function walk(n: Node) {
-      if (startSet && endSet) return;
-      if (n.nodeType === Node.TEXT_NODE) {
-        const len = (n.textContent ?? "").length;
-        if (!startSet && remaining <= len) {
-          range.setStart(n, remaining);
-          startSet = true;
-        }
-        if (!endSet && endRemaining <= len) {
-          range.setEnd(n, endRemaining);
-          endSet = true;
-        }
-        remaining -= len;
-        endRemaining -= len;
-      } else {
-        for (const child of Array.from(n.childNodes)) walk(child);
-      }
-    }
-    walk(node);
-    if (!startSet || !endSet) {
-      range.selectNodeContents(node);
-      range.collapse(false);
-    }
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  }
-
-  function wrapSelection(prefix: string, suffix: string, fallback?: string) {
-    const node = editorRef.current;
-    if (!node) return;
-    node.focus();
-    const cur = node.textContent ?? "";
-    const { start, end } = getSelectionInEditor();
-    const selected = cur.slice(start, end) || fallback || "";
-    const next = cur.slice(0, start) + prefix + selected + suffix + cur.slice(end);
-    node.textContent = next;
-    setText(next);
-    persistDraft(next);
-    const newStart = start + prefix.length;
-    const newEnd = newStart + selected.length;
-    setSelectionInEditor(newStart, newEnd);
-  }
-
-  function prefixLines(prefix: string | ((index: number) => string)) {
-    const node = editorRef.current;
-    if (!node) return;
-    node.focus();
-    const cur = node.textContent ?? "";
-    const { start, end } = getSelectionInEditor();
-    const lineStart = cur.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
-    const lineEnd = cur.indexOf("\n", end);
-    const tailIndex = lineEnd === -1 ? cur.length : lineEnd;
-    const before = cur.slice(0, lineStart);
-    const block = cur.slice(lineStart, tailIndex);
-    const after = cur.slice(tailIndex);
-    const lines = block.length === 0 ? [""] : block.split("\n");
-    const transformed = lines
-      .map((line, i) => `${typeof prefix === "string" ? prefix : prefix(i)}${line}`)
-      .join("\n");
-    const next = before + transformed + after;
-    node.textContent = next;
-    setText(next);
-    persistDraft(next);
-    setSelectionInEditor(before.length, before.length + transformed.length);
+  function format(format: "bold" | "italic" | "underline" | "strikethrough" | "code") {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
   }
 
   function promptLink() {
     const url = window.prompt(t("composer.linkPrompt"), "https://");
     if (!url) return;
-    wrapSelection("[", `](${url})`, t("composer.link"));
+    editor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
   }
 
   function insertEmoji(emoji: string) {
-    if (!editorRef.current) return;
-    const next = (editorRef.current.textContent ?? "") + emoji;
-    editorRef.current.textContent = next;
-    setText(next);
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        selection.insertText(emoji);
+      }
+    });
     setShowEmoji(false);
-    placeCaretAtEnd(editorRef.current);
+  }
+
+  function toggleQuote() {
+    editor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      const nodes = selection.getNodes();
+      const inQuote = nodes.some((n) => $isQuoteNode(n.getTopLevelElementOrThrow()));
+      $setBlocksType(selection, () =>
+        inQuote ? $createParagraphNode() : $createQuoteNode(),
+      );
+    });
   }
 
   function insertCodeBlock() {
-    const node = editorRef.current;
-    if (!node) return;
-    const cur = node.textContent ?? "";
-    const next = `${cur}${cur && !cur.endsWith("\n") ? "\n" : ""}\`\`\`\n\n\`\`\``;
-    node.textContent = next;
-    setText(next);
-    persistDraft(next);
-    placeCaretAtEnd(node);
+    editor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      const nodes = selection.getNodes();
+      const inCode = nodes.some((n) => $isCodeNode(n.getTopLevelElementOrThrow()));
+      $setBlocksType(selection, () =>
+        inCode ? $createParagraphNode() : $createCodeNode(),
+      );
+    });
+  }
+
+  function focusEditor() {
+    editor.focus();
+  }
+
+  function appendAtMention() {
+    editor.focus();
+    editor.update(() => {
+      const root = $getRoot();
+      const last = root.getLastDescendant();
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        if (last) {
+          const lastText = last.getTextContent();
+          const prefix = lastText && !lastText.endsWith(" ") ? " " : "";
+          selection.insertText(`${prefix}@`);
+        } else {
+          selection.insertText("@");
+        }
+      }
+    });
   }
 
   const canSend = text.trim().length > 0 || pending.some((p) => p.status === "ready");
 
   return (
     <div
-      className="border-t border-border bg-surface p-3"
+      ref={editorContainerRef}
+      className="relative border-t border-border bg-surface px-4 pb-4 pt-3"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
       {pending.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
+        <div className="mb-3 flex flex-wrap items-start gap-2 rounded-md bg-hover/50 p-2">
           {pending.map((p) => (
             <AttachmentChip
               key={p.file_id}
@@ -698,27 +703,34 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
           ))}
         </div>
       )}
-      <div className="overflow-hidden rounded-md border border-border bg-background transition-colors focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20">
+      <div
+        className="group/composer rounded-lg border border-border bg-background shadow-sm transition-all focus-within:border-accent/60 focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/20"
+        onClick={focusEditor}
+      >
         {showFormatting && (
-          <Toolbar density="compact" className="border-b border-border px-2 py-1">
+          <Toolbar
+            density="comfortable"
+            className="gap-2 overflow-hidden rounded-t-lg border-b border-border/60 px-3 py-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <ToolbarButton
               label={t("composer.bold")}
               shortcut="⌘B"
-              onClick={() => wrapSelection("**", "**")}
+              onClick={() => format("bold")}
             >
               <IconBold />
             </ToolbarButton>
             <ToolbarButton
               label={t("composer.italic")}
               shortcut="⌘I"
-              onClick={() => wrapSelection("*", "*")}
+              onClick={() => format("italic")}
             >
               <IconItalic />
             </ToolbarButton>
             <ToolbarButton
               label={t("composer.strikethrough")}
               shortcut="⌘⇧X"
-              onClick={() => wrapSelection("~~", "~~")}
+              onClick={() => format("strikethrough")}
             >
               <IconStrike />
             </ToolbarButton>
@@ -728,27 +740,28 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
             <ToolbarDivider />
             <ToolbarButton
               label={t("composer.bulletedList")}
-              onClick={() => prefixLines("- ")}
+              onClick={() =>
+                editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
+              }
             >
               <IconListBullet />
             </ToolbarButton>
             <ToolbarButton
               label={t("composer.numberedList")}
-              onClick={() => prefixLines((i) => `${i + 1}. `)}
+              onClick={() =>
+                editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
+              }
             >
               <IconListNumbered />
             </ToolbarButton>
-            <ToolbarButton
-              label={t("composer.quote")}
-              onClick={() => prefixLines("> ")}
-            >
+            <ToolbarButton label={t("composer.quote")} onClick={toggleQuote}>
               <IconQuote />
             </ToolbarButton>
             <ToolbarDivider />
             <ToolbarButton
               label={t("composer.code")}
               shortcut="⌘E"
-              onClick={() => wrapSelection("`", "`")}
+              onClick={() => format("code")}
             >
               <IconCode />
             </ToolbarButton>
@@ -757,108 +770,28 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
             </ToolbarButton>
           </Toolbar>
         )}
-        <div className="relative px-3 py-2">
-          <div
-            ref={editorRef}
-            role="textbox"
-            aria-label="Message composer"
-            contentEditable
-            suppressContentEditableWarning
-            onInput={handleInput}
-            onKeyDown={handleKeyDown}
+        <div onClick={(e) => e.stopPropagation()}>
+          <EditorSurface
+            ariaLabel="Message composer"
+            placeholder={placeholder ?? t("composer.placeholder")}
+            onChange={handleEditorChange}
+            onKeyDownCapture={handleKeyDown}
             onPaste={handlePaste}
-            className="min-h-[40px] whitespace-pre-wrap break-words text-sm text-foreground outline-none"
           />
-          {!text && (
-            <div className="pointer-events-none absolute left-3 right-3 top-2 text-sm text-tertiary">
-              {placeholder ?? t("composer.placeholder")}
-            </div>
-          )}
-          {mentionState && filteredUsers.length > 0 && (
-            <ul className="absolute bottom-full left-0 z-10 mb-2 w-64 max-h-56 overflow-auto rounded-md border border-border bg-card shadow-xl">
-              {filteredUsers.map((u, i) => (
-                <li key={u.user_id}>
-                  <button
-                    type="button"
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                      i === mentionState.index
-                        ? "bg-accent-light text-accent"
-                        : "hover:bg-hover"
-                    }`}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      applyMention(u.user_id, u.display_name);
-                    }}
-                  >
-                    <span className="font-medium text-foreground">@{u.display_name}</span>
-                    <span className="text-xs text-tertiary">{u.user_id}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {slashState && filteredSlash.length > 0 && (
-            <ul className="absolute bottom-full left-0 z-10 mb-2 w-72 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-xl">
-              {filteredSlash.map((c, i) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors ${
-                      i === slashState.index ? "bg-accent-light text-accent" : "hover:bg-hover"
-                    }`}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      if (editorRef.current) {
-                        const cur = editorRef.current.textContent ?? "";
-                        const tail = cur.replace(/^\/[\w-]*/, `${c.name} `);
-                        editorRef.current.textContent = tail;
-                        setText(tail);
-                        placeCaretAtEnd(editorRef.current);
-                      }
-                    }}
-                  >
-                    <span className="font-medium text-foreground">{c.name}</span>
-                    <span className="text-xs text-tertiary">{c.hint}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-        <div className="flex items-center gap-1 border-t border-border px-2 py-1.5">
-          <div className="relative">
-            <ToolbarButton
-              label={t("composer.more")}
-              onClick={() => setShowPlusMenu((v) => !v)}
-              active={showPlusMenu}
-            >
-              <IconPlus />
-            </ToolbarButton>
-            {showPlusMenu && (
-              <PlusMenu
-                onClose={() => setShowPlusMenu(false)}
-                onAttach={() => {
-                  setShowPlusMenu(false);
-                  document.getElementById(`composer-file-${channelId}`)?.click();
-                }}
-                onSnippet={() => {
-                  setShowPlusMenu(false);
-                  insertCodeBlock();
-                }}
-                onMention={() => {
-                  setShowPlusMenu(false);
-                  if (editorRef.current) {
-                    const cur = editorRef.current.textContent ?? "";
-                    const next = `${cur}${cur && !cur.endsWith(" ") ? " " : ""}@`;
-                    editorRef.current.textContent = next;
-                    setText(next);
-                    placeCaretAtEnd(editorRef.current);
-                    setMentionState({ query: "", index: 0 });
-                  }
-                }}
-              />
-            )}
-          </div>
+        <div
+          className="flex items-center gap-2 border-t border-border/60 px-3 pb-2.5 pt-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ToolbarButton
+            ref={plusMenuButtonRef}
+            label={t("composer.more")}
+            onClick={() => setShowPlusMenu((v) => !v)}
+            active={showPlusMenu}
+          >
+            <IconPlus />
+          </ToolbarButton>
+          <ToolbarDivider />
           <ToolbarButton
             label={showFormatting ? t("composer.hideFormatting") : t("composer.showFormatting")}
             active={showFormatting}
@@ -873,45 +806,108 @@ export function Composer({ channelId, threadRoot = null, placeholder, onSend }: 
             <IconPaperclip />
           </ToolbarButton>
           <ToolbarButton
+            ref={emojiButtonRef}
             label={t("composer.addEmoji")}
             active={showEmoji}
             onClick={() => setShowEmoji((v) => !v)}
           >
             <IconSmile />
           </ToolbarButton>
-          <ToolbarButton
-            label={t("composer.mention")}
-            onClick={() => {
-              if (editorRef.current) {
-                const cur = editorRef.current.textContent ?? "";
-                const next = `${cur}${cur && !cur.endsWith(" ") ? " " : ""}@`;
-                editorRef.current.textContent = next;
-                setText(next);
-                placeCaretAtEnd(editorRef.current);
-                setMentionState({ query: "", index: 0 });
-              }
-            }}
-          >
+          <ToolbarButton label={t("composer.mention")} onClick={appendAtMention}>
             <IconAt />
           </ToolbarButton>
           <ToolbarSpacer />
-          <Button
-            variant="primary"
-            size="sm"
+          <button
+            type="button"
             onClick={() => void handleSend()}
             disabled={!canSend}
             aria-label={t("common.send")}
-            className="gap-1.5"
+            title={`${t("common.send")} (⏎)`}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-all ${
+              canSend
+                ? "bg-accent text-accent-foreground shadow-sm hover:brightness-110"
+                : "bg-hover text-tertiary"
+            } disabled:cursor-not-allowed`}
           >
             <IconSend size={14} />
-            <span>{t("common.send")}</span>
-          </Button>
+          </button>
         </div>
       </div>
+
+      {showPlusMenu && (
+        <PopoverPortal anchor={plusMenuButtonRef.current} placement="bottom-start">
+          <PlusMenu
+            onClose={() => setShowPlusMenu(false)}
+            onAttach={() => {
+              setShowPlusMenu(false);
+              document.getElementById(`composer-file-${channelId}`)?.click();
+            }}
+            onSnippet={() => {
+              setShowPlusMenu(false);
+              insertCodeBlock();
+            }}
+            onMention={() => {
+              setShowPlusMenu(false);
+              appendAtMention();
+            }}
+          />
+        </PopoverPortal>
+      )}
+      {mentionState && filteredUsers.length > 0 && (
+        <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
+          <ul className="w-64 max-h-56 overflow-auto rounded-md border border-border bg-card shadow-xl">
+            {filteredUsers.map((u, i) => (
+              <li key={u.user_id}>
+                <button
+                  type="button"
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                    i === mentionState.index
+                      ? "bg-accent-light text-accent"
+                      : "hover:bg-hover"
+                  }`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    applyMention(u.display_name);
+                  }}
+                >
+                  <span className="font-medium text-foreground">@{u.display_name}</span>
+                  <span className="text-xs text-tertiary">{u.user_id}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </PopoverPortal>
+      )}
+      {slashState && filteredSlash.length > 0 && (
+        <PopoverPortal anchor={editorContainerRef.current} placement="bottom-start">
+          <ul className="w-72 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-xl">
+            {filteredSlash.map((c, i) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors ${
+                    i === slashState.index ? "bg-accent-light text-accent" : "hover:bg-hover"
+                  }`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const cur = readMarkdown(editor);
+                    const tail = cur.replace(/^\/[\w-]*/, `${c.name} `);
+                    writeMarkdown(editor, tail);
+                    setText(tail);
+                  }}
+                >
+                  <span className="font-medium text-foreground">{c.name}</span>
+                  <span className="text-xs text-tertiary">{c.hint}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </PopoverPortal>
+      )}
       {showEmoji && (
-        <div className="absolute z-20 mt-1">
+        <PopoverPortal anchor={emojiButtonRef.current} placement="bottom-start">
           <EmojiPicker onPick={insertEmoji} onClose={() => setShowEmoji(false)} />
-        </div>
+        </PopoverPortal>
       )}
       <input
         id={`composer-file-${channelId}`}
@@ -951,11 +947,23 @@ function PlusMenu({
   return (
     <div
       ref={ref}
-      className="absolute bottom-full left-0 z-30 mb-2 w-56 overflow-hidden rounded-md border border-border bg-card shadow-xl"
+      className="w-56 overflow-hidden rounded-md border border-border bg-card shadow-xl"
     >
-      <PlusMenuItem icon={<IconPaperclip />} label={t("composer.actions.attach")} onClick={onAttach} />
-      <PlusMenuItem icon={<IconCodeBlock />} label={t("composer.actions.snippet")} onClick={onSnippet} />
-      <PlusMenuItem icon={<IconAt />} label={t("composer.actions.mention")} onClick={onMention} />
+      <PlusMenuItem
+        icon={<IconPaperclip />}
+        label={t("composer.actions.attach")}
+        onClick={onAttach}
+      />
+      <PlusMenuItem
+        icon={<IconCodeBlock />}
+        label={t("composer.actions.snippet")}
+        onClick={onSnippet}
+      />
+      <PlusMenuItem
+        icon={<IconAt />}
+        label={t("composer.actions.mention")}
+        onClick={onMention}
+      />
     </div>
   );
 }
@@ -993,44 +1001,83 @@ function AttachmentChip({
 }) {
   const { t } = useTranslator();
   const isImage = attachment.mime.startsWith("image/");
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
-      {isImage && attachment.localUrl ? (
+  const isPdf = attachment.mime === "application/pdf";
+  const uploading = attachment.status === "uploading";
+  const errored = attachment.status === "error";
+
+  const removeButton = (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={t("composer.removeAttachment")}
+      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-tertiary shadow-sm ring-1 ring-border transition-colors hover:bg-background hover:text-destructive"
+    >
+      <span aria-hidden="true" className="text-[11px] leading-none">✕</span>
+    </button>
+  );
+
+  const statusOverlay = (uploading || errored) && (
+    <div
+      className={`pointer-events-none absolute inset-0 flex items-end justify-start p-1.5 text-[10px] font-medium ${
+        errored ? "bg-destructive/10" : "bg-background/40"
+      }`}
+    >
+      <span
+        className={`rounded px-1.5 py-0.5 ${
+          errored
+            ? "bg-destructive text-destructive-foreground"
+            : "bg-background/90 text-secondary ring-1 ring-border"
+        }`}
+      >
+        {errored ? t("composer.uploadFailed") : t("composer.uploading")}
+      </span>
+    </div>
+  );
+
+  if (isImage && attachment.localUrl) {
+    return (
+      <div className="relative overflow-hidden rounded-md border border-border bg-card shadow-sm">
         <img
           src={attachment.localUrl}
           alt={attachment.name}
-          className="h-6 w-6 rounded object-cover"
+          className="block h-20 w-20 object-cover"
         />
-      ) : (
-        <span aria-hidden="true">📄</span>
-      )}
-      <span className="max-w-[12rem] truncate">{attachment.name}</span>
-      {attachment.status === "uploading" && (
-        <span className="text-warning">{t("composer.uploading")}</span>
-      )}
-      {attachment.status === "error" && (
-        <span className="text-destructive">{t("composer.uploadFailed")}</span>
-      )}
-      <button
-        type="button"
-        className="text-tertiary transition-colors hover:text-destructive"
-        onClick={onRemove}
-        aria-label={t("composer.removeAttachment")}
-      >
-        ✕
-      </button>
+        {statusOverlay}
+        {removeButton}
+      </div>
+    );
+  }
+
+  if (isPdf) {
+    return (
+      <div className="relative flex w-64 items-stretch overflow-hidden rounded-md border border-border bg-card shadow-sm">
+        <PdfThumb url={attachment.localUrl ?? null} size={64} />
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2.5 pr-7 text-xs">
+          <p className="truncate font-medium text-foreground">{attachment.name}</p>
+          <p className="text-tertiary">PDF · {formatBytes(attachment.size_bytes)}</p>
+        </div>
+        {statusOverlay}
+        {removeButton}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex w-64 items-center gap-3 rounded-md border border-border bg-card p-2.5 pr-7 shadow-sm">
+      <FileTypeIcon mime={attachment.mime} filename={attachment.name} size={36} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{attachment.name}</p>
+        <p className="text-xs text-tertiary">{formatBytes(attachment.size_bytes)}</p>
+      </div>
+      {statusOverlay}
+      {removeButton}
     </div>
   );
 }
 
-function placeCaretAtEnd(el: HTMLElement) {
-  const range = document.createRange();
-  range.selectNodeContents(el);
-  range.collapse(false);
-  const sel = window.getSelection();
-  sel?.removeAllRanges();
-  sel?.addRange(range);
-  el.focus();
+function stripUploadFields(att: PendingAttachment): Attachment {
+  const { status: _status, localUrl: _localUrl, ...rest } = att;
+  return rest;
 }
 
 function readImageDimensions(url: string): Promise<{ width: number; height: number }> {
@@ -1052,7 +1099,8 @@ function collectMentionedUserIds(
   while ((m = regex.exec(text))) {
     const candidate = m[1];
     const direct = users.find(
-      (u) => u.display_name.toLowerCase() === candidate.toLowerCase() ||
+      (u) =>
+        u.display_name.toLowerCase() === candidate.toLowerCase() ||
         u.user_id.toLowerCase() === candidate.toLowerCase(),
     );
     if (direct) ids.add(direct.user_id);

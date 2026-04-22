@@ -41,7 +41,8 @@
     "newDm": "Neue Direktnachricht",
     "mentionInChannel": "@dich in #{channel}",
     "saved": "Gespeichert",
-    "activity": "Aktivität"
+    "activity": "Aktivität",
+    "directMessage": "Direktnachricht"
   },
   "userMenu": {
     "youAre": "Du bist",
@@ -57,14 +58,16 @@
   },
   "channel": {
     "messagePrefix": "Nachricht an #{name}",
-    "startHuddle": "🎧 Huddle starten",
-    "joinHuddle": "🎧 Huddle beitreten ({n})",
+    "startHuddle": "Huddle starten",
+    "joinHuddle": "Huddle beitreten ({n})",
     "topicPlaceholder": "Thema hinzufügen",
     "members": "{n} Mitglieder",
     "membersOne": "1 Mitglied"
   },
   "composer": {
     "placeholder": "Nachricht senden",
+    "messageChannel": "Nachricht an #{name}",
+    "messageDm": "Nachricht an {name}",
     "sending": "sende…",
     "uploading": "lade hoch…",
     "uploadFailed": "fehlgeschlagen",
@@ -137,8 +140,11 @@
   },
   "dm": {
     "newTitle": "Neue Nachricht",
+    "newGroupTitle": "Neue Gruppennachricht ({n} Personen)",
+    "helper": "Wähle eine Person für eine Direktnachricht oder mehrere für einen Gruppen-Chat.",
     "to": "An: jemand…",
     "open": "Öffnen",
+    "openGroup": "Gruppen-Chat öffnen",
     "pickAtLeastOne": "Wähle mindestens eine Person.",
     "couldNotOpen": "DM konnte nicht geöffnet werden.",
     "couldNotResolve": "DM-Kanal konnte nicht aufgelöst werden."
@@ -154,8 +160,9 @@
     "title": "Huddle",
     "connecting": "Verbinde…",
     "onCall": "{n} im Anruf",
+    "participants": "{n} im Anruf",
     "leave": "Verlassen",
-    "couldNotStart": "Huddle konnte nicht gestartet werden: {error}"
+    "couldNotStart": "Huddle konnte nicht gestartet werden:"
   },
   "palette": {
     "title": "Befehlspalette",
@@ -197,7 +204,40 @@
     "notifyAll": "Alle Nachrichten",
     "notifyMentions": "Nur @-Erwähnungen",
     "notifyNone": "Keine",
-    "settings": "Kanal-Einstellungen"
+    "settings": "Kanal-Einstellungen",
+    "more": "Weitere Aktionen",
+    "dmHint": "Direktnachrichten können nicht verlassen werden.",
+    "directMessage": "Direktnachricht",
+    "groupDirectMessage": "Gruppen-Direktnachricht · {n} Personen",
+    "openDetail": "Kanal-Details öffnen",
+    "searchInChannel": "In diesem Kanal suchen",
+    "archivedTag": "archiviert"
+  },
+  "channelDetail": {
+    "tabAbout": "Übersicht",
+    "tabMembers": "Mitglieder",
+    "tabFiles": "Dateien",
+    "tabPinned": "Angepinnt",
+    "fieldName": "Name",
+    "fieldTopic": "Thema",
+    "fieldTopicPlaceholder": "Thema hinzufügen",
+    "fieldDescription": "Beschreibung",
+    "fieldDescriptionPlaceholder": "Worum geht es in diesem Kanal?",
+    "archive": "Kanal archivieren",
+    "archiveConfirm": "#{channel} archivieren? Es können keine neuen Nachrichten mehr gepostet werden.",
+    "filesEmpty": "In diesem Kanal wurden noch keine Dateien geteilt.",
+    "pinnedEmpty": "Noch keine angepinnten Nachrichten.",
+    "jumpToMessage": "Zur Nachricht springen",
+    "download": "Herunterladen"
+  },
+  "topbar": {
+    "placeholder": "Nachrichten, Dateien, Kanäle und Personen suchen…",
+    "hint": "Tipp: probiere in:#kanal, from:@person oder has:file",
+    "noResults": "Keine Treffer.",
+    "groupMessages": "Nachrichten",
+    "groupFiles": "Dateien",
+    "groupChannels": "Kanäle",
+    "groupPeople": "Personen"
   },
   "toasts": {
     "jump": "Springen",

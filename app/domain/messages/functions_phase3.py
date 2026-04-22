@@ -94,6 +94,8 @@ def search_projection(
             "sender_id": h.sender_id,
             "content": h.content,
             "sequence": h.sequence,
+            "attachment_count": h.attachment_count,
+            "has_files": h.has_files,
         }
         for h in hits
     ]

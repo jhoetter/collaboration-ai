@@ -62,6 +62,8 @@ class SearchHit:
     sender_id: str
     content: str
     sequence: int
+    attachment_count: int = 0
+    has_files: bool = False
 
 
 def _attachment_text(msg: dict) -> str:
@@ -72,6 +74,18 @@ def _attachment_text(msg: dict) -> str:
             if name:
                 parts.append(name)
     return " ".join(parts)
+
+
+def _file_attachment_count(msg: dict) -> int:
+    """Count non-link attachments (link previews don't qualify as files)."""
+    count = 0
+    for att in msg.get("attachments") or []:
+        if not isinstance(att, dict):
+            continue
+        if att.get("kind") == "link_preview":
+            continue
+        count += 1
+    return count
 
 
 def search_messages(
@@ -101,6 +115,7 @@ def search_messages(
         haystack_set = set(haystack_tokens)
         haystack_str = " ".join(haystack_tokens)
         if all(tok in haystack_set or tok in haystack_str for tok in q_tokens):
+            file_count = _file_attachment_count(msg)
             hits.append(
                 SearchHit(
                     message_id=msg["id"],
@@ -109,6 +124,8 @@ def search_messages(
                     sender_id=msg["sender_id"],
                     content=msg.get("content", ""),
                     sequence=int(msg.get("sequence", 0)),
+                    attachment_count=file_count,
+                    has_files=file_count > 0,
                 )
             )
     hits.sort(key=lambda h: h.sequence, reverse=True)

@@ -5,15 +5,24 @@ import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
 import { ThreadPane } from "../components/ThreadPane.tsx";
 import { ToastHost } from "../components/ToastHost.tsx";
+import { TopBar } from "../components/TopBar.tsx";
 import { useUi } from "../state/ui.ts";
 import { useEventStream } from "../hooks/useEventStream.ts";
+import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
+import { useSync } from "../state/sync.ts";
 import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
 import { Activity } from "./Activity.tsx";
-import { AgentInbox } from "./AgentInbox.tsx";
 import { ChannelPage } from "./ChannelPage.tsx";
+
+interface UnreadRow {
+  channel_id: string;
+  unread: number;
+  mention_count: number;
+  last_sequence: number;
+}
 
 export function WorkspaceShell() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
@@ -41,6 +50,25 @@ export function WorkspaceShell() {
     }
   }, [effectiveWorkspaceId, authStatus, hydrate]);
 
+  // Seed per-channel unread counts from the server's projection so DMs
+  // (and any channel whose recent history didn't fit in the initial
+  // /api/sync window) show the correct bold + badge in the sidebar
+  // immediately after load. Live events keep it up-to-date afterwards.
+  const hydrateUnread = useSync((s) => s.hydrateUnread);
+  useEffect(() => {
+    if (!effectiveWorkspaceId || authStatus !== "ready") return;
+    let cancelled = false;
+    void callFunction<UnreadRow[]>("unread:by-channel", {})
+      .then((rows) => {
+        if (cancelled || !Array.isArray(rows)) return;
+        hydrateUnread(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveWorkspaceId, authStatus, hydrateUnread]);
+
   const threadOpen = useThread((s) => s.rootId !== null);
 
   if (authStatus === "joining" || authStatus === "idle") {
@@ -65,21 +93,20 @@ export function WorkspaceShell() {
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <main className="flex flex-1 flex-col">
-        <Routes>
-          <Route index element={<EmptyState />} />
-          <Route path="c/:channelId" element={<ChannelPage />} />
-          <Route path="activity" element={<Activity />} />
-          <Route
-            path="agent-inbox"
-            element={<EmptyState label="Open agent inbox in the right rail." />}
-          />
-        </Routes>
-      </main>
-      {threadOpen ? <ThreadPane /> : <AgentInbox />}
-      <MembersRail />
+    <div className="flex h-screen flex-col">
+      <TopBar />
+      <div className="flex flex-1 min-h-0">
+        <Sidebar />
+        <main className="flex flex-1 flex-col">
+          <Routes>
+            <Route index element={<EmptyState />} />
+            <Route path="c/:channelId" element={<ChannelPage />} />
+            <Route path="activity" element={<Activity />} />
+          </Routes>
+        </main>
+        {threadOpen && <ThreadPane />}
+        <MembersRail />
+      </div>
       <CommandPalette />
       <ToastHost />
     </div>
@@ -102,10 +129,10 @@ function MembersPanelForRoute() {
   return <MembersPanel channelId={channelId} />;
 }
 
-function EmptyState({ label }: { label?: string } = {}) {
+function EmptyState() {
   return (
     <div className="flex flex-1 items-center justify-center text-sm text-tertiary">
-      {label ?? "Pick a channel from the sidebar to start chatting."}
+      Pick a channel from the sidebar to start chatting.
     </div>
   );
 }

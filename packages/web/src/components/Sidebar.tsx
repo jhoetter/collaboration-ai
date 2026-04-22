@@ -26,6 +26,7 @@ import {
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
+import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Channel, type PresenceStatus } from "../state/sync.ts";
@@ -37,9 +38,8 @@ import { UserMenu } from "./UserMenu.tsx";
 export function Sidebar() {
   const params = useParams<{ workspaceId: string; channelId?: string }>();
   const channels = useSync((s) => s.channels);
-  const messagesByChannel = useSync((s) => s.messagesByChannel);
   const messageById = useSync((s) => s.messageById);
-  const readUpToByChannel = useSync((s) => s.readUpToByChannel);
+  const unreadByChannel = useSync((s) => s.unreadByChannel);
   const notifications = useSync((s) => s.notifications);
   const draftsByChannel = useSync((s) => s.draftsByChannel);
   const notificationPrefByChannel = useSync((s) => s.notificationPrefByChannel);
@@ -53,6 +53,7 @@ export function Sidebar() {
   const setNewDmOpen = useUi((s) => s.setNewDmOpen);
   const sectionsOpen = useUi((s) => s.sectionsOpen);
   const toggleSection = useUi((s) => s.toggleSection);
+  const setNotificationRead = useSync((s) => s.setNotificationRead);
 
   const mutePrefs = me ? notificationPrefByChannel[me] ?? {} : {};
   const isMuted = (cid: string) => mutePrefs[cid] === "none";
@@ -70,24 +71,30 @@ export function Sidebar() {
     return { rooms, dms };
   }, [channels]);
 
-  const unreadByChannel = useMemo(() => {
+  // Unread counts are sourced from the sync store, which itself is
+  // hydrated from the server's `unread:by-channel` projection on
+  // workspace mount and then patched live by `applyMany`. We only
+  // overlay un-acked mention notifications on top so a channel with a
+  // dangling activity-feed mention still shows the warning badge.
+  const unreadDisplay = useMemo(() => {
     const out: Record<string, { unread: number; mentions: number }> = {};
     for (const channelId of Object.keys(channels)) {
-      const list = messagesByChannel[channelId] ?? [];
-      const cap = readUpToByChannel[channelId] ?? 0;
-      let unread = 0;
-      for (const m of list) {
-        if (m.sequence > cap && m.sender_id !== me) unread += 1;
-      }
-      out[channelId] = { unread, mentions: 0 };
+      const tally = unreadByChannel[channelId];
+      out[channelId] = {
+        unread: tally?.unread ?? 0,
+        mentions: tally?.mentions ?? 0,
+      };
     }
     for (const n of Object.values(notifications)) {
       if (n.read || n.kind !== "mention" || !n.channel_id) continue;
       if (!out[n.channel_id]) out[n.channel_id] = { unread: 0, mentions: 0 };
-      out[n.channel_id].mentions += 1;
+      // The server projection already counts mentions, but a freshly
+      // delivered mention notification might race ahead of the next
+      // hydrate; keep the badge sticky by taking the max.
+      out[n.channel_id].mentions = Math.max(out[n.channel_id].mentions, 1);
     }
     return out;
-  }, [channels, messagesByChannel, readUpToByChannel, notifications, me]);
+  }, [channels, unreadByChannel, notifications]);
 
   const mentionRows = useMemo(
     () => Object.values(notifications).filter((n) => !n.read && n.kind === "mention"),
@@ -150,7 +157,7 @@ export function Sidebar() {
               channel={c}
               to={`/w/${params.workspaceId}/c/${c.id}`}
               active={params.channelId === c.id}
-              unread={unreadByChannel[c.id]}
+              unread={unreadDisplay[c.id]}
               muted={isMuted(c.id)}
             />
           ))}
@@ -175,7 +182,7 @@ export function Sidebar() {
               channel={c}
               to={`/w/${params.workspaceId}/c/${c.id}`}
               active={params.channelId === c.id}
-              unread={unreadByChannel[c.id]}
+              unread={unreadDisplay[c.id]}
               muted={isMuted(c.id)}
             />
           ))}
@@ -230,7 +237,16 @@ export function Sidebar() {
                 key={m.id}
                 type="button"
                 onClick={() => {
-                  if (m.channel_id) navigate(`/w/${params.workspaceId}/c/${m.channel_id}`);
+                  // Optimistically clear the badge, then mirror to the server
+                  // so it stays cleared across reloads / other tabs.
+                  setNotificationRead(m.id);
+                  void callFunction("notifications:mark-read", {
+                    notification_id: m.id,
+                  }).catch(() => undefined);
+                  if (m.channel_id) {
+                    const anchor = m.target_event_id ? `#message-${m.target_event_id}` : "";
+                    navigate(`/w/${params.workspaceId}/c/${m.channel_id}${anchor}`);
+                  }
                 }}
                 className="flex flex-col items-start rounded-md px-2 py-1.5 text-left text-xs text-warning transition-colors duration-150 hover:bg-hover"
               >
@@ -370,12 +386,23 @@ function DmRow({
   const presence = useSync((s) => s.presence);
   const hasUnread = !muted && (unread?.unread ?? 0) > 0;
   const dim = muted ? "opacity-60" : "";
-  const isGroup = channel.type === "group_dm";
+
+  // Prefer the canonical member list returned by `channel:list` for DMs.
+  // Older channels with no `members` array still fall back to parsing the
+  // channel name (legacy `userA:userB` slug).
+  const memberIds = (channel.members && channel.members.length > 0)
+    ? channel.members.filter((p) => p && p !== me)
+    : channel.name.includes(":")
+      ? channel.name.split(":").filter((p) => p && p !== me)
+      : [];
+
+  // A DM is a "group" if the backend tagged it as such OR there is more
+  // than one peer (handles legacy 3+ DMs that were created before the
+  // backend started tagging multi-party DMs as `group_dm`).
+  const isGroup = channel.type === "group_dm" || memberIds.length > 1;
 
   if (isGroup) {
-    const ids = channel.name.includes(":")
-      ? channel.name.split(":").filter((p) => p && p !== me)
-      : [channel.name];
+    const ids = memberIds.length > 0 ? memberIds : [channel.name];
     return (
       <Link
         to={to}
@@ -398,10 +425,25 @@ function DmRow({
     );
   }
 
-  const partnerId = channel.name.includes(":")
-    ? channel.name.split(":").find((p) => p !== me) ?? channel.name
-    : channel.name;
-  return <DmRowSingle to={to} active={active} muted={muted} unread={unread} partnerId={partnerId} dim={dim} hasUnread={hasUnread} presence={presence} />;
+  // Single-DM partner — first non-self member, or fall back to legacy parsing,
+  // and finally to a polite "Direct message" label so we never display the
+  // raw `dm_xxxx` slug to end users.
+  const partnerId = memberIds[0]
+    ?? (channel.name.includes(":")
+      ? channel.name.split(":").find((p) => p !== me) ?? null
+      : null);
+  return (
+    <DmRowSingle
+      to={to}
+      active={active}
+      muted={muted}
+      unread={unread}
+      partnerId={partnerId}
+      dim={dim}
+      hasUnread={hasUnread}
+      presence={presence}
+    />
+  );
 }
 
 function DmRowSingle({
@@ -417,13 +459,15 @@ function DmRowSingle({
   active: boolean;
   muted: boolean;
   unread?: { unread: number; mentions: number };
-  partnerId: string;
+  partnerId: string | null;
   dim: string;
   hasUnread: boolean;
   presence: Record<string, PresenceStatus>;
 }) {
-  const partnerName = useDisplayName(partnerId);
-  const status = mapPresence(presence[partnerId]);
+  const { t } = useTranslator();
+  const partnerName = useDisplayName(partnerId ?? "");
+  const status = partnerId ? mapPresence(presence[partnerId]) : "offline";
+  const label = partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
   return (
     <Link
       to={to}
@@ -435,13 +479,15 @@ function DmRowSingle({
     >
       <span className="flex min-w-0 items-center gap-2">
         <span className="relative">
-          <Avatar name={partnerName || partnerId} kind="human" size={20} />
-          <span className="absolute -bottom-0.5 -right-0.5">
-            <PresenceDot status={status} />
-          </span>
+          <Avatar name={label} kind="human" size={20} />
+          {partnerId && (
+            <span className="absolute -bottom-0.5 -right-0.5">
+              <PresenceDot status={status} />
+            </span>
+          )}
         </span>
         <span className={`truncate ${hasUnread ? "font-semibold text-foreground" : ""}`}>
-          {partnerName || partnerId}
+          {label}
         </span>
       </span>
       {hasUnread && (

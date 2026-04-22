@@ -27,7 +27,6 @@ import {
   IconReply,
   IconSmile,
   IconTrash,
-  PresenceDot,
   Toolbar,
   ToolbarButton,
   ToolbarDivider,
@@ -39,12 +38,13 @@ import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
-import { useSync, type Attachment, type Message, type PresenceStatus } from "../state/sync.ts";
+import { useSync, type Attachment, type Message } from "../state/sync.ts";
 import { useToasts } from "../state/toasts.ts";
 import { useUsers } from "../state/users.ts";
 import { AttachmentCard } from "./AttachmentCard.tsx";
 import { EmojiPicker } from "./EmojiPicker.tsx";
 import { Lightbox, useLightbox } from "./Lightbox.tsx";
+import { PopoverPortal } from "./PopoverPortal.tsx";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀"];
 // Stable empty references — Zustand selectors return the *same* reference
@@ -67,7 +67,6 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
   const identity = useAuth((s) => s.identity);
   const setReadUpTo = useSync((s) => s.setReadUpTo);
   const readUpTo = useSync((s) => s.readUpToByChannel[channelId] ?? 0);
-  const presence = useSync((s) => s.presence);
   const lightbox = useLightbox();
 
   const visible = useMemo(() => messages.filter((m) => !m.thread_root), [messages]);
@@ -147,7 +146,6 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
                   {divider && <DateDivider ts={divider.ts} />}
                   <MessageGroup
                     group={group}
-                    presence={presence}
                     onOpenThread={onOpenThread}
                     firstUnreadId={firstUnreadId}
                     onPreviewImage={(att, peers) => lightbox.open(att, peers)}
@@ -256,71 +254,104 @@ function DateDivider({ ts }: { ts: number }) {
 
 function MessageGroup({
   group,
-  presence,
   onOpenThread,
   firstUnreadId,
   onPreviewImage,
 }: {
   group: Group;
-  presence: Record<string, PresenceStatus>;
   onOpenThread?: (rootId: string) => void;
   firstUnreadId: string | null;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
 }) {
   const name = useDisplayName(group.head.sender_id);
-  const status = mapPresence(presence[group.head.sender_id]);
+  const displayName = name || group.head.sender_id;
   return (
-    <li className="group flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-hover">
-      <div className="relative pt-0.5">
-        <Avatar name={name || group.head.sender_id} kind={group.head.sender_type} size={32} />
-        {group.head.sender_type === "human" && (
-          <span className="absolute -bottom-0.5 -right-0.5">
-            <PresenceDot status={status} />
-          </span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-2 text-xs text-tertiary">
-          <span className="text-sm font-semibold text-foreground">
-            {name || group.head.sender_id}
-          </span>
-          {group.head.sender_type === "agent" && (
-            <Badge tone="agent" className="!normal-case">
-              agent
-            </Badge>
-          )}
-          <span>{formatTime(group.head.origin_ts)}</span>
-        </p>
-        <MessageBody
-          message={group.head}
+    <li className="flex flex-col">
+      <MessageRow
+        message={group.head}
+        onOpenThread={onOpenThread}
+        isFirstUnread={firstUnreadId === group.head.id}
+        onPreviewImage={onPreviewImage}
+        leading={
+          <div className="pt-0.5">
+            <Avatar name={displayName} kind={group.head.sender_type} size={32} />
+          </div>
+        }
+        header={
+          <p className="flex items-baseline gap-2 text-xs text-tertiary">
+            <span className="text-sm font-semibold text-foreground">{displayName}</span>
+            {group.head.sender_type === "agent" && (
+              <Badge tone="agent" className="!normal-case">
+                agent
+              </Badge>
+            )}
+            <span>{formatTime(group.head.origin_ts)}</span>
+          </p>
+        }
+      />
+      {group.rest.map((m) => (
+        <MessageRow
+          key={m.id}
+          message={m}
           onOpenThread={onOpenThread}
-          isFirstUnread={firstUnreadId === group.head.id}
+          isFirstUnread={firstUnreadId === m.id}
           onPreviewImage={onPreviewImage}
+          compact
+          leading={
+            <span className="invisible select-none pt-0.5 text-[10px] tabular-nums leading-none text-tertiary group-hover/msg:visible">
+              {formatHoverTime(m.origin_ts)}
+            </span>
+          }
         />
-        {group.rest.map((m) => (
-          <MessageBody
-            key={m.id}
-            message={m}
-            onOpenThread={onOpenThread}
-            compact
-            isFirstUnread={firstUnreadId === m.id}
-            onPreviewImage={onPreviewImage}
-          />
-        ))}
-      </div>
+      ))}
     </li>
   );
 }
 
-function MessageBody({
+function MessageRow({
   message,
+  leading,
+  header,
   compact,
   onOpenThread,
   isFirstUnread,
   onPreviewImage,
 }: {
   message: Message;
+  leading: React.ReactNode;
+  header?: React.ReactNode;
   compact?: boolean;
+  onOpenThread?: (rootId: string) => void;
+  isFirstUnread?: boolean;
+  onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
+}) {
+  return (
+    <div
+      className={`group/msg relative flex items-start gap-2 rounded-md px-2 transition-colors duration-150 hover:bg-hover ${
+        compact ? "py-0.5" : "py-1"
+      }`}
+    >
+      <div className="flex w-8 shrink-0 justify-center">{leading}</div>
+      <div className="min-w-0 flex-1">
+        {header}
+        <MessageBody
+          message={message}
+          onOpenThread={onOpenThread}
+          isFirstUnread={isFirstUnread}
+          onPreviewImage={onPreviewImage}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MessageBody({
+  message,
+  onOpenThread,
+  isFirstUnread,
+  onPreviewImage,
+}: {
+  message: Message;
   onOpenThread?: (rootId: string) => void;
   isFirstUnread?: boolean;
   onPreviewImage: (att: Attachment, peers: Attachment[]) => void;
@@ -334,8 +365,17 @@ function MessageBody({
   const pushToast = useToasts((s) => s.push);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
-  const [showPicker, setShowPicker] = useState(false);
+  // The anchor remembers which button opened the reaction picker so the
+  // popover sits next to *that* trigger (toolbar smile vs. inline "+"
+  // pill) instead of always flying off to the top-right of the row.
+  const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
+  const inlineAddRef = useRef<HTMLButtonElement>(null);
+  const toolbarSmileRef = useRef<HTMLButtonElement>(null);
   const [showMore, setShowMore] = useState(false);
+
+  function togglePicker(anchor: HTMLElement | null) {
+    setPickerAnchor((prev) => (prev ? null : anchor));
+  }
   const isOwn = identity?.user_id === message.sender_id;
   const isStarred = identity ? starredBy.includes(identity.user_id) : false;
   const imageAttachments = useMemo(
@@ -413,7 +453,7 @@ function MessageBody({
       data-pending={message.pending ? "true" : "false"}
       data-first-unread={isFirstUnread ? "true" : undefined}
       id={`message-${message.id}`}
-      className={`relative ${compact ? "py-0.5" : ""}`}
+      className="relative"
     >
       {editing ? (
         <div className="rounded-md border border-border bg-background px-2 py-1.5">
@@ -493,8 +533,9 @@ function MessageBody({
             />
           ))}
           <button
+            ref={inlineAddRef}
             type="button"
-            onClick={() => setShowPicker((v) => !v)}
+            onClick={() => togglePicker(inlineAddRef.current)}
             className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-secondary transition-colors hover:bg-hover hover:text-foreground"
             aria-label={t("messageActions.addReaction")}
           >
@@ -521,7 +562,7 @@ function MessageBody({
       )}
 
       {!message.redacted && !editing && (
-        <div className="absolute -top-3.5 right-2 z-10 hidden group-hover:block">
+        <div className="absolute -top-3.5 right-2 z-10 hidden group-hover/msg:block">
           <Toolbar density="compact" surface="floating">
             {QUICK_REACTIONS.map((emoji) => (
               <button
@@ -530,14 +571,15 @@ function MessageBody({
                 title={emoji}
                 aria-label={`React ${emoji}`}
                 onClick={() => void toggleReaction(emoji)}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-base leading-none transition-transform duration-100 hover:scale-110"
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-sm leading-none transition-transform duration-100 hover:scale-110"
               >
                 <span aria-hidden="true">{emoji}</span>
               </button>
             ))}
             <ToolbarButton
+              ref={toolbarSmileRef}
               label={t("messageActions.addReaction")}
-              onClick={() => setShowPicker((v) => !v)}
+              onClick={() => togglePicker(toolbarSmileRef.current)}
             >
               <IconSmile />
             </ToolbarButton>
@@ -604,16 +646,16 @@ function MessageBody({
           </Toolbar>
         </div>
       )}
-      {showPicker && (
-        <div className="absolute right-2 top-6 z-30 mt-1">
+      {pickerAnchor && (
+        <PopoverPortal anchor={pickerAnchor} placement="top-start">
           <EmojiPicker
             onPick={(emoji) => {
-              setShowPicker(false);
+              setPickerAnchor(null);
               void toggleReaction(emoji);
             }}
-            onClose={() => setShowPicker(false)}
+            onClose={() => setPickerAnchor(null)}
           />
-        </div>
+        </PopoverPortal>
       )}
     </div>
   );
@@ -707,9 +749,12 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
   }
   const isDm = channel.type === "dm" || channel.type === "group_dm";
   if (isDm) {
-    const partnerId = channel.name.includes(":")
-      ? channel.name.split(":").find((p) => p !== me) ?? channel.name
-      : channel.name;
+    const memberIds = (channel.members && channel.members.length > 0)
+      ? channel.members.filter((p) => p && p !== me)
+      : channel.name.includes(":")
+        ? channel.name.split(":").filter((p) => p && p !== me)
+        : [];
+    const partnerId = memberIds[0] ?? null;
     return <DmEmptyState partnerId={partnerId} />;
   }
   return (
@@ -728,15 +773,16 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
   );
 }
 
-function DmEmptyState({ partnerId }: { partnerId: string }) {
-  const partnerName = useDisplayName(partnerId);
+function DmEmptyState({ partnerId }: { partnerId: string | null }) {
+  const partnerName = useDisplayName(partnerId ?? "");
   const { t } = useTranslator();
+  const label = partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-      <Avatar name={partnerName || partnerId} kind="human" size={40} />
-      <h2 className="text-lg font-semibold text-foreground">{partnerName || partnerId}</h2>
+      <Avatar name={label} kind="human" size={40} />
+      <h2 className="text-lg font-semibold text-foreground">{label}</h2>
       <p className="max-w-md text-sm text-secondary">
-        {t("messageList.dmStart", { name: partnerName || partnerId })}
+        {t("messageList.dmStart", { name: label })}
       </p>
     </div>
   );
@@ -806,6 +852,11 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+function formatHoverTime(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
 function sameDay(a: number, b: number): boolean {
   const da = new Date(a);
   const db = new Date(b);
@@ -834,15 +885,3 @@ function formatDateLabel(ts: number, t: (key: string) => string): string {
   });
 }
 
-function mapPresence(s: PresenceStatus | undefined): "online" | "idle" | "dnd" | "offline" {
-  switch (s) {
-    case "active":
-      return "online";
-    case "away":
-      return "idle";
-    case "dnd":
-      return "dnd";
-    default:
-      return "offline";
-  }
-}

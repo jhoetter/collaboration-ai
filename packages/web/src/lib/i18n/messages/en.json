@@ -41,7 +41,8 @@
     "newDm": "New direct message",
     "mentionInChannel": "@you in #{channel}",
     "saved": "Saved",
-    "activity": "Activity"
+    "activity": "Activity",
+    "directMessage": "Direct message"
   },
   "userMenu": {
     "youAre": "You are",
@@ -57,14 +58,16 @@
   },
   "channel": {
     "messagePrefix": "Message #{name}",
-    "startHuddle": "🎧 Start huddle",
-    "joinHuddle": "🎧 Join huddle ({n})",
+    "startHuddle": "Start huddle",
+    "joinHuddle": "Join huddle ({n})",
     "topicPlaceholder": "Add a topic",
     "members": "{n} members",
     "membersOne": "1 member"
   },
   "composer": {
     "placeholder": "Send a message",
+    "messageChannel": "Message #{name}",
+    "messageDm": "Message {name}",
     "sending": "sending…",
     "uploading": "uploading…",
     "uploadFailed": "failed",
@@ -137,8 +140,11 @@
   },
   "dm": {
     "newTitle": "New message",
+    "newGroupTitle": "New group message ({n} people)",
+    "helper": "Pick one person for a direct message, or several to start a group chat.",
     "to": "To: someone…",
     "open": "Open",
+    "openGroup": "Open group chat",
     "pickAtLeastOne": "Pick at least one person.",
     "couldNotOpen": "Could not open DM.",
     "couldNotResolve": "Could not resolve DM channel."
@@ -154,8 +160,9 @@
     "title": "Huddle",
     "connecting": "Connecting…",
     "onCall": "{n} on call",
+    "participants": "{n} on call",
     "leave": "Leave",
-    "couldNotStart": "Could not start huddle: {error}"
+    "couldNotStart": "Could not start huddle:"
   },
   "palette": {
     "title": "Command palette",
@@ -197,7 +204,40 @@
     "notifyAll": "All messages",
     "notifyMentions": "@-mentions only",
     "notifyNone": "Nothing",
-    "settings": "Channel settings"
+    "settings": "Channel settings",
+    "more": "More options",
+    "dmHint": "Direct messages can't be left.",
+    "directMessage": "Direct message",
+    "groupDirectMessage": "Group direct message · {n} people",
+    "openDetail": "Open channel details",
+    "searchInChannel": "Search in this channel",
+    "archivedTag": "archived"
+  },
+  "channelDetail": {
+    "tabAbout": "About",
+    "tabMembers": "Members",
+    "tabFiles": "Files",
+    "tabPinned": "Pinned",
+    "fieldName": "Name",
+    "fieldTopic": "Topic",
+    "fieldTopicPlaceholder": "Add a topic",
+    "fieldDescription": "Description",
+    "fieldDescriptionPlaceholder": "What is this channel about?",
+    "archive": "Archive channel",
+    "archiveConfirm": "Archive #{channel}? People will no longer be able to post here.",
+    "filesEmpty": "No files have been shared in this channel yet.",
+    "pinnedEmpty": "No pinned messages yet.",
+    "jumpToMessage": "Jump to message",
+    "download": "Download"
+  },
+  "topbar": {
+    "placeholder": "Search messages, files, channels, and people…",
+    "hint": "Tip: try in:#channel, from:@person, or has:file",
+    "noResults": "No matches.",
+    "groupMessages": "Messages",
+    "groupFiles": "Files",
+    "groupChannels": "Channels",
+    "groupPeople": "People"
   },
   "toasts": {
     "jump": "Jump",

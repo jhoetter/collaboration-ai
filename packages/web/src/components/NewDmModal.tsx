@@ -83,9 +83,16 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const isGroup = picked.size > 1;
+  const title = isGroup
+    ? t("dm.newGroupTitle", { n: picked.size + 1 })
+    : t("dm.newTitle");
+  const submitLabel = isGroup ? t("dm.openGroup") : t("dm.open");
+
   return (
-    <Modal title={t("dm.newTitle")} onClose={onClose}>
+    <Modal title={title} onClose={onClose}>
       <div className="flex flex-col gap-3 p-4">
+        <p className="text-xs text-tertiary">{t("dm.helper")}</p>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -138,7 +145,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
             {t("common.cancel")}
           </Button>
           <Button variant="primary" size="sm" onClick={() => void open()} disabled={busy}>
-            {t("dm.open")}
+            {submitLabel}
           </Button>
         </div>
       </div>

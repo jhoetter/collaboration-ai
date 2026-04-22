@@ -11,20 +11,26 @@ import {
   ChannelIcon,
   IconBell,
   IconBellOff,
+  IconChevronDown,
   IconCheck,
+  IconLogOut,
+  IconMore,
+  IconPencil,
+  IconSearch,
   IconUsers,
+  IconVideo,
   PresenceDot,
   type PresenceStatus as DotStatus,
 } from "@collabai/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { useDisplayName } from "../hooks/useDisplayName.ts";
+import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { type Channel, type NotificationPref, useSync, type PresenceStatus } from "../state/sync.ts";
 import { useUi } from "../state/ui.ts";
-import { ChannelSettingsModal } from "./ChannelSettingsModal.tsx";
+import { ChannelDetailPanel, type DetailTab } from "./ChannelDetailPanel.tsx";
 import { HuddlePanel } from "./HuddlePanel.tsx";
 
 interface MemberRow {
@@ -45,9 +51,13 @@ export function ChannelHeader({
   const presence = useSync((s) => s.presence);
   const notificationPrefByChannel = useSync((s) => s.notificationPrefByChannel);
   const setMembersOpen = useUi((s) => s.setMembersPanelOpen);
+  const setSearchQuery = useUi((s) => s.setSearchQuery);
   const { t } = useTranslator();
-  const [showSettings, setShowSettings] = useState(false);
+  const [detailTab, setDetailTab] = useState<DetailTab | null>(null);
   const [showHuddle, setShowHuddle] = useState(false);
+  const navigate = useNavigate();
+  const params = useParams<{ workspaceId: string }>();
+  const qc = useQueryClient();
   const pref: NotificationPref =
     (me ? notificationPrefByChannel[me]?.[channelId] : undefined) ?? "all";
 
@@ -59,7 +69,9 @@ export function ChannelHeader({
   });
 
   const isDm = channel?.type === "dm" || channel?.type === "group_dm";
-  const partner = isDm ? members.find((m) => m.user_id !== me) : undefined;
+  const dmPeers = isDm ? members.filter((m) => m.user_id !== me) : [];
+  const isGroupDm = isDm && (channel?.type === "group_dm" || dmPeers.length > 1);
+  const partner = isDm && !isGroupDm ? dmPeers[0] : undefined;
   const partnerStatus = partner ? mapPresence(presence[partner.user_id]) : "offline";
 
   async function startHuddle() {
@@ -71,10 +83,50 @@ export function ChannelHeader({
     setShowHuddle(true);
   }
 
+  async function leaveChannel() {
+    if (!channel) return;
+    if (!confirm(t("members.leaveConfirm", { channel: channel.name ?? channelId }))) {
+      return;
+    }
+    try {
+      await callFunction("channel:leave", { channel_id: channelId });
+      await qc.invalidateQueries({ queryKey: ["channel-members", channelId] });
+      navigate(`/w/${params.workspaceId}`);
+    } catch (err) {
+      console.error("channel:leave", err);
+    }
+  }
+
+  function openDetail(tab: DetailTab = "about") {
+    setDetailTab(tab);
+  }
+
+  function searchInChannel() {
+    const name = channel?.name ?? channelId;
+    setSearchQuery(`in:#${name} `);
+  }
+
   return (
     <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
-      <div className="flex min-w-0 items-center gap-2">
-        {isDm && partner ? (
+      <button
+        type="button"
+        onClick={() => openDetail("about")}
+        title={t("channelHeader.openDetail")}
+        className="group flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1 -ml-1.5 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        {isGroupDm ? (
+          <>
+            <GroupDmAvatarStack peers={dmPeers} />
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold text-foreground">
+                {formatGroupDmTitle(dmPeers)}
+              </h1>
+              <p className="truncate text-xs text-tertiary">
+                {t("channelHeader.groupDirectMessage", { n: dmPeers.length + 1 })}
+              </p>
+            </div>
+          </>
+        ) : isDm && partner ? (
           <>
             <div className="relative">
               <Avatar name={partner.display_name} kind="human" size={28} />
@@ -86,18 +138,22 @@ export function ChannelHeader({
               <h1 className="truncate text-sm font-semibold text-foreground">
                 {partner.display_name}
               </h1>
-              <p className="truncate text-xs text-tertiary">Direct message</p>
+              <p className="truncate text-xs text-tertiary">{t("channelHeader.directMessage")}</p>
             </div>
           </>
         ) : (
           <>
             <ChannelIcon kind={channel?.private ? "private" : "public"} />
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold text-foreground">
-                {channel?.name ?? channelId}
+              <h1 className="flex items-center gap-1 truncate text-sm font-semibold text-foreground">
+                <span className="truncate">{channel?.name ?? channelId}</span>
                 {channel?.archived && (
-                  <span className="ml-2 text-xs text-warning">archived</span>
+                  <span className="ml-1 text-xs text-warning">{t("channelHeader.archivedTag")}</span>
                 )}
+                <IconChevronDown
+                  size={12}
+                  className="text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+                />
               </h1>
               {channel?.topic && (
                 <p className="truncate text-xs text-tertiary">{channel.topic}</p>
@@ -105,36 +161,55 @@ export function ChannelHeader({
             </div>
           </>
         )}
-      </div>
-      <div className="flex items-center gap-2">
+      </button>
+      <div className="flex items-center gap-1">
+        {!isDm && (
+          <button
+            type="button"
+            onClick={searchInChannel}
+            aria-label={t("channelHeader.searchInChannel")}
+            title={t("channelHeader.searchInChannel")}
+            className="rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <IconSearch size={14} />
+          </button>
+        )}
         {!isDm && members.length > 0 && (
           <button
             type="button"
             onClick={() => setMembersOpen(true)}
-            className="flex items-center -space-x-2"
+            className="mr-1 flex items-center -space-x-2 rounded-md px-1 py-0.5 transition-colors hover:bg-hover"
             aria-label={`${members.length} members`}
+            title={t("members.title")}
           >
-            {members.slice(0, 4).map((m) => (
+            {members.slice(0, 3).map((m) => (
               <span key={m.user_id} className="ring-2 ring-surface">
-                <Avatar name={m.display_name} kind="human" size={24} />
+                <Avatar name={m.display_name} kind="human" size={20} />
               </span>
             ))}
-            {members.length > 4 && (
-              <span className="ml-1 rounded-full bg-hover px-2 py-0.5 text-[11px] text-secondary">
-                +{members.length - 4}
-              </span>
-            )}
+            <span className="!ml-1.5 text-xs text-secondary tabular-nums">
+              {members.length}
+            </span>
           </button>
         )}
         {huddle ? (
-          <Button variant="primary" size="sm" onClick={() => setShowHuddle(true)}>
+          <Button variant="primary" size="sm" onClick={() => setShowHuddle(true)} className="gap-1.5">
+            <IconVideo size={14} />
             {t("channel.joinHuddle", { n: huddle.participants.length })}
           </Button>
         ) : (
-          <Button variant="ghost" size="sm" onClick={() => void startHuddle()}>
-            {t("channel.startHuddle")}
-          </Button>
+          <button
+            type="button"
+            onClick={() => void startHuddle()}
+            aria-label={t("channel.startHuddle")}
+            title={t("channel.startHuddle")}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-secondary transition-colors hover:bg-hover hover:text-foreground"
+          >
+            <IconVideo size={14} />
+            <span className="hidden sm:inline">{t("channel.startHuddle")}</span>
+          </button>
         )}
+        <span className="mx-1 h-5 w-px bg-border/70" aria-hidden />
         <NotificationMenu channelId={channelId} pref={pref} />
         {!isDm && (
           <button
@@ -147,23 +222,18 @@ export function ChannelHeader({
             <IconUsers size={14} />
           </button>
         )}
-        {!isDm && (
-          <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className="rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-            aria-label={t("channelHeader.settings")}
-            title={t("channelHeader.settings")}
-          >
-            ⚙
-          </button>
-        )}
+        <ChannelKebab
+          isDm={isDm}
+          onSettings={() => openDetail("about")}
+          onLeave={() => void leaveChannel()}
+        />
       </div>
-      {showSettings && channel && (
-        <ChannelSettingsModal
+      {detailTab && channel && (
+        <ChannelDetailPanel
           channel={channel}
           members={members}
-          onClose={() => setShowSettings(false)}
+          initialTab={detailTab}
+          onClose={() => setDetailTab(null)}
         />
       )}
       {showHuddle && (
@@ -275,6 +345,117 @@ function PrefRow({
       {active && <IconCheck size={14} className="text-accent" />}
     </button>
   );
+}
+
+function ChannelKebab({
+  isDm,
+  onSettings,
+  onLeave,
+}: {
+  isDm: boolean;
+  onSettings: () => void;
+  onLeave: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { t } = useTranslator();
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("channelHeader.more")}
+        title={t("channelHeader.more")}
+        className="rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        <IconMore size={14} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg"
+        >
+          {!isDm && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onSettings();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-hover"
+            >
+              <IconPencil size={14} className="text-tertiary" />
+              {t("channelHeader.settings")}
+            </button>
+          )}
+          {!isDm && (
+            <>
+              <div className="my-1 h-px bg-border" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onLeave();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-hover"
+              >
+                <IconLogOut size={14} />
+                {t("members.leaveChannel")}
+              </button>
+            </>
+          )}
+          {isDm && (
+            <p className="px-3 py-2 text-xs text-tertiary">
+              {t("channelHeader.dmHint")}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupDmAvatarStack({ peers }: { peers: MemberRow[] }) {
+  const visible = peers.slice(0, 3);
+  return (
+    <span className="relative inline-flex items-center">
+      {visible.map((m, i) => (
+        <span
+          key={m.user_id}
+          className={i === 0 ? "" : "-ml-2 ring-2 ring-surface rounded-full"}
+        >
+          <Avatar name={m.display_name} kind="human" size={28} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function formatGroupDmTitle(peers: MemberRow[]): string {
+  const names = peers.map((m) => m.display_name);
+  if (names.length <= 3) return names.join(", ");
+  return `${names.slice(0, 3).join(", ")} +${names.length - 3}`;
 }
 
 function mapPresence(s: PresenceStatus | undefined): DotStatus {

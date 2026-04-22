@@ -119,7 +119,7 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
   );
 }
 
-function PdfThumb({ url }: { url: string | null }) {
+export function PdfThumb({ url, size = 96 }: { url: string | null; size?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -136,8 +136,7 @@ function PdfThumb({ url }: { url: string | null }) {
         const viewport = page.getViewport({ scale: 1 });
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const targetW = 96;
-        const scale = targetW / viewport.width;
+        const scale = size / viewport.width;
         const scaled = page.getViewport({ scale });
         canvas.width = Math.ceil(scaled.width);
         canvas.height = Math.ceil(scaled.height);
@@ -152,11 +151,14 @@ function PdfThumb({ url }: { url: string | null }) {
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, size]);
   return (
-    <div className="flex h-24 w-24 flex-none items-center justify-center bg-background">
+    <div
+      className="flex flex-none items-center justify-center bg-background"
+      style={{ width: size, height: size }}
+    >
       {error || !url ? (
-        <FileTypeIcon mime="application/pdf" filename=".pdf" size={48} />
+        <FileTypeIcon mime="application/pdf" filename=".pdf" size={Math.round(size / 2)} />
       ) : (
         <canvas ref={canvasRef} className="max-h-full max-w-full" />
       )}
@@ -223,7 +225,7 @@ function useDownloadUrl(attachment: Attachment, skip: boolean): string | null {
   return url;
 }
 
-function formatBytes(n: number): string {
+export function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "—";
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;

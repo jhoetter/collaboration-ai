@@ -42,13 +42,30 @@ def test_dm_channel_is_private_dm_typed() -> None:
     bs.bus.dispatch(
         Command(
             type="dm:open",
-            payload={"participant_ids": [bs.users[1], bs.users[2], bs.users[3]]},
+            payload={"participant_ids": [bs.users[1], bs.users[2]]},
             source="human",
             actor_id=bs.users[1],
             workspace_id=bs.workspace_id,
         )
     )
     dm = next(c for c in bs.state.channels.values() if c.get("type") == "dm")
+    assert dm["private"] is True
+    members = bs.state.channel_members[dm["id"]]
+    assert set(members.keys()) == {bs.users[1], bs.users[2]}
+
+
+def test_group_dm_channel_is_typed_group_dm() -> None:
+    bs = bootstrap()
+    bs.bus.dispatch(
+        Command(
+            type="dm:open",
+            payload={"participant_ids": [bs.users[1], bs.users[2], bs.users[3]]},
+            source="human",
+            actor_id=bs.users[1],
+            workspace_id=bs.workspace_id,
+        )
+    )
+    dm = next(c for c in bs.state.channels.values() if c.get("type") == "group_dm")
     assert dm["private"] is True
     members = bs.state.channel_members[dm["id"]]
     assert set(members.keys()) == {bs.users[1], bs.users[2], bs.users[3]}

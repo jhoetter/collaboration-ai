@@ -1,6 +1,6 @@
 /**
  * Right-rail Members panel — Slack-style replacement for the cramped
- * "Members" tab inside ChannelSettingsModal.
+ * "Members" tab inside ChannelDetailPanel.
  *
  * - Search input filters the existing roster in realtime.
  * - Each row shows avatar + presence dot + display name + role badge.
@@ -90,9 +90,11 @@ export function MembersPanel({ channelId }: { channelId: string }) {
       return;
     }
     try {
+      // The backend `channel:kick` function takes the target as `user_id`
+      // (see `app/domain/channels/functions.py`). Anything else 422s.
       await callFunction("channel:kick", {
         channel_id: channelId,
-        target_user_id: target.user_id,
+        user_id: target.user_id,
       });
       await refresh();
     } catch (err) {
@@ -115,9 +117,11 @@ export function MembersPanel({ channelId }: { channelId: string }) {
 
   async function invite(userId: string) {
     try {
+      // Backend `channel:invite` accepts a `user_ids` list — see
+      // `app/domain/channels/functions.py`.
       await callFunction("channel:invite", {
         channel_id: channelId,
-        target_user_id: userId,
+        user_ids: [userId],
       });
       pushToast({
         title: t("members.added"),

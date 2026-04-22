@@ -850,13 +850,17 @@ def handle_dm_open(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
         return []
 
     channel_id = make_dm_channel_id(sorted_participants)
+    # 1:1 DMs are `dm`; everything bigger (the user + 2+ others) is a
+    # `group_dm` so the UI renders an avatar cluster + member name list
+    # instead of pretending to be a 1:1 conversation with the first peer.
+    channel_type = "group_dm" if len(sorted_participants) > 2 else "dm"
     out: list[EventEnvelope] = [
         EventEnvelope(
             event_id=make_event_id(),
             type="channel.create",
             content={
                 "name": f"DM {channel_id}",
-                "type": "dm",
+                "type": channel_type,
                 "private": True,
                 "staging_policy": "agent-messages-require-approval",
             },

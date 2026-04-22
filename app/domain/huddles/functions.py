@@ -169,14 +169,40 @@ def huddle_token(
 
     url, key, secret = _livekit_config()
     room = huddle["livekit_room"]
+    display_name = _resolve_display_name(actor_id)
     token = _mint_access_token(
         api_key=key,
         api_secret=secret,
         room=room,
         identity=actor_id,
+        display_name=display_name,
         ttl_seconds=600,
     )
     return {"url": url, "token": token, "room": room, "huddle_id": huddle["huddle_id"]}
+
+
+def _resolve_display_name(user_id: str) -> str:
+    """Look up the user's display name for the LiveKit participant tile.
+
+    Best-effort — falls back to ``user_id`` if the lookup fails (e.g. when
+    running unit tests with no DB).  We intentionally don't take a hard
+    dependency on the auth store here.
+    """
+    try:
+        from sqlalchemy import text
+
+        from ..shared.runtime import open_session
+
+        with open_session() as session:
+            row = session.execute(
+                text("SELECT display_name FROM users WHERE user_id = :u"),
+                {"u": user_id},
+            ).first()
+            if row and row[0]:
+                return str(row[0])
+    except Exception:
+        pass
+    return user_id
 
 
 def _mint_access_token(
@@ -185,6 +211,7 @@ def _mint_access_token(
     api_secret: str,
     room: str,
     identity: str,
+    display_name: str | None = None,
     ttl_seconds: int,
 ) -> str:
     """Mint a LiveKit JWT.
@@ -198,8 +225,16 @@ def _mint_access_token(
         from livekit import api as livekit_api  # type: ignore[import-not-found]
 
         token = livekit_api.AccessToken(api_key, api_secret).with_identity(identity)
+        if display_name and display_name != identity:
+            token = token.with_name(display_name)
         token = token.with_grants(
-            livekit_api.VideoGrants(room_join=True, room=room, can_publish=True, can_subscribe=True)
+            livekit_api.VideoGrants(
+                room_join=True,
+                room=room,
+                can_publish=True,
+                can_subscribe=True,
+                can_publish_data=True,
+            )
         )
         # `livekit-api` >= 0.7 takes a `datetime.timedelta` here, not an
         # int — passing seconds raises "unsupported operand type(s) for
@@ -207,10 +242,17 @@ def _mint_access_token(
         token = token.with_ttl(_dt.timedelta(seconds=ttl_seconds))
         return token.to_jwt()
     except ImportError:
-        return _fallback_jwt(api_key, api_secret, room, identity, ttl_seconds)
+        return _fallback_jwt(api_key, api_secret, room, identity, ttl_seconds, display_name)
 
 
-def _fallback_jwt(api_key: str, api_secret: str, room: str, identity: str, ttl_seconds: int) -> str:
+def _fallback_jwt(
+    api_key: str,
+    api_secret: str,
+    room: str,
+    identity: str,
+    ttl_seconds: int,
+    display_name: str | None = None,
+) -> str:
     import base64
     import hashlib
     import hmac
@@ -224,12 +266,13 @@ def _fallback_jwt(api_key: str, api_secret: str, room: str, identity: str, ttl_s
         "iat": now,
         "exp": now + ttl_seconds,
         "nbf": now - 5,
-        "name": identity,
+        "name": display_name or identity,
         "video": {
             "roomJoin": True,
             "room": room,
             "canPublish": True,
             "canSubscribe": True,
+            "canPublishData": True,
         },
     }
 

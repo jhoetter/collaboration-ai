@@ -45,39 +45,37 @@ export interface ToolbarButtonProps
   iconSize?: number;
 }
 
-export function ToolbarButton({
-  label,
-  active,
-  shortcut,
-  className,
-  iconSize: _iconSize,
-  children,
-  ...rest
-}: ToolbarButtonProps) {
-  const tooltip = shortcut ? `${label} (${shortcut})` : label;
-  return (
-    <button
-      type="button"
-      title={tooltip}
-      aria-label={label}
-      aria-pressed={active || undefined}
-      className={cn(
-        "inline-flex h-7 min-w-[28px] items-center justify-center rounded-md px-1.5 text-secondary transition-colors duration-150",
-        "hover:bg-hover hover:text-foreground",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-        active && "bg-hover text-foreground",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
-}
+export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
+  function ToolbarButton(
+    { label, active, shortcut, className, iconSize: _iconSize, children, ...rest },
+    ref,
+  ) {
+    const tooltip = shortcut ? `${label} (${shortcut})` : label;
+    return (
+      <button
+        ref={ref}
+        type="button"
+        title={tooltip}
+        aria-label={label}
+        aria-pressed={active || undefined}
+        className={cn(
+          "inline-flex h-6 min-w-[24px] items-center justify-center rounded text-tertiary transition-colors duration-150",
+          "hover:bg-hover hover:text-foreground",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+          active && "bg-hover text-foreground",
+          "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
+          className,
+        )}
+        {...rest}
+      >
+        {children}
+      </button>
+    );
+  },
+);
 
 export function ToolbarDivider() {
-  return <div className="mx-0.5 h-4 w-px self-center bg-border" aria-hidden="true" />;
+  return <div className="mx-1 h-4 w-px self-center bg-border" aria-hidden="true" />;
 }
 
 export function ToolbarSpacer() {

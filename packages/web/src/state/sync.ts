@@ -15,6 +15,7 @@
  * dictionaries to derive arrays.
  */
 import { create } from "zustand";
+import { useAuth } from "./auth.ts";
 
 export type SenderType = "human" | "agent" | "system";
 
@@ -68,6 +69,8 @@ export interface Channel {
   topic?: string | null;
   description?: string | null;
   archived?: boolean;
+  /** For DM/group_dm channels, the user_ids of every member (joined_at order). */
+  members?: string[];
 }
 
 export type PresenceStatus = "active" | "away" | "dnd" | "offline";
@@ -118,6 +121,17 @@ export interface SyncState {
   starredByMessage: Record<string, string[]>;
   starsByUser: Record<string, string[]>;
   notificationPrefByChannel: Record<string, Record<string, NotificationPref>>;
+  /**
+   * Per-channel unread + mention counts.
+   *
+   * Hydrated from the server's `unread:by-channel` projection on
+   * workspace mount so we know about unread DMs whose messages haven't
+   * been streamed into `messagesByChannel` yet (e.g. a fresh tab where
+   * the initial /api/sync window didn't include older DMs). Live events
+   * keep it up-to-date afterwards: own `read.marker` zeroes a channel,
+   * incoming `message.send` from someone else bumps it.
+   */
+  unreadByChannel: Record<string, { unread: number; mentions: number }>;
   // Mutators
   apply(event: Event): void;
   applyMany(events: Event[], cursor?: string | null): void;
@@ -132,6 +146,9 @@ export interface SyncState {
   pruneTyping(now: number): void;
   setNotificationRead(notificationId: string): void;
   setDraft(channelId: string, content: string, threadRoot?: string | null): void;
+  hydrateUnread(
+    rows: Array<{ channel_id: string; unread: number; mention_count: number }>,
+  ): void;
 }
 
 const _empty: never[] = [];
@@ -203,12 +220,14 @@ export const useSync = create<SyncState>((set, get) => ({
   starredByMessage: {},
   starsByUser: {},
   notificationPrefByChannel: {},
+  unreadByChannel: {},
 
   apply(event) {
     get().applyMany([event]);
   },
 
   applyMany(events, cursor) {
+    const me = useAuth.getState().identity?.user_id ?? null;
     set((s) => {
       let highSequence = s.highSequence;
       let channels = s.channels;
@@ -222,7 +241,11 @@ export const useSync = create<SyncState>((set, get) => ({
       let starredByMessage = s.starredByMessage;
       let starsByUser = s.starsByUser;
       let notificationPrefByChannel = s.notificationPrefByChannel;
+      let unreadByChannel = s.unreadByChannel;
+      let readUpToByChannel = s.readUpToByChannel;
       let mutated = false;
+      let readMutated = false;
+      let unreadMutated = false;
 
       for (const e of events) {
         if (e.sequence <= highSequence) continue;
@@ -275,6 +298,45 @@ export const useSync = create<SyncState>((set, get) => ({
             channels = { ...channels, [e.room_id]: { ...ch, topic: (e.content.topic ?? null) as string | null } };
             break;
           }
+          case "channel.member.join": {
+            const ch = channels[e.room_id];
+            if (!ch) break;
+            const uid = (e.content.user_id as string | undefined) ?? e.sender_id;
+            const current = ch.members ?? [];
+            if (current.includes(uid)) break;
+            channels = {
+              ...channels,
+              [e.room_id]: { ...ch, members: [...current, uid] },
+            };
+            break;
+          }
+          case "channel.member.invite": {
+            const ch = channels[e.room_id];
+            if (!ch) break;
+            const ids = (e.content.user_ids as string[] | undefined) ?? [];
+            if (!ids.length) break;
+            const current = ch.members ?? [];
+            const next = current.slice();
+            for (const uid of ids) {
+              if (!next.includes(uid)) next.push(uid);
+            }
+            if (next.length === current.length) break;
+            channels = { ...channels, [e.room_id]: { ...ch, members: next } };
+            break;
+          }
+          case "channel.member.leave":
+          case "channel.member.kick": {
+            const ch = channels[e.room_id];
+            if (!ch) break;
+            const uid = (e.content.user_id as string | undefined) ?? e.sender_id;
+            const current = ch.members ?? [];
+            if (!current.includes(uid)) break;
+            channels = {
+              ...channels,
+              [e.room_id]: { ...ch, members: current.filter((m) => m !== uid) },
+            };
+            break;
+          }
           case "message.send": {
             const c = e.content as {
               content?: string;
@@ -294,6 +356,7 @@ export const useSync = create<SyncState>((set, get) => ({
               sequence: e.sequence,
               origin_ts: e.origin_ts,
             };
+            const isNew = !messageById[msg.id];
             const next = _appendMessage(messagesByChannel, messageById, msg);
             messagesByChannel = next.byChannel;
             messageById = next.byId;
@@ -301,6 +364,27 @@ export const useSync = create<SyncState>((set, get) => ({
               const bumped = _bumpThreadCount(messageById, messagesByChannel, msg.thread_root, e.origin_ts);
               messageById = bumped.byId;
               messagesByChannel = bumped.byChannel;
+            }
+            // Bump the unread badge when this is the first time we see
+            // the message AND it's from someone else AND we haven't
+            // already read past it. Threads still count as activity but
+            // not toward the channel's "1 unread" badge per Slack.
+            if (
+              isNew
+              && me
+              && msg.sender_id !== me
+              && !msg.thread_root
+              && msg.sequence > (readUpToByChannel[msg.channel_id] ?? 0)
+            ) {
+              const cur = unreadByChannel[msg.channel_id] ?? { unread: 0, mentions: 0 };
+              unreadByChannel = {
+                ...unreadByChannel,
+                [msg.channel_id]: {
+                  unread: cur.unread + 1,
+                  mentions: cur.mentions + (msg.mentions.includes(me) ? 1 : 0),
+                },
+              };
+              unreadMutated = true;
             }
             break;
           }
@@ -393,10 +477,34 @@ export const useSync = create<SyncState>((set, get) => ({
             break;
           }
           case "read.marker": {
+            // `read.marker` is per-user — only apply OUR own markers,
+            // otherwise a peer reading a shared channel would zero out
+            // our unread badge.
+            if (!me || e.sender_id !== me) break;
             const seq = (e.content.up_to_sequence as number | undefined) ?? e.sequence;
-            const current = s.readUpToByChannel[e.room_id] ?? 0;
+            const current = readUpToByChannel[e.room_id] ?? 0;
             if (seq > current) {
-              s.readUpToByChannel = { ...s.readUpToByChannel, [e.room_id]: seq };
+              readUpToByChannel = { ...readUpToByChannel, [e.room_id]: seq };
+              readMutated = true;
+            }
+            // Drop the unread badge for any messages we've now read past.
+            const tally = unreadByChannel[e.room_id];
+            if (tally && (tally.unread > 0 || tally.mentions > 0)) {
+              const list = messagesByChannel[e.room_id] ?? [];
+              let unread = 0;
+              let mentions = 0;
+              for (const m of list) {
+                if (m.thread_root) continue;
+                if (m.sender_id === me) continue;
+                if (m.sequence <= seq) continue;
+                unread += 1;
+                if (m.mentions.includes(me)) mentions += 1;
+              }
+              unreadByChannel = {
+                ...unreadByChannel,
+                [e.room_id]: { unread, mentions },
+              };
+              unreadMutated = true;
             }
             break;
           }
@@ -515,11 +623,12 @@ export const useSync = create<SyncState>((set, get) => ({
         next.draftsByChannel = draftsByChannel;
         next.huddlesByChannel = huddlesByChannel;
         next.notifications = notifications;
-        next.readUpToByChannel = s.readUpToByChannel;
         next.starredByMessage = starredByMessage;
         next.starsByUser = starsByUser;
         next.notificationPrefByChannel = notificationPrefByChannel;
       }
+      if (readMutated) next.readUpToByChannel = readUpToByChannel;
+      if (unreadMutated) next.unreadByChannel = unreadByChannel;
       if (cursor !== undefined) next.cursor = cursor;
       return next;
     });
@@ -571,7 +680,42 @@ export const useSync = create<SyncState>((set, get) => ({
     set((s) => {
       const current = s.readUpToByChannel[channelId] ?? 0;
       if (sequence <= current) return s;
-      return { readUpToByChannel: { ...s.readUpToByChannel, [channelId]: sequence } };
+      const patch: Partial<SyncState> = {
+        readUpToByChannel: { ...s.readUpToByChannel, [channelId]: sequence },
+      };
+      // Recompute the unread badge against the locally known messages.
+      // Anything still above the new read marker stays counted; older
+      // entries drop off. Matches the read.marker event handler so the
+      // optimistic local mark and the server echo agree.
+      const tally = s.unreadByChannel[channelId];
+      if (tally) {
+        const me = useAuth.getState().identity?.user_id ?? null;
+        const list = s.messagesByChannel[channelId] ?? [];
+        let unread = 0;
+        let mentions = 0;
+        for (const m of list) {
+          if (m.thread_root) continue;
+          if (me && m.sender_id === me) continue;
+          if (m.sequence <= sequence) continue;
+          unread += 1;
+          if (me && m.mentions.includes(me)) mentions += 1;
+        }
+        patch.unreadByChannel = { ...s.unreadByChannel, [channelId]: { unread, mentions } };
+      }
+      return patch;
+    });
+  },
+
+  hydrateUnread(rows) {
+    set((s) => {
+      const next: Record<string, { unread: number; mentions: number }> = { ...s.unreadByChannel };
+      for (const row of rows) {
+        next[row.channel_id] = {
+          unread: row.unread,
+          mentions: row.mention_count,
+        };
+      }
+      return { unreadByChannel: next };
     });
   },
 

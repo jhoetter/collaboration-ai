@@ -76,9 +76,16 @@ export interface UiState {
   readonly newDmOpen: boolean;
   readonly membersPanelOpen: boolean;
   readonly sectionsOpen: Record<SectionId, boolean>;
+  /**
+   * Optional pre-fill for the workspace top search bar. Components publish
+   * a query (e.g. the channel header's "search in channel" button) and the
+   * `TopBar` consumes it on its next render. Cleared by the bar after read.
+   */
+  readonly searchQuery: string | null;
   setCreateChannelOpen(open: boolean): void;
   setNewDmOpen(open: boolean): void;
   setMembersPanelOpen(open: boolean): void;
+  setSearchQuery(query: string | null): void;
   toggleSection(id: SectionId): void;
 }
 
@@ -86,6 +93,7 @@ export const useUi = create<UiState>((set, get) => ({
   createChannelOpen: false,
   newDmOpen: false,
   membersPanelOpen: false,
+  searchQuery: null,
   sectionsOpen: loadSectionState(),
   setCreateChannelOpen(open) {
     set({ createChannelOpen: open });
@@ -95,6 +103,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setMembersPanelOpen(open) {
     set({ membersPanelOpen: open });
+  },
+  setSearchQuery(query) {
+    set({ searchQuery: query });
   },
   toggleSection(id) {
     const next = { ...get().sectionsOpen, [id]: !get().sectionsOpen[id] };

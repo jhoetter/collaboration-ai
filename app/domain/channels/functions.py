@@ -223,8 +223,29 @@ def list_channels(
         sql += " AND archived = false"
     sql += " ORDER BY name"
     with open_session() as session:
-        rows = session.execute(text(sql), {"w": workspace_id}).mappings()
-        return [dict(r) for r in rows]
+        rows = [dict(r) for r in session.execute(text(sql), {"w": workspace_id}).mappings()]
+        if not rows:
+            return rows
+        # Attach member user-ids so the sidebar can resolve DM partner names
+        # without an N+1 fetch.  We only do it for DM-style channels because
+        # public channels can have hundreds of members and the sidebar does
+        # not need that information.
+        dm_ids = [r["id"] for r in rows if r.get("type") in {"dm", "group_dm"}]
+        members_by_channel: dict[str, list[str]] = {}
+        if dm_ids:
+            mrows = session.execute(
+                text(
+                    "SELECT channel_id, user_id FROM channel_members "
+                    "WHERE channel_id = ANY(:ids) ORDER BY joined_at"
+                ),
+                {"ids": dm_ids},
+            ).mappings()
+            for m in mrows:
+                members_by_channel.setdefault(m["channel_id"], []).append(m["user_id"])
+        for r in rows:
+            if r.get("type") in {"dm", "group_dm"}:
+                r["members"] = members_by_channel.get(r["id"], [])
+        return rows
 
 
 @function(name="channel:list-members", mcp_expose=True, mcp_scope="read:channels")
