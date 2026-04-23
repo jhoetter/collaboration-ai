@@ -83,10 +83,15 @@ export default [
         HTMLImageElement: "readonly",
         SVGSVGElement: "readonly",
         HTMLCanvasElement: "readonly",
+        HTMLVideoElement: "readonly",
         CanvasRenderingContext2D: "readonly",
         EventListener: "readonly",
         MediaQueryListEvent: "readonly",
         HTMLSpanElement: "readonly",
+        MediaStream: "readonly",
+        MediaStreamConstraints: "readonly",
+        MediaDeviceInfo: "readonly",
+        MediaDeviceKind: "readonly",
         // React's classic JSX runtime is implicit in TS/Vite, but the
         // codebase still references the `React.*` namespace for type
         // annotations (e.g. `React.ReactNode`). Mark it as a known

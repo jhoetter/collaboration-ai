@@ -362,18 +362,47 @@ def handle_huddle_start(cmd: Command, state: ProjectedState) -> list[EventEnvelo
         ]
     huddle_id = cmd.payload.get("huddle_id") or make_event_id()
     livekit_room = cmd.payload.get("livekit_room") or huddle_id
-    return [
-        _envelope(
-            cmd,
-            type="huddle.start",
-            content={
-                "huddle_id": huddle_id,
-                "livekit_room": livekit_room,
-                **({"title": cmd.payload["title"]} if cmd.payload.get("title") else {}),
-            },
-            room_id=cmd.room_id,
+    start_event = _envelope(
+        cmd,
+        type="huddle.start",
+        content={
+            "huddle_id": huddle_id,
+            "livekit_room": livekit_room,
+            **({"title": cmd.payload["title"]} if cmd.payload.get("title") else {}),
+        },
+        room_id=cmd.room_id,
+    )
+    out: list[EventEnvelope] = [start_event]
+    # Surface the meeting in the recipients' Notifications inbox so
+    # channel members who weren't watching the channel still find out.
+    # We deliberately fan out one envelope per recipient so each user's
+    # notification projection (`notifications[user_id][nid]`) receives
+    # exactly one row — same pattern as mention notifications above.
+    members = state.channel_members.get(cmd.room_id, {})
+    body = (cmd.payload.get("title") or "").strip() or None
+    for uid in members:
+        if uid == cmd.actor_id:
+            continue
+        out.append(
+            EventEnvelope(
+                event_id=make_event_id(),
+                type="notification.create",
+                content={
+                    "user_id": uid,
+                    "notification_id": make_notification_id(),
+                    "kind": "meeting.started",
+                    "target_event_id": start_event.event_id,
+                    "body": body,
+                    "huddle_id": huddle_id,
+                },
+                workspace_id=cmd.workspace_id,
+                room_id=cmd.room_id,
+                sender_id=cmd.actor_id,
+                sender_type=cmd.source,
+                idempotency_key=cmd.idempotency_key,
+            )
         )
-    ]
+    return out
 
 
 def handle_huddle_join(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
@@ -404,14 +433,38 @@ def handle_huddle_leave(cmd: Command, state: ProjectedState) -> list[EventEnvelo
     if huddle is None:
         # Best-effort idempotent leave — silently no-op.
         return []
-    return [
-        _envelope(
-            cmd,
-            type="huddle.leave",
-            content={"huddle_id": huddle["huddle_id"]},
-            room_id=cmd.room_id,
+    leave_event = _envelope(
+        cmd,
+        type="huddle.leave",
+        content={"huddle_id": huddle["huddle_id"]},
+        room_id=cmd.room_id,
+    )
+    # Auto-end the meeting when the last participant leaves. We compute
+    # "last participant" against the projected state at handle time —
+    # including the current leaver's exit — so a pure two-person call
+    # collapses to a `huddle.end` once both have left.  The end event
+    # is emitted as a `system` envelope so it isn't attributed to the
+    # last user as if they ended the room for everyone.
+    remaining: set[str] = set(huddle.get("participants", set()))
+    remaining.discard(cmd.actor_id)
+    out: list[EventEnvelope] = [leave_event]
+    if not remaining:
+        out.append(
+            EventEnvelope(
+                event_id=make_event_id(),
+                type="huddle.end",
+                content={
+                    "huddle_id": huddle["huddle_id"],
+                    "ended_reason": "auto_ended",
+                },
+                workspace_id=cmd.workspace_id,
+                room_id=cmd.room_id,
+                sender_id="system",
+                sender_type="system",
+                idempotency_key=cmd.idempotency_key,
+            )
         )
-    ]
+    return out
 
 
 def handle_huddle_end(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
@@ -422,11 +475,21 @@ def handle_huddle_end(cmd: Command, state: ProjectedState) -> list[EventEnvelope
     )
     if huddle is None:
         return []
+    # Only the original starter (or a workspace owner/admin) is allowed
+    # to end the meeting for everyone — this matches the host-end UX in
+    # Meet/Zoom and prevents random participants from kicking the room.
+    workspace_member = state.workspace_members.get(cmd.workspace_id, {}).get(cmd.actor_id)
+    is_admin = workspace_member is not None and workspace_member.get("role") in {"owner", "admin"}
+    if cmd.source != "system" and cmd.actor_id != huddle.get("started_by") and not is_admin:
+        raise CommandRejected("forbidden", "Only the meeting host can end it for everyone")
     return [
         _envelope(
             cmd,
             type="huddle.end",
-            content={"huddle_id": huddle["huddle_id"]},
+            content={
+                "huddle_id": huddle["huddle_id"],
+                "ended_reason": "host_ended" if cmd.source != "system" else "auto_ended",
+            },
             room_id=cmd.room_id,
         )
     ]

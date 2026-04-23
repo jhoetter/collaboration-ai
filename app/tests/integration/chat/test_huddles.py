@@ -133,6 +133,68 @@ def test_full_lifecycle_start_join_leave_end() -> None:
     assert "ch_general" not in bs.state.huddles
 
 
+def test_last_leaver_auto_ends_meeting() -> None:
+    """When the final participant leaves the projected huddle is torn
+    down by an automatic ``huddle.end`` follow-up event so the channel
+    no longer shows a phantom "meeting in progress" banner."""
+    bs = bootstrap()
+    owner, alice = bs.users[0], bs.users[1]
+    _start(bs, owner)
+    _join(bs, alice)
+    assert "ch_general" in bs.state.huddles
+
+    _leave(bs, owner)
+    # Owner left, alice is still here — the meeting must persist.
+    assert "ch_general" in bs.state.huddles
+    assert owner not in bs.state.huddles["ch_general"]["participants"]
+
+    # Alice leaves last — this leave must collapse to a `huddle.end` and
+    # remove the active huddle slot.
+    last_leave = _leave(bs, alice)
+    assert last_leave.status == "applied"
+    assert "ch_general" not in bs.state.huddles
+
+
+def test_huddle_start_notifies_other_channel_members() -> None:
+    """Starting a meeting fans out a `meeting.started` notification to
+    every other channel member so they see it in their inbox even if
+    they aren't actively viewing the channel."""
+    bs = bootstrap()
+    owner = bs.users[0]
+    res = _start(bs, owner, title="Standup")
+    assert res.status == "applied"
+    types = [e.type for e in res.events]
+    assert types[0] == "huddle.start"
+    notifs = [e for e in res.events if e.type == "notification.create"]
+    # Owner is excluded; every other member of #ch_general gets one.
+    expected_recipients = set(bs.users) - {owner}
+    actual_recipients = {n.content["user_id"] for n in notifs}
+    assert actual_recipients == expected_recipients
+    for n in notifs:
+        assert n.content["kind"] == "meeting.started"
+        assert n.content["body"] == "Standup"
+        assert n.content["huddle_id"] == bs.state.huddles["ch_general"]["huddle_id"]
+
+
+def test_only_host_or_admin_can_end_meeting() -> None:
+    bs = bootstrap()
+    owner, alice = bs.users[0], bs.users[1]
+    _start(bs, owner)
+    _join(bs, alice)
+
+    # Alice is a regular member, not the meeting host.
+    forbidden = _end(bs, alice)
+    assert forbidden.status == "rejected"
+    assert forbidden.error and forbidden.error.code == "forbidden"
+    # Meeting still active.
+    assert "ch_general" in bs.state.huddles
+
+    # The original host can end it.
+    res = _end(bs, owner)
+    assert res.status == "applied"
+    assert "ch_general" not in bs.state.huddles
+
+
 def test_start_requires_room_id() -> None:
     bs = bootstrap()
     res = bs.bus.dispatch(

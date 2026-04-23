@@ -23,6 +23,15 @@ class Huddle(Table):
     started_at = Column(BigInteger, required=True)
     ended_at = Column(BigInteger, nullable=True)
     title = Column(types.Text, nullable=True)
+    # Optional metadata populated by the post-meeting pipeline (Phase 6).
+    # We store URLs rather than blobs so the actual recording/transcript
+    # can live in object storage / a separate service.
+    recording_url = Column(types.Text, nullable=True)
+    transcript_url = Column(types.Text, nullable=True)
+    # Discriminator for *why* the meeting closed: "host_ended",
+    # "auto_ended" (last leaver), "error", … Used by the past-meetings
+    # UI to explain endings.
+    ended_reason = Column(types.String, nullable=True)
 
 
 class HuddleParticipant(Table):

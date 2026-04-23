@@ -16,6 +16,7 @@ import { useSync } from "../state/sync.ts";
 import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
 import { ChannelPage } from "./ChannelPage.tsx";
+import { MeetingSummaryPage } from "./MeetingSummaryPage.tsx";
 
 interface UnreadRow {
   channel_id: string;
@@ -132,6 +133,7 @@ export function WorkspaceShell() {
           <Routes>
             <Route index element={<EmptyState />} />
             <Route path="c/:channelId" element={<ChannelPage />} />
+            <Route path="c/:channelId/meet/:huddleId" element={<MeetingSummaryPage />} />
           </Routes>
         </main>
         {threadOpen && <ThreadPane />}

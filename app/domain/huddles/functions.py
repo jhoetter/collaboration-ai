@@ -126,6 +126,115 @@ def end_huddle(
     ).to_dict()
 
 
+@function(name="meeting:list", mcp_expose=True, mcp_scope="read:huddles")
+def list_meetings(
+    workspace_id: str,
+    channel_id: str,
+    *,
+    actor_id: str,
+    limit: int = 20,
+    before: int | None = None,
+) -> list[dict[str, Any]]:
+    """List past + active meetings for a channel.
+
+    Past meetings keep their row in ``huddles`` after ``huddle.end``
+    (only the in-memory projection drops them). This endpoint surfaces
+    them so the UI can render a "past meetings" section per channel —
+    the data foundation for transcripts/recordings (see ``Phase 6`` in
+    the plan).
+
+    ``before`` is a ``started_at`` epoch-ms cursor; results are returned
+    newest-first so paging back through history just feeds the
+    smallest ``started_at`` from the last batch.
+    """
+    from sqlalchemy import text
+
+    from ..shared.runtime import open_session
+
+    capped = max(1, min(int(limit or 20), 100))
+    rows: list[dict[str, Any]] = []
+    with open_session() as session:
+        stmt = text(
+            """
+            SELECT h.huddle_id, h.workspace_id, h.channel_id, h.livekit_room,
+                   h.started_by, h.started_at, h.ended_at, h.title,
+                   h.recording_url, h.transcript_url, h.ended_reason,
+                   COALESCE(p.cnt, 0) AS participant_count
+              FROM huddles h
+              LEFT JOIN (
+                SELECT huddle_id, COUNT(*) AS cnt
+                  FROM huddle_participants
+                 GROUP BY huddle_id
+              ) p ON p.huddle_id = h.huddle_id
+             WHERE h.workspace_id = :wid
+               AND h.channel_id = :cid
+               AND (:before IS NULL OR h.started_at < :before)
+             ORDER BY h.started_at DESC
+             LIMIT :lim
+            """
+        )
+        result = session.execute(
+            stmt,
+            {"wid": workspace_id, "cid": channel_id, "before": before, "lim": capped},
+        )
+        for row in result.mappings():
+            rows.append(dict(row))
+    return rows
+
+
+@function(name="meeting:get", mcp_expose=True, mcp_scope="read:huddles")
+def get_meeting(
+    workspace_id: str,
+    huddle_id: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    """Return a meeting + its participant roster.
+
+    Used by the per-meeting summary page (``/w/:ws/c/:cid/meet/:hid``).
+    Returns the meeting metadata plus an ordered ``participants`` list
+    (joined_at ASC) so the UI can render an attendance trail.
+    """
+    from sqlalchemy import text
+
+    from ..shared.runtime import open_session
+
+    with open_session() as session:
+        meeting_row = (
+            session.execute(
+                text(
+                    """
+                    SELECT huddle_id, workspace_id, channel_id, livekit_room,
+                           started_by, started_at, ended_at, title,
+                           recording_url, transcript_url, ended_reason
+                      FROM huddles
+                     WHERE huddle_id = :hid AND workspace_id = :wid
+                    """
+                ),
+                {"hid": huddle_id, "wid": workspace_id},
+            )
+            .mappings()
+            .first()
+        )
+        if meeting_row is None:
+            raise RuntimeError(f"meeting {huddle_id} not found")
+        participants = [
+            dict(p)
+            for p in session.execute(
+                text(
+                    """
+                    SELECT user_id, joined_at, left_at, role
+                      FROM huddle_participants
+                     WHERE huddle_id = :hid
+                     ORDER BY joined_at ASC
+                    """
+                ),
+                {"hid": huddle_id},
+            ).mappings()
+        ]
+    return {**dict(meeting_row), "participants": participants}
+
+
 @function(name="huddle:token", mcp_expose=False)
 def huddle_token(
     workspace_id: str,

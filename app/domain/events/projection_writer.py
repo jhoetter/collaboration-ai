@@ -619,11 +619,17 @@ def _project_huddle_end(s: Session, e: Event) -> None:
     s.execute(
         text(
             """
-            UPDATE huddles SET ended_at = :ts
-            WHERE huddle_id = :hid AND ended_at IS NULL
+            UPDATE huddles
+               SET ended_at = :ts,
+                   ended_reason = COALESCE(:reason, ended_reason)
+             WHERE huddle_id = :hid AND ended_at IS NULL
             """
         ),
-        {"hid": e.content["huddle_id"], "ts": e.origin_ts},
+        {
+            "hid": e.content["huddle_id"],
+            "ts": e.origin_ts,
+            "reason": e.content.get("ended_reason"),
+        },
     )
     s.execute(
         text(

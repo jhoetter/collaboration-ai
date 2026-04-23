@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { ChannelHeader } from "../components/ChannelHeader.tsx";
 import { Composer, type ComposerSendPayload } from "../components/Composer.tsx";
 import { DropOverlay } from "../components/DropOverlay.tsx";
+import { MeetingBanner } from "../components/meeting/MeetingBanner.tsx";
 import { MessageList } from "../components/MessageList.tsx";
 import { TypingIndicator } from "../components/TypingIndicator.tsx";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
@@ -174,6 +175,7 @@ export function ChannelPage() {
       onDrop={handleDrop}
     >
       <ChannelHeader channelId={channelId} channel={channel} />
+      <MeetingBanner channelId={channelId} />
       <MessageList messages={messages} channelId={channelId} onOpenThread={openThread} />
       <TypingIndicator channelId={channelId} />
       <Composer channelId={channelId} placeholder={composerPlaceholder} onSend={handleSend} />

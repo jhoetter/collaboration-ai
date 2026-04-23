@@ -32,7 +32,6 @@ import { useAuth } from "../state/auth.ts";
 import { type Channel, type NotificationPref, useSync, type PresenceStatus } from "../state/sync.ts";
 import { useUi } from "../state/ui.ts";
 import { ChannelDetailPanel, type DetailTab } from "./ChannelDetailPanel.tsx";
-import { HuddlePanel } from "./HuddlePanel.tsx";
 
 interface MemberRow {
   user_id: string;
@@ -50,7 +49,6 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
   const { t } = useTranslator();
   const { confirm } = useDialogs();
   const [detailTab, setDetailTab] = useState<DetailTab | null>(null);
-  const [showHuddle, setShowHuddle] = useState(false);
   const navigate = useNavigate();
   const params = useParams<{ workspaceId: string }>();
   const qc = useQueryClient();
@@ -69,13 +67,13 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
   const partner = isDm && !isGroupDm ? dmPeers[0] : undefined;
   const partnerStatus = partner ? mapPresence(presence[partner.user_id]) : "offline";
 
-  async function startHuddle() {
-    try {
-      await callFunction("huddle:start", { channel_id: channelId });
-    } catch (err) {
-      console.error("huddle start failed", err);
-    }
-    setShowHuddle(true);
+  function openMeeting() {
+    // We deliberately do NOT call `huddle:start` from the header anymore.
+    // Lazy-start lives inside `huddle:token` (server-side) which is
+    // invoked from the meeting room itself — that way the URL works
+    // for everyone (joiners + starter) and a refresh inside the
+    // meeting doesn't accidentally re-emit a start event.
+    navigate(`/w/${params.workspaceId}/c/${channelId}/meet`);
   }
 
   async function leaveChannel() {
@@ -188,7 +186,7 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
           </button>
         )}
         {huddle ? (
-          <Button variant="primary" size="sm" onClick={() => setShowHuddle(true)} className="gap-1.5">
+          <Button variant="primary" size="sm" onClick={openMeeting} className="gap-1.5">
             <IconVideo size={14} />
             <span className="hidden sm:inline">
               {t("channel.joinHuddle", { n: huddle.participants.length })}
@@ -197,7 +195,7 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
         ) : (
           <button
             type="button"
-            onClick={() => void startHuddle()}
+            onClick={openMeeting}
             aria-label={t("channel.startHuddle")}
             title={t("channel.startHuddle")}
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-secondary transition-colors hover:bg-hover hover:text-foreground"
@@ -236,7 +234,6 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
           onClose={() => setDetailTab(null)}
         />
       )}
-      {showHuddle && <HuddlePanel channelId={channelId} onClose={() => setShowHuddle(false)} />}
     </header>
   );
 }

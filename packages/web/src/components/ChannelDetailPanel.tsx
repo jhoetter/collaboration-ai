@@ -14,7 +14,15 @@
  * lists have breathing room; the header remains uncluttered (just the
  * channel name).
  */
-import { Avatar, Button, IconDownload, IconExternal, IconPin, Modal } from "@collabai/ui";
+import {
+  Avatar,
+  Button,
+  IconDownload,
+  IconExternal,
+  IconPin,
+  IconVideo,
+  Modal,
+} from "@collabai/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -26,7 +34,7 @@ import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment, type Channel } from "../state/sync.ts";
 import { FileTypeIcon } from "./FileTypeIcon.tsx";
 
-export type DetailTab = "about" | "members" | "files" | "pinned";
+export type DetailTab = "about" | "members" | "files" | "pinned" | "meetings";
 
 interface MemberRow {
   user_id: string;
@@ -100,12 +108,18 @@ export function ChannelDetailPanel({
               label={t("channelDetail.tabPinned")}
             />
           )}
+          <TabButton
+            active={tab === "meetings"}
+            onClick={() => setTab("meetings")}
+            label={t("channelDetail.tabMeetings")}
+          />
         </nav>
       </div>
       {tab === "about" && <AboutTab channel={channel} isDm={isDm} onClose={onClose} />}
       {tab === "members" && <MembersTab channel={channel} members={members} />}
       {tab === "files" && !isDm && <FilesTab channelId={channel.id} />}
       {tab === "pinned" && !isDm && <PinnedTab channelId={channel.id} onJump={onClose} />}
+      {tab === "meetings" && <MeetingsTab channelId={channel.id} onClose={onClose} />}
     </Modal>
   );
 }
@@ -437,6 +451,100 @@ function PinnedRowView({ row, onJump }: { row: PinnedRow; onJump: () => void }) 
       </button>
     </li>
   );
+}
+
+// ───────── Meetings ─────────
+
+interface MeetingRow {
+  huddle_id: string;
+  channel_id: string;
+  started_by: string;
+  started_at: number;
+  ended_at: number | null;
+  title: string | null;
+  recording_url: string | null;
+  transcript_url: string | null;
+  ended_reason: string | null;
+  participant_count: number;
+}
+
+function MeetingsTab({ channelId, onClose }: { channelId: string; onClose: () => void }) {
+  const { t } = useTranslator();
+  const navigate = useNavigate();
+  const params = useParams<{ workspaceId: string }>();
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["channel-meetings", channelId],
+    queryFn: () => callFunction<MeetingRow[]>("meeting:list", { channel_id: channelId, limit: 50 }),
+    refetchOnWindowFocus: false,
+  });
+
+  if (isLoading) {
+    return <div className="p-6 text-center text-sm text-tertiary">{t("common.loading")}</div>;
+  }
+
+  if (data.length === 0) {
+    return <div className="p-6 text-center text-sm text-tertiary">{t("channelDetail.meetingsEmpty")}</div>;
+  }
+
+  function open(huddleId: string) {
+    if (!params.workspaceId) return;
+    navigate(`/w/${params.workspaceId}/c/${channelId}/meet/${huddleId}`);
+    onClose();
+  }
+
+  return (
+    <ul className="max-h-[60dvh] overflow-y-auto divide-y divide-border sm:max-h-[60vh]">
+      {data.map((m) => (
+        <MeetingRowView key={m.huddle_id} row={m} onOpen={() => open(m.huddle_id)} />
+      ))}
+    </ul>
+  );
+}
+
+function MeetingRowView({ row, onOpen }: { row: MeetingRow; onOpen: () => void }) {
+  const { t } = useTranslator();
+  const startedBy = useDisplayName(row.started_by);
+  const startedAt = new Date(row.started_at).toLocaleString();
+  const isActive = row.ended_at === null;
+  const durationLabel = isActive
+    ? t("channelDetail.meetingActive")
+    : formatDuration(row.ended_at! - row.started_at);
+  return (
+    <li className="flex items-start gap-3 px-3 py-3 transition-colors hover:bg-hover">
+      <span
+        className={`mt-0.5 ${isActive ? "text-accent" : "text-tertiary"}`}
+        aria-hidden
+      >
+        <IconVideo />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">
+          {row.title || t("channelDetail.meetingFallbackTitle")}
+        </p>
+        <p className="truncate text-xs text-tertiary">
+          {startedAt} · {startedBy || row.started_by} · {durationLabel} ·{" "}
+          {t("channelDetail.meetingParticipants", { n: row.participant_count })}
+        </p>
+      </div>
+      <button
+        type="button"
+        title={t("channelDetail.openMeeting")}
+        className="rounded-md p-1.5 text-tertiary transition-colors hover:bg-hover hover:text-foreground"
+        onClick={onOpen}
+      >
+        <IconExternal />
+      </button>
+    </li>
+  );
+}
+
+function formatDuration(ms: number): string {
+  if (ms <= 0) return "0m";
+  const totalMinutes = Math.round(ms / 60_000);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

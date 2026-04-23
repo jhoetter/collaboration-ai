@@ -7,6 +7,7 @@ import { DialogProvider } from "./lib/dialogs.tsx";
 import { I18nProvider, useTranslator } from "./lib/i18n/index.ts";
 import { ThemeProvider } from "./lib/theme/index.ts";
 import { useAuth } from "./state/auth.ts";
+import { MeetingPage } from "./pages/MeetingPage.tsx";
 import { WorkspaceShell } from "./pages/WorkspaceShell.tsx";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Bootstrap />} />
+                {/*
+                 * Meeting routes are mounted ABOVE the workspace shell so the
+                 * full-page meeting UI is not wrapped in the TopBar/Sidebar
+                 * chrome. Shareable URL: /w/:workspaceId/c/:channelId/meet.
+                 */}
+                <Route
+                  path="/w/:workspaceId/c/:channelId/meet"
+                  element={<MeetingPage />}
+                />
                 <Route path="/w/:workspaceId/*" element={<WorkspaceShell />} />
               </Routes>
             </BrowserRouter>
