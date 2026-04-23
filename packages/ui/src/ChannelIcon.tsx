@@ -9,15 +9,11 @@ export interface ChannelIconProps {
 }
 
 export function ChannelIcon({ kind, className }: ChannelIconProps) {
-  const symbol =
-    kind === "public" ? "#" : kind === "private" ? "🔒" : kind === "dm" ? "@" : "👥";
+  const symbol = kind === "public" ? "#" : kind === "private" ? "🔒" : kind === "dm" ? "@" : "👥";
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "inline-flex h-4 w-4 items-center justify-center text-[12px] text-secondary",
-        className,
-      )}
+      className={cn("inline-flex h-4 w-4 items-center justify-center text-[12px] text-secondary", className)}
     >
       {symbol}
     </span>

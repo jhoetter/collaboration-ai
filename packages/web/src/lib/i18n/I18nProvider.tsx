@@ -80,7 +80,7 @@ export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
 
   const value = useMemo<I18nContextValue>(
     () => ({ locale, messages: CATALOGUES[locale], setLocale }),
-    [locale, setLocale],
+    [locale, setLocale]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

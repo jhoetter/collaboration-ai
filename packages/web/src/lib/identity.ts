@@ -105,9 +105,10 @@ function readStored(): AnonymousIdentity | null {
 }
 
 function generateIdentity(): AnonymousIdentity {
-  const uuid = typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
+  const uuid =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
   const slug = uuid.replace(/-/g, "").slice(0, 8);
   const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
   return {

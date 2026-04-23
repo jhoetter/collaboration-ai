@@ -12,13 +12,7 @@ import { create } from "zustand";
 
 const SECTION_STATE_KEY = "collab.sidebar.sections.v1";
 
-type SectionId =
-  | "channels"
-  | "dms"
-  | "saved"
-  | "mentions"
-  | "drafts"
-  | "activity";
+type SectionId = "channels" | "dms" | "saved" | "mentions" | "drafts" | "activity";
 
 function loadSectionState(): Record<SectionId, boolean> {
   if (typeof window === "undefined")

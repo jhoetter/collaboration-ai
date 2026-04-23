@@ -19,7 +19,7 @@ function resolveDesignSystemId(env: Record<string, string>): DesignSystemId {
   }
   console.warn(
     `[collaboration-ai] Unknown VITE_DESIGN_SYSTEM="${raw}". ` +
-      `Falling back to "default". Known: ${DESIGN_SYSTEM_IDS.join(", ")}.`,
+      `Falling back to "default". Known: ${DESIGN_SYSTEM_IDS.join(", ")}.`
   );
   return "default";
 }
@@ -37,10 +37,7 @@ function resolveDesignSystemId(env: Record<string, string>): DesignSystemId {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const designSystem = resolveDesignSystemId(env);
-  const designSystemPath = path.resolve(
-    __dirname,
-    `src/design-systems/${designSystem}.css`,
-  );
+  const designSystemPath = path.resolve(__dirname, `src/design-systems/${designSystem}.css`);
 
   return {
     plugins: [react()],

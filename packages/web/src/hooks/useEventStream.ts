@@ -61,9 +61,7 @@ export function useEventStream(workspaceId: string | undefined) {
         return;
       }
       if (env.presence && env.presence.length) {
-        applyPresence(
-          env.presence.map((p) => ({ user_id: p.user_id, status: p.status as never })),
-        );
+        applyPresence(env.presence.map((p) => ({ user_id: p.user_id, status: p.status as never })));
       }
       if (env.typing && env.typing.length) {
         applyTyping(env.typing);
@@ -75,7 +73,7 @@ export function useEventStream(workspaceId: string | undefined) {
         // immediately. Cheap because `users:list` is a single query and
         // only fires for membership-changing events.
         const touchesMembership = env.events.some(
-          (e) => e.type === "workspace.member.add" || e.type === "workspace.member.role-set",
+          (e) => e.type === "workspace.member.add" || e.type === "workspace.member.role-set"
         );
         if (touchesMembership && workspaceId) {
           void useUsers.getState().hydrate(workspaceId);

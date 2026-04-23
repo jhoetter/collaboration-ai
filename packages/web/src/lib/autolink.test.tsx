@@ -7,9 +7,7 @@ import { findBareLinks, remarkAutolinkBareDomains } from "./autolink.ts";
 
 function render(markdown: string): string {
   return renderToStaticMarkup(
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkAutolinkBareDomains]}>
-      {markdown}
-    </ReactMarkdown>,
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkAutolinkBareDomains]}>{markdown}</ReactMarkdown>
   );
 }
 

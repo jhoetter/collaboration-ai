@@ -1,6 +1,7 @@
 # Phase 4 — Agent API: Acceptance Criteria
 
 ## A. MCP discovery
+
 1. The MCP server emits one tool per `@function` with
    `mcp_expose=True`.
 2. Each tool's input schema matches the function's parameter Pydantic
@@ -10,6 +11,7 @@
    command.
 
 ## B. Staging policy
+
 1. In a `fully-autonomous` channel an agent's `chat:send-message`
    commits as a `message.send` directly.
 2. In an `agent-messages-require-approval` channel the same command
@@ -18,6 +20,7 @@
    stage.
 
 ## C. Audit trail
+
 1. Every command with `source="agent"` writes one
    `agent_audit` row with the same `command_id` returned to the
    caller.
@@ -25,11 +28,13 @@
    originating audit row via `proposal_id`.
 
 ## D. Budgets
+
 1. After exhausting a daily bucket the bus rejects with
    `code="rate_limited"`.
 2. Override via `agents:set-budget` immediately re-enables the agent.
 
 ## E. CLI
+
 1. `collab-agent send --channel ch_general --content "hi"` returns
    the resulting `command_id` and `event_id`.
 2. `collab-agent unread` returns one row per channel, sorted by

@@ -33,7 +33,7 @@ export function ChannelPage() {
   const { channelId } = useParams<{ channelId: string }>();
   const identity = useAuth((s) => s.identity);
   const messages = useSync((s) =>
-    channelId ? s.messagesByChannel[channelId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES,
+    channelId ? (s.messagesByChannel[channelId] ?? EMPTY_MESSAGES) : EMPTY_MESSAGES
   );
   const channel = useSync((s) => (channelId ? s.channels[channelId] : undefined));
   const applyOptimistic = useSync((s) => s.applyOptimistic);
@@ -49,9 +49,7 @@ export function ChannelPage() {
   // server so the badge stays cleared across reload / other tabs.
   useEffect(() => {
     if (!channelId) return;
-    const stale = Object.values(notifications).filter(
-      (n) => !n.read && n.channel_id === channelId,
-    );
+    const stale = Object.values(notifications).filter((n) => !n.read && n.channel_id === channelId);
     if (stale.length === 0) return;
     for (const n of stale) {
       setNotificationRead(n.id);
@@ -160,7 +158,7 @@ export function ChannelPage() {
     window.dispatchEvent(
       new CustomEvent<{ channelId: string; files: File[] }>("collab:files-dropped", {
         detail: { channelId, files },
-      }),
+      })
     );
   }
 
@@ -179,11 +177,7 @@ export function ChannelPage() {
       <ChannelHeader channelId={channelId} channel={channel} />
       <MessageList messages={messages} channelId={channelId} onOpenThread={openThread} />
       <TypingIndicator channelId={channelId} />
-      <Composer
-        channelId={channelId}
-        placeholder={composerPlaceholder}
-        onSend={handleSend}
-      />
+      <Composer channelId={channelId} placeholder={composerPlaceholder} onSend={handleSend} />
       {dragActive && <DropOverlay channelName={channel?.name ?? channelId} />}
     </section>
   );

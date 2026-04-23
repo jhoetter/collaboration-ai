@@ -44,17 +44,10 @@ import {
   ToolbarSpacer,
 } from "@collabai/ui";
 import { $createLinkNode } from "@lexical/link";
-import {
-  $isListItemNode,
-  INSERT_ORDERED_LIST_COMMAND,
-  INSERT_UNORDERED_LIST_COMMAND,
-} from "@lexical/list";
+import { $isListItemNode, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from "@lexical/list";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import {
-  $createCodeNode,
-  $isCodeNode,
-} from "@lexical/code";
+import { $createCodeNode, $isCodeNode } from "@lexical/code";
 import { $createQuoteNode, $isQuoteNode } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import {
@@ -92,11 +85,7 @@ import { FileTypeIcon } from "./FileTypeIcon.tsx";
 import { PopoverPortal } from "./PopoverPortal.tsx";
 import { EditorSurface } from "./composer/EditorSurface.tsx";
 import { buildEditorConfig } from "./composer/lexicalConfig.ts";
-import {
-  isMarkdownEmpty,
-  readMarkdown,
-  writeMarkdown,
-} from "./composer/markdown.ts";
+import { isMarkdownEmpty, readMarkdown, writeMarkdown } from "./composer/markdown.ts";
 
 export interface ComposerSendPayload {
   text: string;
@@ -154,7 +143,7 @@ type SlashRunResult = { handled: true; clear?: boolean } | { handled: false };
 export function Composer(props: ComposerProps) {
   const config = useMemo(
     () => buildEditorConfig(`composer-${props.channelId}-${props.threadRoot ?? "main"}`),
-    [props.channelId, props.threadRoot],
+    [props.channelId, props.threadRoot]
   );
   return (
     <LexicalComposer initialConfig={config}>
@@ -163,12 +152,7 @@ export function Composer(props: ComposerProps) {
   );
 }
 
-function ComposerInner({
-  channelId,
-  threadRoot = null,
-  placeholder,
-  onSend,
-}: ComposerProps) {
+function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: ComposerProps) {
   const { t } = useTranslator();
   const { linkPrompt } = useDialogs();
   const [editor] = useLexicalComposerContext();
@@ -197,14 +181,10 @@ function ComposerInner({
     index: number;
     range: { node: Text; offset: number } | null;
   } | null>(null);
-  const [slashState, setSlashState] = useState<{ query: string; index: number } | null>(
-    null,
-  );
+  const [slashState, setSlashState] = useState<{ query: string; index: number } | null>(null);
   // Emoji shortcode autocomplete: `query` is the chars typed *after*
   // the triggering `:` (empty right after the user types `:`).
-  const [emojiState, setEmojiState] = useState<{ query: string; index: number } | null>(
-    null,
-  );
+  const [emojiState, setEmojiState] = useState<{ query: string; index: number } | null>(null);
   const draftFromServer = useSync((s) => s.draftsByChannel[channelId]?.content ?? "");
   const draftHydrated = useRef(false);
   const lastTypingSentAt = useRef(0);
@@ -308,9 +288,7 @@ function ComposerInner({
               image_url: meta.image_url,
               site_name: meta.site_name,
             };
-            setLinkPreviews((cur) =>
-              cur.some((p) => p.url === url) ? cur : [...cur, att],
-            );
+            setLinkPreviews((cur) => (cur.some((p) => p.url === url) ? cur : [...cur, att]));
           } catch {
             // Link previews are advisory; swallow so a failed unfurl
             // never blocks composition.
@@ -334,9 +312,7 @@ function ComposerInner({
       draftSaveTimer.current = window.setTimeout(() => {
         const trimmed = content.trim();
         if (trimmed.length === 0) {
-          void callFunction("chat:clear-draft", { channel_id: channelId }).catch(
-            () => undefined,
-          );
+          void callFunction("chat:clear-draft", { channel_id: channelId }).catch(() => undefined);
         } else {
           void callFunction("chat:set-draft", {
             channel_id: channelId,
@@ -345,7 +321,7 @@ function ComposerInner({
         }
       }, 800);
     },
-    [channelId],
+    [channelId]
   );
 
   const handleEditorChange = useCallback(
@@ -413,18 +389,14 @@ function ComposerInner({
         }
       });
     },
-    [channelId, persistDraft],
+    [channelId, persistDraft]
   );
 
   const filteredUsers = useMemo(() => {
     if (!mentionState) return [];
     const q = mentionState.query;
     return userList
-      .filter(
-        (u) =>
-          u.user_id.toLowerCase().includes(q) ||
-          u.display_name.toLowerCase().includes(q),
-      )
+      .filter((u) => u.user_id.toLowerCase().includes(q) || u.display_name.toLowerCase().includes(q))
       .slice(0, 6);
   }, [mentionState, userList]);
 
@@ -488,7 +460,7 @@ function ComposerInner({
         },
       },
     ],
-    [t],
+    [t]
   );
 
   const filteredSlash = useMemo(() => {
@@ -517,7 +489,7 @@ function ComposerInner({
       // Replace [start, anchor.offset) with the mention text.
       const after = nodeText.slice(anchor.offset);
       (node as unknown as { setTextContent(t: string): void }).setTextContent(
-        nodeText.slice(0, start) + replacement + after,
+        nodeText.slice(0, start) + replacement + after
       );
       const newOffset = start + replacement.length;
       selection.anchor.set(node.getKey(), newOffset, "text");
@@ -542,7 +514,7 @@ function ComposerInner({
       const start = anchor.offset - m[0].length;
       const after = nodeText.slice(anchor.offset);
       (node as unknown as { setTextContent(t: string): void }).setTextContent(
-        nodeText.slice(0, start) + native + after,
+        nodeText.slice(0, start) + native + after
       );
       const newOffset = start + native.length;
       selection.anchor.set(node.getKey(), newOffset, "text");
@@ -610,8 +582,8 @@ function ComposerInner({
                 height: dimensions.height ?? null,
                 status: "ready",
               }
-            : a,
-        ),
+            : a
+        )
       );
     } catch (err) {
       console.error("upload failed", err);
@@ -716,9 +688,7 @@ function ComposerInner({
     const visible = linkPreviewsRef.current;
     const haveUrls = new Set(visible.map((p) => p.url ?? ""));
     const wanted = extractUrls(content);
-    const missing = wanted.filter(
-      (u) => !haveUrls.has(u) && !dismissedUrlsRef.current.has(u),
-    );
+    const missing = wanted.filter((u) => !haveUrls.has(u) && !dismissedUrlsRef.current.has(u));
     const fetched = missing.length > 0 ? await fetchLinkPreviews(missing) : [];
     return [...visible, ...fetched];
   }
@@ -790,9 +760,7 @@ function ComposerInner({
     if (mentionState && filteredUsers.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setMentionState((s) =>
-          s ? { ...s, index: Math.min(filteredUsers.length - 1, s.index + 1) } : s,
-        );
+        setMentionState((s) => (s ? { ...s, index: Math.min(filteredUsers.length - 1, s.index + 1) } : s));
         return;
       }
       if (e.key === "ArrowUp") {
@@ -815,9 +783,7 @@ function ComposerInner({
     if (emojiState && filteredEmoji.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setEmojiState((s) =>
-          s ? { ...s, index: Math.min(filteredEmoji.length - 1, s.index + 1) } : s,
-        );
+        setEmojiState((s) => (s ? { ...s, index: Math.min(filteredEmoji.length - 1, s.index + 1) } : s));
         return;
       }
       if (e.key === "ArrowUp") {
@@ -840,9 +806,7 @@ function ComposerInner({
     if (slashState && filteredSlash.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSlashState((s) =>
-          s ? { ...s, index: Math.min(filteredSlash.length - 1, s.index + 1) } : s,
-        );
+        setSlashState((s) => (s ? { ...s, index: Math.min(filteredSlash.length - 1, s.index + 1) } : s));
         return;
       }
       if (e.key === "ArrowUp") {
@@ -968,9 +932,7 @@ function ComposerInner({
       if (!$isRangeSelection(selection)) return;
       const nodes = selection.getNodes();
       const inQuote = nodes.some((n) => $isQuoteNode(n.getTopLevelElementOrThrow()));
-      $setBlocksType(selection, () =>
-        inQuote ? $createParagraphNode() : $createQuoteNode(),
-      );
+      $setBlocksType(selection, () => (inQuote ? $createParagraphNode() : $createQuoteNode()));
     });
   }
 
@@ -980,9 +942,7 @@ function ComposerInner({
       if (!$isRangeSelection(selection)) return;
       const nodes = selection.getNodes();
       const inCode = nodes.some((n) => $isCodeNode(n.getTopLevelElementOrThrow()));
-      $setBlocksType(selection, () =>
-        inCode ? $createParagraphNode() : $createCodeNode(),
-      );
+      $setBlocksType(selection, () => (inCode ? $createParagraphNode() : $createCodeNode()));
     });
   }
 
@@ -1050,18 +1010,10 @@ function ComposerInner({
             className="gap-2 overflow-hidden rounded-t-lg border-b border-hairline px-3 py-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <ToolbarButton
-              label={t("composer.bold")}
-              shortcut="⌘B"
-              onClick={() => format("bold")}
-            >
+            <ToolbarButton label={t("composer.bold")} shortcut="⌘B" onClick={() => format("bold")}>
               <IconBold />
             </ToolbarButton>
-            <ToolbarButton
-              label={t("composer.italic")}
-              shortcut="⌘I"
-              onClick={() => format("italic")}
-            >
+            <ToolbarButton label={t("composer.italic")} shortcut="⌘I" onClick={() => format("italic")}>
               <IconItalic />
             </ToolbarButton>
             <ToolbarButton
@@ -1077,17 +1029,13 @@ function ComposerInner({
             <ToolbarDivider />
             <ToolbarButton
               label={t("composer.bulletedList")}
-              onClick={() =>
-                editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
-              }
+              onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}
             >
               <IconListBullet />
             </ToolbarButton>
             <ToolbarButton
               label={t("composer.numberedList")}
-              onClick={() =>
-                editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
-              }
+              onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}
             >
               <IconListNumbered />
             </ToolbarButton>
@@ -1095,11 +1043,7 @@ function ComposerInner({
               <IconQuote />
             </ToolbarButton>
             <ToolbarDivider />
-            <ToolbarButton
-              label={t("composer.code")}
-              shortcut="⌘E"
-              onClick={() => format("code")}
-            >
+            <ToolbarButton label={t("composer.code")} shortcut="⌘E" onClick={() => format("code")}>
               <IconCode />
             </ToolbarButton>
             <ToolbarButton label={t("composer.codeBlock")} onClick={insertCodeBlock}>
@@ -1198,9 +1142,7 @@ function ComposerInner({
                 <button
                   type="button"
                   className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                    i === mentionState.index
-                      ? "bg-accent-light text-accent"
-                      : "hover:bg-hover"
+                    i === mentionState.index ? "bg-accent-light text-accent" : "hover:bg-hover"
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -1246,9 +1188,7 @@ function ComposerInner({
                 <button
                   type="button"
                   className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-sm transition-colors ${
-                    i === emojiState.index
-                      ? "bg-accent-light text-accent"
-                      : "hover:bg-hover"
+                    i === emojiState.index ? "bg-accent-light text-accent" : "hover:bg-hover"
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -1306,25 +1246,10 @@ function PlusMenu({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [onClose]);
   return (
-    <div
-      ref={ref}
-      className="w-56 overflow-hidden rounded-md border border-border bg-card shadow-xl"
-    >
-      <PlusMenuItem
-        icon={<IconPaperclip />}
-        label={t("composer.actions.attach")}
-        onClick={onAttach}
-      />
-      <PlusMenuItem
-        icon={<IconCodeBlock />}
-        label={t("composer.actions.snippet")}
-        onClick={onSnippet}
-      />
-      <PlusMenuItem
-        icon={<IconAt />}
-        label={t("composer.actions.mention")}
-        onClick={onMention}
-      />
+    <div ref={ref} className="w-56 overflow-hidden rounded-md border border-border bg-card shadow-xl">
+      <PlusMenuItem icon={<IconPaperclip />} label={t("composer.actions.attach")} onClick={onAttach} />
+      <PlusMenuItem icon={<IconCodeBlock />} label={t("composer.actions.snippet")} onClick={onSnippet} />
+      <PlusMenuItem icon={<IconAt />} label={t("composer.actions.mention")} onClick={onMention} />
     </div>
   );
 }
@@ -1353,13 +1278,7 @@ function PlusMenuItem({
   );
 }
 
-function AttachmentChip({
-  attachment,
-  onRemove,
-}: {
-  attachment: PendingAttachment;
-  onRemove: () => void;
-}) {
+function AttachmentChip({ attachment, onRemove }: { attachment: PendingAttachment; onRemove: () => void }) {
   const { t } = useTranslator();
   const isImage = attachment.mime.startsWith("image/");
   const isPdf = attachment.mime === "application/pdf";
@@ -1373,7 +1292,9 @@ function AttachmentChip({
       aria-label={t("composer.removeAttachment")}
       className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-tertiary shadow-sm ring-1 ring-border transition-colors hover:bg-background hover:text-destructive"
     >
-      <span aria-hidden="true" className="text-[11px] leading-none">✕</span>
+      <span aria-hidden="true" className="text-[11px] leading-none">
+        ✕
+      </span>
     </button>
   );
 
@@ -1398,11 +1319,7 @@ function AttachmentChip({
   if (isImage && attachment.localUrl) {
     return (
       <div className="relative overflow-hidden rounded-md border border-border bg-card shadow-sm">
-        <img
-          src={attachment.localUrl}
-          alt={attachment.name}
-          className="block h-20 w-20 object-cover"
-        />
+        <img src={attachment.localUrl} alt={attachment.name} className="block h-20 w-20 object-cover" />
         {statusOverlay}
         {removeButton}
       </div>
@@ -1443,13 +1360,7 @@ function AttachmentChip({
  * carries an X button for the user to dismiss the preview before
  * sending — Slack-style.
  */
-function LinkPreviewChip({
-  attachment,
-  onRemove,
-}: {
-  attachment: Attachment;
-  onRemove: () => void;
-}) {
+function LinkPreviewChip({ attachment, onRemove }: { attachment: Attachment; onRemove: () => void }) {
   const { t } = useTranslator();
   const meta = attachment as Attachment & {
     title?: string | null;
@@ -1462,17 +1373,9 @@ function LinkPreviewChip({
     <div className="relative flex w-96 max-w-full overflow-hidden rounded-md border border-border bg-card pr-7 shadow-sm">
       <span className="w-1 shrink-0 bg-accent" aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 text-xs">
-        {meta.site_name && (
-          <span className="truncate text-tertiary">{meta.site_name}</span>
-        )}
-        {meta.title && (
-          <span className="truncate text-sm font-medium text-foreground">
-            {meta.title}
-          </span>
-        )}
-        {meta.description && (
-          <span className="line-clamp-2 text-secondary">{meta.description}</span>
-        )}
+        {meta.site_name && <span className="truncate text-tertiary">{meta.site_name}</span>}
+        {meta.title && <span className="truncate text-sm font-medium text-foreground">{meta.title}</span>}
+        {meta.description && <span className="line-clamp-2 text-secondary">{meta.description}</span>}
         {!meta.title && !meta.description && meta.url && (
           <span className="truncate text-secondary">{meta.url}</span>
         )}
@@ -1491,7 +1394,9 @@ function LinkPreviewChip({
         aria-label={t("composer.removeLinkPreview")}
         className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-tertiary shadow-sm ring-1 ring-border transition-colors hover:bg-background hover:text-destructive"
       >
-        <span aria-hidden="true" className="text-[11px] leading-none">✕</span>
+        <span aria-hidden="true" className="text-[11px] leading-none">
+          ✕
+        </span>
       </button>
     </div>
   );
@@ -1513,8 +1418,7 @@ function isInsideStructuredBlock(editor: LexicalEditor): boolean {
   editor.getEditorState().read(() => {
     const selection = $getSelection();
     if (!$isRangeSelection(selection)) return;
-    let node: ReturnType<typeof selection.anchor.getNode> | null =
-      selection.anchor.getNode();
+    let node: ReturnType<typeof selection.anchor.getNode> | null = selection.anchor.getNode();
     while (node) {
       if ($isListItemNode(node) || $isCodeNode(node) || $isQuoteNode(node)) {
         inside = true;
@@ -1537,7 +1441,7 @@ function readImageDimensions(url: string): Promise<{ width: number; height: numb
 
 function collectMentionedUserIds(
   text: string,
-  users: Array<{ user_id: string; display_name: string }>,
+  users: Array<{ user_id: string; display_name: string }>
 ): string[] {
   const ids = new Set<string>();
   const regex = /@([\w-]+(?:\s[\w-]+)?)/g;
@@ -1547,7 +1451,7 @@ function collectMentionedUserIds(
     const direct = users.find(
       (u) =>
         u.display_name.toLowerCase() === candidate.toLowerCase() ||
-        u.user_id.toLowerCase() === candidate.toLowerCase(),
+        u.user_id.toLowerCase() === candidate.toLowerCase()
     );
     if (direct) ids.add(direct.user_id);
   }

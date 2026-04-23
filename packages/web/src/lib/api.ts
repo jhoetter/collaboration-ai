@@ -37,7 +37,7 @@ export async function callFunctionRaw<T = unknown>(name: string, body: unknown):
     const message =
       typeof envelope.error === "string"
         ? envelope.error
-        : envelope.error.message ?? envelope.error.code ?? "unknown error";
+        : (envelope.error.message ?? envelope.error.code ?? "unknown error");
     throw new Error(`call ${name} failed: ${message}`);
   }
   return envelope.result as T;
@@ -45,7 +45,7 @@ export async function callFunctionRaw<T = unknown>(name: string, body: unknown):
 
 export async function callFunction<T = unknown>(
   name: string,
-  body: Record<string, unknown> = {},
+  body: Record<string, unknown> = {}
 ): Promise<T> {
   const { identity, workspaceId } = useAuth.getState();
   const merged: Record<string, unknown> = { ...body };

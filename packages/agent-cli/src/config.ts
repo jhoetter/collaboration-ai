@@ -13,9 +13,7 @@ export const DEFAULT_CONFIG_PATH = join(homedir(), ".collab-agent", "token.json"
 
 export function loadConfig(path: string = DEFAULT_CONFIG_PATH): CollabConfig {
   if (!existsSync(path)) {
-    throw new Error(
-      `No collab-agent config at ${path}. Run \`collab-agent login\` first.`,
-    );
+    throw new Error(`No collab-agent config at ${path}. Run \`collab-agent login\` first.`);
   }
   const raw = readFileSync(path, "utf-8");
   const parsed = JSON.parse(raw) as CollabConfig;

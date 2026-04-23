@@ -26,26 +26,20 @@ function classify(mime: string, filename?: string): TypeMeta {
   const m = mime.toLowerCase();
   const ext = (filename?.split(".").pop() ?? "").toLowerCase();
   if (m.startsWith("image/")) {
-    return { label: ext.toUpperCase() || "IMG", bg: "bg-violet-500/15", fg: "text-violet-500", icon: "image" };
+    return {
+      label: ext.toUpperCase() || "IMG",
+      bg: "bg-violet-500/15",
+      fg: "text-violet-500",
+      icon: "image",
+    };
   }
   if (m === "application/pdf" || ext === "pdf") {
     return { label: "PDF", bg: "bg-red-500/15", fg: "text-red-500", icon: "file" };
   }
-  if (
-    m.includes("word") ||
-    ext === "doc" ||
-    ext === "docx" ||
-    ext === "rtf"
-  ) {
+  if (m.includes("word") || ext === "doc" || ext === "docx" || ext === "rtf") {
     return { label: "DOC", bg: "bg-blue-500/15", fg: "text-blue-500", icon: "file" };
   }
-  if (
-    m.includes("sheet") ||
-    m.includes("excel") ||
-    ext === "xls" ||
-    ext === "xlsx" ||
-    ext === "csv"
-  ) {
+  if (m.includes("sheet") || m.includes("excel") || ext === "xls" || ext === "xlsx" || ext === "csv") {
     return {
       label: ext === "csv" ? "CSV" : "XLS",
       bg: "bg-green-500/15",
@@ -57,7 +51,12 @@ function classify(mime: string, filename?: string): TypeMeta {
     return { label: "PPT", bg: "bg-orange-500/15", fg: "text-orange-500", icon: "file" };
   }
   if (m.startsWith("audio/")) {
-    return { label: ext.toUpperCase() || "AUD", bg: "bg-fuchsia-500/15", fg: "text-fuchsia-500", icon: "file" };
+    return {
+      label: ext.toUpperCase() || "AUD",
+      bg: "bg-fuchsia-500/15",
+      fg: "text-fuchsia-500",
+      icon: "file",
+    };
   }
   if (m.startsWith("video/")) {
     return { label: ext.toUpperCase() || "VID", bg: "bg-pink-500/15", fg: "text-pink-500", icon: "file" };

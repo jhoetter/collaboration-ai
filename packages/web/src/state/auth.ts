@@ -30,8 +30,7 @@ async function rawCall<T>(name: string, body: unknown): Promise<T> {
   const envelope = (await res.json()) as { result?: T; error?: unknown };
   if (envelope && typeof envelope === "object" && envelope.error) {
     const err = envelope.error as { message?: string; code?: string } | string;
-    const message =
-      typeof err === "string" ? err : err.message ?? err.code ?? "unknown error";
+    const message = typeof err === "string" ? err : (err.message ?? err.code ?? "unknown error");
     throw new Error(`call ${name} failed: ${message}`);
   }
   return envelope.result as T;

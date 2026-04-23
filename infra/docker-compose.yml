@@ -83,8 +83,8 @@ services:
     environment:
       LIVEKIT_KEYS: "devkey: dev-secret-please-change-me-32chars-min"
     ports:
-      - "7880:7880"   # signaling (WebSocket)
-      - "7881:7881"   # TURN/UDP
+      - "7880:7880" # signaling (WebSocket)
+      - "7881:7881" # TURN/UDP
       - "7882:7882/udp"
 
 volumes:

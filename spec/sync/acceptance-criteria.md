@@ -10,7 +10,7 @@ Each criterion maps to one or more integration tests in
    receives the full event log in arrival order.
 2. A client whose cursor is already at the head is held open until the
    next event is committed (or the configured `wait_ms` elapses).
-3. A client with a cursor *ahead of* the server's head receives an
+3. A client with a cursor _ahead of_ the server's head receives an
    empty page and an unchanged cursor (no crash, no negative deltas).
 4. A client whose cursor cannot be decoded falls back to `0`
    (`test_garbage_input_falls_back_to_zero`).
@@ -23,7 +23,7 @@ Each criterion maps to one or more integration tests in
 2. Each committed event is delivered to all subscribers whose room
    filter matches in **commit order** within a workspace.
 3. The server sends a `control` frame `{"kind": "force-resync",
-   "cursor": <last>}` when the per-socket bounded queue overflows.
+"cursor": <last>}` when the per-socket bounded queue overflows.
 4. Disconnect is graceful on both client-initiated `close` and
    server-side cancellation; queues are released and presence TTL
    takes over (the user's status decays to `offline`).

@@ -30,12 +30,7 @@ import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { useAuth } from "../state/auth.ts";
-import {
-  useSync,
-  type Attachment,
-  type Message,
-  type NotificationRow,
-} from "../state/sync.ts";
+import { useSync, type Attachment, type Message, type NotificationRow } from "../state/sync.ts";
 import { useUi, type SidebarPanelId } from "../state/ui.ts";
 import { FileTypeIcon } from "./FileTypeIcon.tsx";
 
@@ -83,13 +78,7 @@ export function SidebarPanel() {
   );
 }
 
-function PanelBody({
-  panel,
-  onClose,
-}: {
-  panel: SidebarPanelId;
-  onClose: () => void;
-}) {
+function PanelBody({ panel, onClose }: { panel: SidebarPanelId; onClose: () => void }) {
   switch (panel) {
     case "activity":
       return <ActivityPanel onClose={onClose} />;
@@ -121,9 +110,7 @@ function PanelHeader({
     <header className="flex flex-none items-center gap-2 border-b border-border px-3 py-2.5">
       <span className="text-tertiary">{icon}</span>
       <h2 className="flex-1 truncate text-sm font-semibold text-foreground">{title}</h2>
-      {subtitle && (
-        <span className="text-xs text-tertiary">{subtitle}</span>
-      )}
+      {subtitle && <span className="text-xs text-tertiary">{subtitle}</span>}
       <button
         type="button"
         onClick={onClose}
@@ -136,15 +123,7 @@ function PanelHeader({
   );
 }
 
-function EmptyState({
-  icon,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}) {
+function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
       <span className="rounded-full bg-accent-light p-3 text-accent">{icon}</span>
@@ -166,15 +145,13 @@ function ActivityPanel({ onClose }: { onClose: () => void }) {
 
   const rows = useMemo(
     () => Object.values(notifications).sort((a, b) => b.created_at - a.created_at),
-    [notifications],
+    [notifications]
   );
 
   const jump = useCallback(
     (n: NotificationRow) => {
       if (!n.read) {
-        void callFunction("notifications:mark-read", { notification_id: n.id }).catch(
-          () => undefined,
-        );
+        void callFunction("notifications:mark-read", { notification_id: n.id }).catch(() => undefined);
         setNotificationRead(n.id);
       }
       if (n.channel_id) {
@@ -183,7 +160,7 @@ function ActivityPanel({ onClose }: { onClose: () => void }) {
         onClose();
       }
     },
-    [navigate, onClose, params.workspaceId, setNotificationRead],
+    [navigate, onClose, params.workspaceId, setNotificationRead]
   );
 
   return (
@@ -248,9 +225,7 @@ function ActivityRow({
             {senderName && (
               <span className="flex min-w-0 items-center gap-1">
                 <Avatar name={senderName} kind="human" size={16} />
-                <span className="truncate font-semibold text-foreground">
-                  {senderName}
-                </span>
+                <span className="truncate font-semibold text-foreground">{senderName}</span>
               </span>
             )}
             <span className="text-tertiary">{labelForKind(row.kind, t)}</span>
@@ -264,11 +239,7 @@ function ActivityRow({
               {formatRelative(row.created_at)}
             </span>
           </span>
-          {row.body && (
-            <span className="mt-0.5 line-clamp-2 block text-xs text-secondary">
-              {row.body}
-            </span>
-          )}
+          {row.body && <span className="mt-0.5 line-clamp-2 block text-xs text-secondary">{row.body}</span>}
         </span>
       </button>
     </li>
@@ -317,7 +288,7 @@ function LaterPanel({ onClose }: { onClose: () => void }) {
   const starsByUser = useSync((s) => s.starsByUser);
 
   const rows = useMemo(() => {
-    const ids = me ? starsByUser[me] ?? [] : [];
+    const ids = me ? (starsByUser[me] ?? []) : [];
     const out: Message[] = [];
     for (const id of ids) {
       const m = messageById[id];
@@ -350,9 +321,7 @@ function LaterPanel({ onClose }: { onClose: () => void }) {
                 message={m}
                 channelName={channels[m.channel_id]?.name ?? m.channel_id}
                 onJump={() => {
-                  navigate(
-                    `/w/${params.workspaceId}/c/${m.channel_id}#message-${m.id}`,
-                  );
+                  navigate(`/w/${params.workspaceId}/c/${m.channel_id}#message-${m.id}`);
                   onClose();
                 }}
               />
@@ -381,18 +350,10 @@ function LaterRow({
         onClick={onJump}
         className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-hover"
       >
-        <IconBookmark
-          size={12}
-          fill="currentColor"
-          className="mt-1 flex-none text-accent"
-        />
+        <IconBookmark size={12} fill="currentColor" className="mt-1 flex-none text-accent" />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
-            {senderName && (
-              <span className="truncate font-semibold text-foreground">
-                {senderName}
-              </span>
-            )}
+            {senderName && <span className="truncate font-semibold text-foreground">{senderName}</span>}
             <span className="inline-flex min-w-0 items-center gap-0.5 text-tertiary">
               <IconHash size={10} />
               <span className="truncate">{channelName}</span>
@@ -402,9 +363,7 @@ function LaterRow({
             </span>
           </span>
           {message.content && (
-            <span className="mt-0.5 line-clamp-2 block text-xs text-secondary">
-              {message.content}
-            </span>
+            <span className="mt-0.5 line-clamp-2 block text-xs text-secondary">{message.content}</span>
           )}
         </span>
       </button>
@@ -471,9 +430,7 @@ function FilesPanel({ onClose }: { onClose: () => void }) {
                 entry={e}
                 channelName={channels[e.channelId]?.name ?? e.channelId}
                 onJump={() => {
-                  navigate(
-                    `/w/${params.workspaceId}/c/${e.channelId}#message-${e.messageId}`,
-                  );
+                  navigate(`/w/${params.workspaceId}/c/${e.channelId}#message-${e.messageId}`);
                   onClose();
                 }}
               />
@@ -501,16 +458,10 @@ function FileRow({
     : "";
   return (
     <li className="flex items-center gap-2.5 px-3 py-2 transition-colors hover:bg-hover">
-      <button
-        type="button"
-        onClick={onJump}
-        className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-      >
+      <button type="button" onClick={onJump} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
         <FileTypeIcon mime={entry.attachment.mime} size={28} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-foreground">
-            {entry.attachment.name}
-          </span>
+          <span className="block truncate text-sm font-medium text-foreground">{entry.attachment.name}</span>
           <span className="block truncate text-[11px] text-tertiary">
             {senderName || entry.senderId}
             {channelName ? ` · ${t("sidebarPanel.files.inChannel", { channel: channelName })}` : ""}

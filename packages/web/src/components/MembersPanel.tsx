@@ -57,8 +57,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
 
   const { data: members = [] } = useQuery({
     queryKey: ["channel-members", channelId],
-    queryFn: () =>
-      callFunction<MemberRow[]>("channel:list-members", { channel_id: channelId }),
+    queryFn: () => callFunction<MemberRow[]>("channel:list-members", { channel_id: channelId }),
     enabled: open && !!channelId,
     refetchOnWindowFocus: false,
   });
@@ -67,9 +66,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
     if (!query.trim()) return members;
     const q = query.toLowerCase();
     return members.filter(
-      (m) =>
-        m.display_name.toLowerCase().includes(q) ||
-        m.user_id.toLowerCase().includes(q),
+      (m) => m.display_name.toLowerCase().includes(q) || m.user_id.toLowerCase().includes(q)
     );
   }, [members, query]);
 
@@ -152,8 +149,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
     <aside className="fixed inset-0 z-40 flex flex-col bg-surface lg:static lg:z-auto lg:w-80 lg:border-l lg:border-border">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">
-          {t("members.title")}{" "}
-          <span className="text-tertiary">({members.length})</span>
+          {t("members.title")} <span className="text-tertiary">({members.length})</span>
         </h2>
         <button
           type="button"
@@ -243,12 +239,8 @@ function MemberRowView({
           </span>
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">
-            {row.display_name}
-          </p>
-          <p className="truncate text-xs text-tertiary">
-            {labelForRole(row.role, t)}
-          </p>
+          <p className="truncate text-sm font-medium text-foreground">{row.display_name}</p>
+          <p className="truncate text-xs text-tertiary">{labelForRole(row.role, t)}</p>
         </div>
         {(row.role === "owner" || row.role === "admin") && (
           <Badge tone={row.role === "owner" ? "info" : "neutral"} className="!normal-case">
@@ -286,9 +278,7 @@ function InvitePicker({
     const needle = q.toLowerCase();
     return candidates
       .filter(
-        (c) =>
-          c.display_name.toLowerCase().includes(needle) ||
-          c.user_id.toLowerCase().includes(needle),
+        (c) => c.display_name.toLowerCase().includes(needle) || c.user_id.toLowerCase().includes(needle)
       )
       .slice(0, 8);
   }, [candidates, q]);
@@ -324,10 +314,7 @@ function InvitePicker({
   );
 }
 
-function labelForRole(
-  role: string,
-  t: (k: string) => string,
-): string {
+function labelForRole(role: string, t: (k: string) => string): string {
   switch (role) {
     case "owner":
       return t("members.owner");

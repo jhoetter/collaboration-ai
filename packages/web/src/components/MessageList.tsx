@@ -114,10 +114,7 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
       stickToBottom.current = false;
       node.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlightedId(targetMessageId);
-      navigate(
-        { pathname: location.pathname, search: location.search },
-        { replace: true },
-      );
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true });
     });
     return () => cancelAnimationFrame(handle);
   }, [targetMessageId, visible, navigate, location.pathname, location.search]);
@@ -167,10 +164,10 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
     const root = ref.current;
     const sentinel = bottomSentinelRef.current;
     if (!root || !sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setBottomVisible(entry.isIntersecting),
-      { root, threshold: 0 },
-    );
+    const observer = new IntersectionObserver(([entry]) => setBottomVisible(entry.isIntersecting), {
+      root,
+      threshold: 0,
+    });
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [visible.length === 0]);
@@ -205,11 +202,7 @@ export function MessageList({ messages, channelId, onOpenThread }: MessageListPr
 
   return (
     <div className="relative flex-1 overflow-hidden">
-      <div
-        ref={ref}
-        className="h-full overflow-y-auto px-2 py-2 sm:px-4 sm:py-3"
-        onScroll={handleScroll}
-      >
+      <div ref={ref} className="h-full overflow-y-auto px-2 py-2 sm:px-4 sm:py-3" onScroll={handleScroll}>
         {visible.length === 0 ? (
           <EmptyChannelState channelId={channelId} />
         ) : (
@@ -298,9 +291,7 @@ function groupMessages(messages: Message[]): Group[] {
   return groups;
 }
 
-function buildDividers(
-  groups: Group[],
-): Array<{ ts: number } | null> {
+function buildDividers(groups: Group[]): Array<{ ts: number } | null> {
   const out: Array<{ ts: number } | null> = [];
   let prevTs: number | null = null;
   for (const g of groups) {
@@ -474,9 +465,7 @@ function MessageBody({
   const { confirm, prompt } = useDialogs();
   const identity = useAuth((s) => s.identity);
   const reactions = useSync((s) => s.reactionsByMessage[message.id]);
-  const starredBy = useSync(
-    (s) => s.starredByMessage[message.id] ?? EMPTY_STAR_LIST,
-  );
+  const starredBy = useSync((s) => s.starredByMessage[message.id] ?? EMPTY_STAR_LIST);
   const pushToast = useToasts((s) => s.push);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
@@ -497,7 +486,7 @@ function MessageBody({
   const isStarred = identity ? starredBy.includes(identity.user_id) : false;
   const imageAttachments = useMemo(
     () => message.attachments.filter((a) => a.mime.startsWith("image/")),
-    [message.attachments],
+    [message.attachments]
   );
 
   async function toggleReaction(emoji: string) {
@@ -630,9 +619,7 @@ function MessageBody({
             <>
               <MarkdownContent content={message.content} mentions={message.mentions} />
               {message.edited_at && <span className="ml-1 text-xs text-tertiary">(edited)</span>}
-              {message.pending && (
-                <span className="ml-2 text-xs text-warning">{t("composer.sending")}</span>
-              )}
+              {message.pending && <span className="ml-2 text-xs text-warning">{t("composer.sending")}</span>}
             </>
           )}
         </div>
@@ -683,10 +670,7 @@ function MessageBody({
           {message.thread_reply_count}{" "}
           {(message.thread_reply_count ?? 0) === 1
             ? t("thread.replyCountOne").replace("1 ", "")
-            : t("thread.replyCount", { n: message.thread_reply_count ?? 0 }).replace(
-                /^\d+\s/,
-                "",
-              )}
+            : t("thread.replyCount", { n: message.thread_reply_count ?? 0 }).replace(/^\d+\s/, "")}
         </button>
       )}
 
@@ -742,10 +726,7 @@ function MessageBody({
                 style={isStarred ? { color: "var(--color-accent)" } : undefined}
               />
             </ToolbarButton>
-            <ToolbarButton
-              label={t("messageActions.share")}
-              onClick={() => void copyLink()}
-            >
+            <ToolbarButton label={t("messageActions.share")} onClick={() => void copyLink()}>
               <IconCopy />
             </ToolbarButton>
             <div className="relative">
@@ -929,11 +910,7 @@ function MobileActionSheet({
         </div>
         <div className="border-t border-border py-1">
           {canReply && (
-            <SheetItem
-              icon={<IconReply />}
-              label={t("messageActions.replyInThread")}
-              onClick={onReply}
-            />
+            <SheetItem icon={<IconReply />} label={t("messageActions.replyInThread")} onClick={onReply} />
           )}
           <SheetItem
             icon={
@@ -951,24 +928,12 @@ function MobileActionSheet({
             label={isPinned ? t("messageActions.unpin") : t("messageActions.pin")}
             onClick={onPin}
           />
-          <SheetItem
-            icon={<IconBookmark />}
-            label={t("messageActions.markUnread")}
-            onClick={onMarkUnread}
-          />
-          <SheetItem
-            icon={<IconCopy />}
-            label={t("messageActions.copyLink")}
-            onClick={onCopyLink}
-          />
+          <SheetItem icon={<IconBookmark />} label={t("messageActions.markUnread")} onClick={onMarkUnread} />
+          <SheetItem icon={<IconCopy />} label={t("messageActions.copyLink")} onClick={onCopyLink} />
           {isOwn && (
             <>
               <div className="my-1 border-t border-border" />
-              <SheetItem
-                icon={<IconPencil />}
-                label={t("messageActions.edit")}
-                onClick={onEdit}
-              />
+              <SheetItem icon={<IconPencil />} label={t("messageActions.edit")} onClick={onEdit} />
               <SheetItem
                 icon={<IconTrash />}
                 label={t("messageActions.delete")}
@@ -1046,11 +1011,7 @@ function MoreMenu({
         label={isPinned ? t("messageActions.unpin") : t("messageActions.pin")}
         onClick={onPin}
       />
-      <MenuItem
-        icon={<IconBookmark />}
-        label={t("messageActions.markUnread")}
-        onClick={onMarkUnread}
-      />
+      <MenuItem icon={<IconBookmark />} label={t("messageActions.markUnread")} onClick={onMarkUnread} />
       <MenuItem icon={<IconCopy />} label={t("messageActions.copyLink")} onClick={onCopyLink} />
       {isOwn && (
         <>
@@ -1102,11 +1063,12 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
   }
   const isDm = channel.type === "dm" || channel.type === "group_dm";
   if (isDm) {
-    const memberIds = (channel.members && channel.members.length > 0)
-      ? channel.members.filter((p) => p && p !== me)
-      : channel.name.includes(":")
-        ? channel.name.split(":").filter((p) => p && p !== me)
-        : [];
+    const memberIds =
+      channel.members && channel.members.length > 0
+        ? channel.members.filter((p) => p && p !== me)
+        : channel.name.includes(":")
+          ? channel.name.split(":").filter((p) => p && p !== me)
+          : [];
     const partnerId = memberIds[0] ?? null;
     return <DmEmptyState partnerId={partnerId} />;
   }
@@ -1119,9 +1081,7 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
       <p className="max-w-md text-sm text-secondary">
         {t("messageList.channelStart", { name: channel.name })}
       </p>
-      {channel.topic && (
-        <p className="max-w-md text-xs text-tertiary">{channel.topic}</p>
-      )}
+      {channel.topic && <p className="max-w-md text-xs text-tertiary">{channel.topic}</p>}
     </div>
   );
 }
@@ -1134,9 +1094,7 @@ function DmEmptyState({ partnerId }: { partnerId: string | null }) {
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
       <Avatar name={label} kind="human" size={40} />
       <h2 className="text-lg font-semibold text-foreground">{label}</h2>
-      <p className="max-w-md text-sm text-secondary">
-        {t("messageList.dmStart", { name: label })}
-      </p>
+      <p className="max-w-md text-sm text-secondary">{t("messageList.dmStart", { name: label })}</p>
     </div>
   );
 }
@@ -1174,7 +1132,7 @@ function ReactionChip({
         }
         return usersById[id]?.display_name ?? id;
       }),
-    [orderedUserIds, meId, usersById, t],
+    [orderedUserIds, meId, usersById, t]
   );
 
   // Render names as a localised conjunction list ("A, B and C" in en;
@@ -1233,9 +1191,7 @@ function ReactionChip({
               <div className="flex flex-col gap-0.5">
                 <p className="text-foreground">{reactedLine}</p>
                 <p className="text-tertiary">
-                  {mine
-                    ? t("messageActions.clickToRemoveReaction")
-                    : t("messageActions.clickToAddReaction")}
+                  {mine ? t("messageActions.clickToRemoveReaction") : t("messageActions.clickToAddReaction")}
                 </p>
               </div>
             </div>
@@ -1260,9 +1216,7 @@ function MarkdownContent({ content, mentions }: { content: string; mentions: str
   }, [content, mentions, usersById]);
   return (
     <div className="collab-prose max-w-none break-words">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkAutolinkBareDomains]}>
-        {enhanced}
-      </ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkAutolinkBareDomains]}>{enhanced}</ReactMarkdown>
     </div>
   );
 }
@@ -1281,9 +1235,7 @@ function sameDay(a: number, b: number): boolean {
   const da = new Date(a);
   const db = new Date(b);
   return (
-    da.getFullYear() === db.getFullYear() &&
-    da.getMonth() === db.getMonth() &&
-    da.getDate() === db.getDate()
+    da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
   );
 }
 
@@ -1304,4 +1256,3 @@ function formatDateLabel(ts: number, t: (key: string) => string): string {
     day: "numeric",
   });
 }
-

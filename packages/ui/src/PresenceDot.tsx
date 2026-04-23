@@ -20,11 +20,7 @@ export function PresenceDot({ status, className }: PresenceDotProps) {
     <span
       role="status"
       aria-label={`Presence: ${status}`}
-      className={cn(
-        "inline-block h-2 w-2 rounded-full ring-2 ring-background",
-        TONE[status],
-        className,
-      )}
+      className={cn("inline-block h-2 w-2 rounded-full ring-2 ring-background", TONE[status], className)}
     />
   );
 }

@@ -14,14 +14,7 @@
  * lists have breathing room; the header remains uncluttered (just the
  * channel name).
  */
-import {
-  Avatar,
-  Button,
-  IconDownload,
-  IconExternal,
-  IconPin,
-  Modal,
-} from "@collabai/ui";
+import { Avatar, Button, IconDownload, IconExternal, IconPin, Modal } from "@collabai/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -74,9 +67,7 @@ export function ChannelDetailPanel({
   const { t } = useTranslator();
   const [tab, setTab] = useState<DetailTab>(initialTab);
   const isDm = channel.type === "dm" || channel.type === "group_dm";
-  const title = isDm
-    ? channel.name
-    : `#${channel.name}`;
+  const title = isDm ? channel.name : `#${channel.name}`;
 
   return (
     <Modal onClose={onClose} title={title} size="lg" className="!max-w-3xl">
@@ -111,27 +102,15 @@ export function ChannelDetailPanel({
           )}
         </nav>
       </div>
-      {tab === "about" && (
-        <AboutTab channel={channel} isDm={isDm} onClose={onClose} />
-      )}
+      {tab === "about" && <AboutTab channel={channel} isDm={isDm} onClose={onClose} />}
       {tab === "members" && <MembersTab channel={channel} members={members} />}
       {tab === "files" && !isDm && <FilesTab channelId={channel.id} />}
-      {tab === "pinned" && !isDm && (
-        <PinnedTab channelId={channel.id} onJump={onClose} />
-      )}
+      {tab === "pinned" && !isDm && <PinnedTab channelId={channel.id} onJump={onClose} />}
     </Modal>
   );
 }
 
-function TabButton({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
+function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       type="button"
@@ -151,15 +130,7 @@ function TabButton({
 
 // ───────── About ─────────
 
-function AboutTab({
-  channel,
-  isDm,
-  onClose,
-}: {
-  channel: Channel;
-  isDm: boolean;
-  onClose: () => void;
-}) {
+function AboutTab({ channel, isDm, onClose }: { channel: Channel; isDm: boolean; onClose: () => void }) {
   const { t } = useTranslator();
   const { confirm } = useDialogs();
   const qc = useQueryClient();
@@ -219,11 +190,7 @@ function AboutTab({
   }
 
   if (isDm) {
-    return (
-      <div className="p-6 text-sm text-secondary">
-        {t("channelHeader.dmHint")}
-      </div>
-    );
+    return <div className="p-6 text-sm text-secondary">{t("channelHeader.dmHint")}</div>;
   }
 
   return (
@@ -270,12 +237,7 @@ function AboutTab({
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
             {t("common.cancel")}
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void saveAbout()}
-            disabled={busy}
-          >
+          <Button variant="primary" size="sm" onClick={() => void saveAbout()} disabled={busy}>
             {t("common.save")}
           </Button>
         </div>
@@ -286,13 +248,7 @@ function AboutTab({
 
 // ───────── Members ─────────
 
-function MembersTab({
-  channel,
-  members,
-}: {
-  channel: Channel;
-  members: MemberRow[];
-}) {
+function MembersTab({ channel, members }: { channel: Channel; members: MemberRow[] }) {
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -369,11 +325,7 @@ function FilesTab({ channelId }: { channelId: string }) {
   }, [messages]);
 
   if (entries.length === 0) {
-    return (
-      <div className="p-6 text-center text-sm text-tertiary">
-        {t("channelDetail.filesEmpty")}
-      </div>
-    );
+    return <div className="p-6 text-center text-sm text-tertiary">{t("channelDetail.filesEmpty")}</div>;
   }
 
   return (
@@ -396,9 +348,7 @@ function FileRow({ entry }: { entry: FileEntry }) {
     <li className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
       <FileTypeIcon mime={entry.attachment.mime} size={28} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">
-          {entry.attachment.name}
-        </p>
+        <p className="truncate text-sm font-medium text-foreground">{entry.attachment.name}</p>
         <p className="truncate text-xs text-tertiary">
           {senderName || entry.sender_id} · {date}
           {sizeKb ? ` · ${sizeKb}` : ""}
@@ -429,37 +379,22 @@ async function downloadAttachment(attachment: Attachment) {
 
 // ───────── Pinned ─────────
 
-function PinnedTab({
-  channelId,
-  onJump,
-}: {
-  channelId: string;
-  onJump: () => void;
-}) {
+function PinnedTab({ channelId, onJump }: { channelId: string; onJump: () => void }) {
   const { t } = useTranslator();
   const navigate = useNavigate();
   const params = useParams<{ workspaceId: string }>();
   const { data = [], isLoading } = useQuery({
     queryKey: ["channel-pinned", channelId],
-    queryFn: () =>
-      callFunction<PinnedRow[]>("chat:list-pinned", { channel_id: channelId }),
+    queryFn: () => callFunction<PinnedRow[]>("chat:list-pinned", { channel_id: channelId }),
     refetchOnWindowFocus: false,
   });
 
   if (isLoading) {
-    return (
-      <div className="p-6 text-center text-sm text-tertiary">
-        {t("common.loading")}
-      </div>
-    );
+    return <div className="p-6 text-center text-sm text-tertiary">{t("common.loading")}</div>;
   }
 
   if (data.length === 0) {
-    return (
-      <div className="p-6 text-center text-sm text-tertiary">
-        {t("channelDetail.pinnedEmpty")}
-      </div>
-    );
+    return <div className="p-6 text-center text-sm text-tertiary">{t("channelDetail.pinnedEmpty")}</div>;
   }
 
   function jump(messageId: string) {
@@ -477,13 +412,7 @@ function PinnedTab({
   );
 }
 
-function PinnedRowView({
-  row,
-  onJump,
-}: {
-  row: PinnedRow;
-  onJump: () => void;
-}) {
+function PinnedRowView({ row, onJump }: { row: PinnedRow; onJump: () => void }) {
   const senderName = useDisplayName(row.sender_id);
   const pinnedAt = new Date(row.pinned_at).toLocaleString();
   const { t } = useTranslator();
@@ -510,13 +439,7 @@ function PinnedRowView({
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-tertiary">
       <span>{label}</span>

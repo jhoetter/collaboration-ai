@@ -155,7 +155,7 @@ The shells expose collaboration-ai operations as native hof-engine
 - `collab_open_thread(channel, root_message_id)` — surfaces a
   thread-link an agent can paste back to the user.
 - `collab_request_agent_approval(channel, command_type, payload,
-  *, agent_id, ttl_minutes=60)` — stages a command via the agent
+*, agent_id, ttl_minutes=60)` — stages a command via the agent
   API; humans approve/reject it via the web UI or `<AgentInbox/>`.
 
 ## CLI surface

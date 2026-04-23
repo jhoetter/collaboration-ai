@@ -43,7 +43,7 @@ export function useTranslator(): {
       if (raw === undefined) return key;
       return format(raw, vars);
     },
-    [messages],
+    [messages]
   );
   return { t, locale };
 }

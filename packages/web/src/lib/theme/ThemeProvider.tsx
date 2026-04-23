@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   applyColorScheme,
   getEffectiveColorScheme,
@@ -38,9 +30,7 @@ export interface ThemeProviderProps {
  * fresh when the user picks `"system"`.
  */
 export function ThemeProvider({ children, initialScheme }: ThemeProviderProps) {
-  const [colorScheme, setSchemeState] = useState<ColorScheme>(
-    initialScheme ?? "system",
-  );
+  const [colorScheme, setSchemeState] = useState<ColorScheme>(initialScheme ?? "system");
   const [resolvedScheme, setResolved] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -71,7 +61,7 @@ export function ThemeProvider({ children, initialScheme }: ThemeProviderProps) {
 
   const value = useMemo<ThemeContextValue>(
     () => ({ colorScheme, resolvedScheme, setColorScheme }),
-    [colorScheme, resolvedScheme, setColorScheme],
+    [colorScheme, resolvedScheme, setColorScheme]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

@@ -153,14 +153,16 @@ export interface SyncState {
   pruneTyping(now: number): void;
   setNotificationRead(notificationId: string): void;
   setDraft(channelId: string, content: string, threadRoot?: string | null): void;
-  hydrateUnread(
-    rows: Array<{ channel_id: string; unread: number; mention_count: number }>,
-  ): void;
+  hydrateUnread(rows: Array<{ channel_id: string; unread: number; mention_count: number }>): void;
 }
 
 const _empty: never[] = [];
 
-function _ensureChannel(map: Record<string, Channel>, id: string, init?: Partial<Channel>): Record<string, Channel> {
+function _ensureChannel(
+  map: Record<string, Channel>,
+  id: string,
+  init?: Partial<Channel>
+): Record<string, Channel> {
   if (map[id]) return map;
   return { ...map, [id]: { id, name: init?.name ?? id, ...init } };
 }
@@ -168,7 +170,7 @@ function _ensureChannel(map: Record<string, Channel>, id: string, init?: Partial
 function _appendMessage(
   byChannel: Record<string, Message[]>,
   byId: Record<string, Message>,
-  msg: Message,
+  msg: Message
 ): { byChannel: Record<string, Message[]>; byId: Record<string, Message> } {
   if (byId[msg.id]) {
     // Already projected — normalise in case of re-delivery with extra fields.
@@ -182,7 +184,7 @@ function _appendMessage(
   const existing = byChannel[msg.channel_id] ?? [];
   // Reconcile any pending optimistic copy from this sender.
   const filtered = existing.filter(
-    (m) => !(m.pending && m.sender_id === msg.sender_id && m.content === msg.content),
+    (m) => !(m.pending && m.sender_id === msg.sender_id && m.content === msg.content)
   );
   return {
     byChannel: { ...byChannel, [msg.channel_id]: [...filtered, msg] },
@@ -194,7 +196,7 @@ function _bumpThreadCount(
   byId: Record<string, Message>,
   byChannel: Record<string, Message[]>,
   rootId: string,
-  ts: number,
+  ts: number
 ): { byId: Record<string, Message>; byChannel: Record<string, Message[]> } {
   const root = byId[rootId];
   if (!root) return { byId, byChannel };
@@ -261,7 +263,13 @@ export const useSync = create<SyncState>((set, get) => ({
 
         switch (e.type) {
           case "channel.create": {
-            const c = e.content as { name?: string; type?: string; private?: boolean; topic?: string; description?: string };
+            const c = e.content as {
+              name?: string;
+              type?: string;
+              private?: boolean;
+              topic?: string;
+              description?: string;
+            };
             channels = {
               ...channels,
               [e.room_id]: {
@@ -302,7 +310,10 @@ export const useSync = create<SyncState>((set, get) => ({
           case "channel.topic.set": {
             const ch = channels[e.room_id];
             if (!ch) break;
-            channels = { ...channels, [e.room_id]: { ...ch, topic: (e.content.topic ?? null) as string | null } };
+            channels = {
+              ...channels,
+              [e.room_id]: { ...ch, topic: (e.content.topic ?? null) as string | null },
+            };
             break;
           }
           case "channel.member.join": {
@@ -377,11 +388,11 @@ export const useSync = create<SyncState>((set, get) => ({
             // already read past it. Threads still count as activity but
             // not toward the channel's "1 unread" badge per Slack.
             if (
-              isNew
-              && me
-              && msg.sender_id !== me
-              && !msg.thread_root
-              && msg.sequence > (readUpToByChannel[msg.channel_id] ?? 0)
+              isNew &&
+              me &&
+              msg.sender_id !== me &&
+              !msg.thread_root &&
+              msg.sequence > (readUpToByChannel[msg.channel_id] ?? 0)
             ) {
               const cur = unreadByChannel[msg.channel_id] ?? { unread: 0, mentions: 0 };
               unreadByChannel = {

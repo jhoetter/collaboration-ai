@@ -29,7 +29,11 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
-    const slug = name.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "");
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-|-$/g, "");
     if (!slug) {
       setError("Pick a name for the channel.");
       return;
@@ -85,7 +89,9 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
             onChange={(e) => setIsPrivate(e.target.checked)}
             className="h-4 w-4 rounded border-border text-accent focus:ring-accent/40"
           />
-          <span>{t("channelCreate.private")} — {t("channelCreate.privateHint")}</span>
+          <span>
+            {t("channelCreate.private")} — {t("channelCreate.privateHint")}
+          </span>
         </label>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">

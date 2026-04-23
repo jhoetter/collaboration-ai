@@ -22,9 +22,7 @@ export function ChatPanel({ workspaceId, channel, identity, connection, classNam
         <div className="flex min-w-0 items-center gap-2">
           <ChannelIcon kind="public" />
           <span className="truncate text-sm font-semibold">{channel}</span>
-          <span className="hidden truncate text-[11px] text-tertiary sm:inline">
-            / {workspaceId}
-          </span>
+          <span className="hidden truncate text-[11px] text-tertiary sm:inline">/ {workspaceId}</span>
         </div>
         {identity ? (
           <div className="flex flex-none items-center gap-2">

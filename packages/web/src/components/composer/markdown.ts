@@ -6,11 +6,7 @@
  * official markdown transformers so the editor view (`<strong>`,
  * `<em>`, etc.) round-trips losslessly with what the server stores.
  */
-import {
-  $convertFromMarkdownString,
-  $convertToMarkdownString,
-  TRANSFORMERS,
-} from "@lexical/markdown";
+import { $convertFromMarkdownString, $convertToMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { $getRoot, type LexicalEditor } from "lexical";
 
 /** Read the current editor state as canonical markdown. */

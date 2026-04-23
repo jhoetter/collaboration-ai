@@ -41,9 +41,7 @@ export function AgentInbox() {
 
   return (
     <aside className="w-full max-w-full border-l border-border bg-surface p-3 lg:w-80">
-      <h2 className="mb-2 text-xs uppercase tracking-wide text-tertiary">
-        {t("agentInbox.title")}
-      </h2>
+      <h2 className="mb-2 text-xs uppercase tracking-wide text-tertiary">{t("agentInbox.title")}</h2>
       {isLoading && <p className="text-sm text-tertiary">{t("common.loading")}</p>}
       {!isLoading && proposals.length === 0 && (
         <p className="text-sm text-tertiary">{t("agentInbox.empty")}</p>

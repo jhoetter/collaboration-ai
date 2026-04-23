@@ -37,8 +37,8 @@ function flush(editor: ReturnType<typeof createEditor>) {
       () => {
         /* no-op */
       },
-      { onUpdate: () => resolve() },
-    ),
+      { onUpdate: () => resolve() }
+    )
   );
 }
 

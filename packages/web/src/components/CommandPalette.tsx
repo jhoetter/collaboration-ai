@@ -16,15 +16,7 @@
  * with no query — same UX trick the office-ai version uses.
  */
 import { Avatar } from "@collabai/ui";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
@@ -127,7 +119,7 @@ export function CommandPalette() {
         console.error(err);
       }
     },
-    [navigate, params.workspaceId],
+    [navigate, params.workspaceId]
   );
 
   const actions = useMemo<PaletteItem[]>(() => {
@@ -232,7 +224,7 @@ export function CommandPalette() {
 
   const allItems = useMemo<PaletteItem[]>(
     () => [...actions, ...channelItems, ...peopleItems, ...messageItems],
-    [actions, channelItems, peopleItems, messageItems],
+    [actions, channelItems, peopleItems, messageItems]
   );
 
   // ── Debounced full-text message search ───────────────────────────
@@ -328,9 +320,7 @@ export function CommandPalette() {
         </div>
         <div className="max-h-[60dvh] overflow-y-auto p-1 sm:max-h-[55vh]">
           {filtered.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-tertiary">
-              {t("palette.empty")}
-            </div>
+            <div className="px-3 py-6 text-center text-sm text-tertiary">{t("palette.empty")}</div>
           ) : (
             filtered.map((item, idx) => {
               const showHeader = item.section !== lastSection;
@@ -347,9 +337,7 @@ export function CommandPalette() {
                     onClick={() => pick(item)}
                     onMouseEnter={() => setActive(idx)}
                     className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                      active === idx
-                        ? "bg-accent-light text-accent"
-                        : "text-foreground hover:bg-hover"
+                      active === idx ? "bg-accent-light text-accent" : "text-foreground hover:bg-hover"
                     }`}
                     data-testid={`palette-cmd-${item.id}`}
                   >
@@ -362,9 +350,7 @@ export function CommandPalette() {
                     )}
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate">{item.label}</span>
-                      {item.hint ? (
-                        <span className="truncate text-xs text-tertiary">{item.hint}</span>
-                      ) : null}
+                      {item.hint ? <span className="truncate text-xs text-tertiary">{item.hint}</span> : null}
                     </span>
                     {item.shortcut ? (
                       <span className="text-xs tabular-nums text-tertiary">{item.shortcut}</span>

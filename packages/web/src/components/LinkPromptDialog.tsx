@@ -79,9 +79,7 @@ export function LinkPromptDialog({
   return (
     <Modal title={title} onClose={onCancel} size="sm" ariaLabel={title}>
       <div className="flex flex-col gap-3 p-4">
-        {description && (
-          <p className="text-sm leading-relaxed text-secondary">{description}</p>
-        )}
+        {description && <p className="text-sm leading-relaxed text-secondary">{description}</p>}
         <label className="flex flex-col gap-1 text-xs font-medium text-secondary">
           {labelFieldLabel}
           <input
@@ -110,12 +108,7 @@ export function LinkPromptDialog({
           <Button variant="ghost" size="sm" onClick={onCancel}>
             {cancelText}
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={submit}
-            disabled={url.trim().length === 0}
-          >
+          <Button variant="primary" size="sm" onClick={submit} disabled={url.trim().length === 0}>
             {confirmText}
           </Button>
         </div>

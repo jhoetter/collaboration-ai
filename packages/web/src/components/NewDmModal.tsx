@@ -39,10 +39,10 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
           (u) =>
             !query ||
             u.display_name.toLowerCase().includes(query.toLowerCase()) ||
-            u.user_id.toLowerCase().includes(query.toLowerCase()),
+            u.user_id.toLowerCase().includes(query.toLowerCase())
         )
         .slice(0, 50),
-    [usersById, me, query],
+    [usersById, me, query]
   );
 
   function toggle(id: string) {
@@ -84,9 +84,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
   }
 
   const isGroup = picked.size > 1;
-  const title = isGroup
-    ? t("dm.newGroupTitle", { n: picked.size + 1 })
-    : t("dm.newTitle");
+  const title = isGroup ? t("dm.newGroupTitle", { n: picked.size + 1 }) : t("dm.newTitle");
   const submitLabel = isGroup ? t("dm.openGroup") : t("dm.open");
 
   return (

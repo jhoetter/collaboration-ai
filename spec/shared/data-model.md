@@ -44,23 +44,23 @@ rolling forward).
 
 ## Projection tables (sketch)
 
-| Table                | Key                                              | Purpose                                                                     |
-| -------------------- | ------------------------------------------------ | --------------------------------------------------------------------------- |
-| `workspaces`         | `workspace_id`                                   | Display name, slug, icon, retention policy                                  |
-| `workspace_members`  | `(workspace_id, user_id)`                        | Role, joined_at, invited_by                                                 |
-| `channels`           | `channel_id`                                     | Name, type, topic, staging_policy, slow_mode_seconds, archived              |
-| `channel_members`    | `(channel_id, user_id)`                          | Joined_at, role                                                             |
-| `messages`           | `event_id`                                       | Sender, content (markdown), thread_root, edited_at, redacted, sequence      |
-| `message_search`     | `(workspace_id, channel_id, event_id)`           | tsvector GIN — content + author + channel name                              |
-| `reactions`          | `(message_id, emoji, user_id)`                   | One row per reactor                                                         |
-| `read_markers`       | `(user_id, channel_id)`                          | up_to_sequence                                                              |
-| `pinned`             | `(channel_id, message_id)`                       | Pinned messages                                                             |
-| `drafts`             | `(user_id, channel_id)`                          | Server-side drafts (cross-device)                                           |
-| `user_status`        | `user_id`                                        | Custom status (emoji + text + clear_at)                                     |
-| `agents`             | `agent_id`                                       | Display name, scopes, registered_by                                         |
-| `proposals`          | `proposal_id`                                    | Pending agent suggestions awaiting approval                                 |
-| `attachments`        | `file_id`                                        | Object key, mime, size, thumbnail_key, virus_scan_status                    |
-| `notifications`      | `(workspace_id, user_id, sequence)`              | Per-user inbox; consumed by web push / email digest                         |
+| Table               | Key                                    | Purpose                                                                |
+| ------------------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| `workspaces`        | `workspace_id`                         | Display name, slug, icon, retention policy                             |
+| `workspace_members` | `(workspace_id, user_id)`              | Role, joined_at, invited_by                                            |
+| `channels`          | `channel_id`                           | Name, type, topic, staging_policy, slow_mode_seconds, archived         |
+| `channel_members`   | `(channel_id, user_id)`                | Joined_at, role                                                        |
+| `messages`          | `event_id`                             | Sender, content (markdown), thread_root, edited_at, redacted, sequence |
+| `message_search`    | `(workspace_id, channel_id, event_id)` | tsvector GIN — content + author + channel name                         |
+| `reactions`         | `(message_id, emoji, user_id)`         | One row per reactor                                                    |
+| `read_markers`      | `(user_id, channel_id)`                | up_to_sequence                                                         |
+| `pinned`            | `(channel_id, message_id)`             | Pinned messages                                                        |
+| `drafts`            | `(user_id, channel_id)`                | Server-side drafts (cross-device)                                      |
+| `user_status`       | `user_id`                              | Custom status (emoji + text + clear_at)                                |
+| `agents`            | `agent_id`                             | Display name, scopes, registered_by                                    |
+| `proposals`         | `proposal_id`                          | Pending agent suggestions awaiting approval                            |
+| `attachments`       | `file_id`                              | Object key, mime, size, thumbnail_key, virus_scan_status               |
+| `notifications`     | `(workspace_id, user_id, sequence)`    | Per-user inbox; consumed by web push / email digest                    |
 
 Every projection is rebuildable by running its dispatch function from
 `app/domain/events/projector.py` over the events log.

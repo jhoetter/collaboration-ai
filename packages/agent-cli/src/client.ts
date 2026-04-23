@@ -46,7 +46,7 @@ export class CollabClient {
   send(
     channelId: string,
     content: string,
-    extra: { thread_root?: string; mentions?: string[] } = {},
+    extra: { thread_root?: string; mentions?: string[] } = {}
   ): Promise<CommandResult> {
     return this.call<CommandResult>("chat:send-message", {
       channel_id: channelId,
@@ -57,10 +57,7 @@ export class CollabClient {
 
   /** Newest-first message slice for a channel. `since_sequence`
    * lets the caller poll for incremental updates. */
-  read(
-    channelId: string,
-    opts: { since?: number; limit?: number } = {},
-  ): Promise<unknown[]> {
+  read(channelId: string, opts: { since?: number; limit?: number } = {}): Promise<unknown[]> {
     return this.call("chat:list-messages", {
       channel_id: channelId,
       since_sequence: opts.since ?? 0,
@@ -70,7 +67,7 @@ export class CollabClient {
 
   search(
     query: string,
-    opts: { channel_ids?: string[]; from_user?: string; limit?: number } = {},
+    opts: { channel_ids?: string[]; from_user?: string; limit?: number } = {}
   ): Promise<unknown[]> {
     return this.call("chat:search", { query, ...opts });
   }
@@ -116,10 +113,10 @@ export class CollabClient {
     let cursor = opts.since ?? 0;
     const pollMs = opts.pollMs ?? 1500;
     for (;;) {
-      const events = (await this.call<Array<{ sequence: number }>>(
-        "events:list",
-        { since_sequence: cursor, limit: 200 },
-      )) as Array<{ sequence: number }>;
+      const events = (await this.call<Array<{ sequence: number }>>("events:list", {
+        since_sequence: cursor,
+        limit: 200,
+      })) as Array<{ sequence: number }>;
       for (const evt of events) {
         yield evt;
         if (evt.sequence > cursor) cursor = evt.sequence;

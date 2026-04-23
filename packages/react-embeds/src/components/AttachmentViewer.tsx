@@ -51,20 +51,11 @@ export type AttachmentKind = "pdf" | "docx" | "xlsx" | "pptx" | "other";
 export function attachmentKindFor(mime: string, filename?: string): AttachmentKind {
   const ext = (filename ?? "").toLowerCase().split(".").pop() ?? "";
   if (mime === "application/pdf" || ext === "pdf") return "pdf";
-  if (
-    mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    ext === "docx"
-  )
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || ext === "docx")
     return "docx";
-  if (
-    mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    ext === "xlsx"
-  )
+  if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || ext === "xlsx")
     return "xlsx";
-  if (
-    mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
-    ext === "pptx"
-  )
+  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || ext === "pptx")
     return "pptx";
   return "other";
 }

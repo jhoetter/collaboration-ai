@@ -75,7 +75,7 @@ export function Modal({
         className={cn(
           "flex w-full max-h-[85vh] flex-col overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-2xl mobile-sheet:max-h-[92dvh] mobile-sheet:rounded-t-xl mobile-sheet:rounded-b-none",
           SIZE_CLASS[size],
-          className,
+          className
         )}
       >
         {(title || !hideCloseButton || headerActions) && (
@@ -112,6 +112,6 @@ export function Modal({
         {children}
       </div>
     </div>,
-    document.body,
+    document.body
   );
 }

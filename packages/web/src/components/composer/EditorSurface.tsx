@@ -39,11 +39,7 @@ export function EditorSurface({
   onPaste,
 }: EditorSurfaceProps) {
   return (
-    <div
-      className="relative px-4 py-3.5"
-      onKeyDownCapture={onKeyDownCapture}
-      onPaste={onPaste}
-    >
+    <div className="relative px-4 py-3.5" onKeyDownCapture={onKeyDownCapture} onPaste={onPaste}>
       <RichTextPlugin
         contentEditable={
           <ContentEditable
@@ -65,10 +61,7 @@ export function EditorSurface({
       <AutoLinkPlugin matchers={AUTO_LINK_MATCHERS} />
       <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
       <ClearEditorPlugin />
-      <OnChangePlugin
-        ignoreSelectionChange
-        onChange={(_state, editor) => onChange(editor)}
-      />
+      <OnChangePlugin ignoreSelectionChange onChange={(_state, editor) => onChange(editor)} />
     </div>
   );
 }

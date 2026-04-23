@@ -11,17 +11,7 @@
  */
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import {
-  Apple,
-  Car,
-  Clock,
-  Dog,
-  Flag,
-  Heart,
-  Lightbulb,
-  Smile,
-  Volleyball,
-} from "lucide-react";
+import { Apple, Car, Clock, Dog, Flag, Heart, Lightbulb, Smile, Volleyball } from "lucide-react";
 import { type ComponentType, useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useColorScheme } from "../lib/theme/index.ts";
@@ -54,9 +44,7 @@ const OUTLINE_STYLE: React.CSSProperties = {
 
 function toSvg(Icon: LucideComponent): { svg: string } {
   return {
-    svg: renderToStaticMarkup(
-      <Icon size={18} strokeWidth={1.75} style={OUTLINE_STYLE} aria-hidden />,
-    ),
+    svg: renderToStaticMarkup(<Icon size={18} strokeWidth={1.75} style={OUTLINE_STYLE} aria-hidden />),
   };
 }
 

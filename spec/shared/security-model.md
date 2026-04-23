@@ -24,7 +24,7 @@ Authorisation is layered:
 5. Rate budget (per identity + command class; see `domain/shared/rate_limit.py`).
 
 Each layer rejects with a structured `CommandError` so the UI can
-explain *why* an action was blocked.
+explain _why_ an action was blocked.
 
 ## Attachments
 

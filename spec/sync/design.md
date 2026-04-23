@@ -4,10 +4,10 @@
 
 Clients use whichever transport is available:
 
-| Transport         | When                                    | Mechanics                                         |
-| ----------------- | --------------------------------------- | ------------------------------------------------- |
-| `GET /api/sync`   | First page load, cold reconnect, fallback | Long-poll: returns immediately if events exist past `since`; otherwise blocks 25 s waiting for new events on the workspace's Redis channel. |
-| `GET /ws/events`  | Steady state                            | Bidirectional. Server pushes events, presence, typing. |
+| Transport        | When                                      | Mechanics                                                                                                                                   |
+| ---------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/sync`  | First page load, cold reconnect, fallback | Long-poll: returns immediately if events exist past `since`; otherwise blocks 25 s waiting for new events on the workspace's Redis channel. |
+| `GET /ws/events` | Steady state                              | Bidirectional. Server pushes events, presence, typing.                                                                                      |
 
 Both speak the same wire format: a `SyncMessage` envelope (see below)
 with the same fields, just streamed differently.
@@ -65,8 +65,8 @@ This guarantees we never silently drop events.
   content.
 
 Presence and typing **are not events** in the log: they're
-fire-and-forget hot signals. Read markers — which *do* carry semantics
-across devices — *are* events.
+fire-and-forget hot signals. Read markers — which _do_ carry semantics
+across devices — _are_ events.
 
 ## Backpressure on the publisher side
 

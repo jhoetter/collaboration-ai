@@ -27,7 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </QueryClientProvider>
       </ThemeProvider>
     </I18nProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
 
 /**
@@ -60,9 +60,7 @@ function Bootstrap() {
         <div className="max-w-md rounded-lg border border-destructive/40 bg-destructive-bg p-4 text-sm text-destructive">
           <p className="mb-2 font-semibold">{t("common.joinWorkspaceError")}</p>
           <p className="mb-3 opacity-80">{error}</p>
-          <p className="text-xs opacity-70">
-            {t("common.didYouRunSeed", { cmd: "make seed" })}
-          </p>
+          <p className="text-xs opacity-70">{t("common.didYouRunSeed", { cmd: "make seed" })}</p>
         </div>
       </main>
     );

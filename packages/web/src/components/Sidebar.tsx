@@ -65,7 +65,7 @@ export function Sidebar() {
   const toggleSidebarPanel = useUi((s) => s.toggleSidebarPanel);
   const setNotificationRead = useSync((s) => s.setNotificationRead);
 
-  const mutePrefs = me ? notificationPrefByChannel[me] ?? {} : {};
+  const mutePrefs = me ? (notificationPrefByChannel[me] ?? {}) : {};
   const isMuted = (cid: string) => mutePrefs[cid] === "none";
 
   const { rooms, dms } = useMemo(() => {
@@ -108,7 +108,7 @@ export function Sidebar() {
 
   const mentionRows = useMemo(
     () => Object.values(notifications).filter((n) => !n.read && n.kind === "mention"),
-    [notifications],
+    [notifications]
   );
 
   const draftRows = useMemo(
@@ -116,13 +116,13 @@ export function Sidebar() {
       Object.entries(draftsByChannel)
         .filter(([, v]) => Boolean(v.content?.trim()))
         .map(([id, v]) => ({ id, content: v.content })),
-    [draftsByChannel],
+    [draftsByChannel]
   );
 
-  const savedIds = me ? starsByUser[me] ?? [] : [];
+  const savedIds = me ? (starsByUser[me] ?? []) : [];
   const savedCount = useMemo(
     () => savedIds.filter((id) => Boolean(messageById[id])).length,
-    [savedIds, messageById],
+    [savedIds, messageById]
   );
 
   const filesCount = useMemo(() => {
@@ -163,9 +163,7 @@ export function Sidebar() {
       />
       {sectionsOpen.channels && (
         <>
-          {rooms.length === 0 && (
-            <p className="px-2 py-1 text-xs text-tertiary">{t("sidebar.noChannels")}</p>
-          )}
+          {rooms.length === 0 && <p className="px-2 py-1 text-xs text-tertiary">{t("sidebar.noChannels")}</p>}
           {rooms.map((c) => (
             <ChannelRow
               key={c.id}
@@ -188,9 +186,7 @@ export function Sidebar() {
       />
       {sectionsOpen.dms && (
         <>
-          {dms.length === 0 && (
-            <p className="px-2 py-1 text-xs text-tertiary">{t("sidebar.noDms")}</p>
-          )}
+          {dms.length === 0 && <p className="px-2 py-1 text-xs text-tertiary">{t("sidebar.noDms")}</p>}
           {dms.map((c) => (
             <DmRow
               key={c.id}
@@ -336,8 +332,8 @@ function PanelTrigger({
             active
               ? "bg-accent-foreground/20 text-accent-foreground"
               : badgeTone === "alert"
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-tertiary/70 text-background"
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-tertiary/70 text-background"
           }`}
         >
           {badge}
@@ -409,15 +405,13 @@ function ChannelRow({
         active
           ? "bg-accent font-medium text-accent-foreground hover:bg-accent/90"
           : hasUnread
-          ? "text-foreground hover:bg-hover"
-          : "text-secondary hover:bg-hover hover:text-foreground"
+            ? "text-foreground hover:bg-hover"
+            : "text-secondary hover:bg-hover hover:text-foreground"
       }`}
     >
       <span className="flex min-w-0 items-center gap-2">
         <ChannelIcon kind={channel.private ? "private" : "public"} />
-        <span className={`truncate ${hasUnread || active ? "font-semibold" : ""}`}>
-          {channel.name}
-        </span>
+        <span className={`truncate ${hasUnread || active ? "font-semibold" : ""}`}>{channel.name}</span>
       </span>
       {(unread?.mentions ?? 0) > 0 && !muted ? (
         <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
@@ -457,11 +451,12 @@ function DmRow({
   // Prefer the canonical member list returned by `channel:list` for DMs.
   // Older channels with no `members` array still fall back to parsing the
   // channel name (legacy `userA:userB` slug).
-  const memberIds = (channel.members && channel.members.length > 0)
-    ? channel.members.filter((p) => p && p !== me)
-    : channel.name.includes(":")
-      ? channel.name.split(":").filter((p) => p && p !== me)
-      : [];
+  const memberIds =
+    channel.members && channel.members.length > 0
+      ? channel.members.filter((p) => p && p !== me)
+      : channel.name.includes(":")
+        ? channel.name.split(":").filter((p) => p && p !== me)
+        : [];
 
   // A DM is a "group" if the backend tagged it as such OR there is more
   // than one peer (handles legacy 3+ DMs that were created before the
@@ -496,10 +491,9 @@ function DmRow({
   // Single-DM partner — first non-self member, or fall back to legacy parsing,
   // and finally to a polite "Direct message" label so we never display the
   // raw `dm_xxxx` slug to end users.
-  const partnerId = memberIds[0]
-    ?? (channel.name.includes(":")
-      ? channel.name.split(":").find((p) => p !== me) ?? null
-      : null);
+  const partnerId =
+    memberIds[0] ??
+    (channel.name.includes(":") ? (channel.name.split(":").find((p) => p !== me) ?? null) : null);
   return (
     <DmRowSingle
       to={to}
@@ -555,9 +549,7 @@ function DmRowSingle({
             </span>
           )}
         </span>
-        <span
-          className={`truncate ${hasUnread && !active ? "font-semibold text-foreground" : ""}`}
-        >
+        <span className={`truncate ${hasUnread && !active ? "font-semibold text-foreground" : ""}`}>
           {label}
         </span>
       </span>
@@ -574,10 +566,7 @@ function GroupAvatarCluster({ ids }: { ids: string[] }) {
   return (
     <span className="relative inline-flex">
       {ids.slice(0, 2).map((id, i) => (
-        <span
-          key={id}
-          className={i === 0 ? "" : "-ml-2 ring-2 ring-surface rounded-full"}
-        >
+        <span key={id} className={i === 0 ? "" : "-ml-2 ring-2 ring-surface rounded-full"}>
           <ClusterAvatar id={id} />
         </span>
       ))}

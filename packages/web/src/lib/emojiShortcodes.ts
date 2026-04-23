@@ -85,10 +85,7 @@ export function shortcodeToNative(code: string): string | null {
  * "I just typed `:`" case so the user immediately sees there is
  * something to pick.
  */
-export function searchEmojiShortcodes(
-  query: string,
-  limit = 8,
-): EmojiSuggestion[] {
+export function searchEmojiShortcodes(query: string, limit = 8): EmojiSuggestion[] {
   if (!suggestions) suggestions = buildSuggestions();
   const q = query.toLowerCase();
   if (!q) return suggestions.slice(0, limit);

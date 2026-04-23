@@ -71,7 +71,7 @@ const DEFAULT_SIZE = 14;
 /** Slightly thinner than lucide's default 2 — feels less chunky at 14 px. */
 const DEFAULT_STROKE = 1.75;
 
-type LucideIcon = (typeof Bold) & { displayName?: string };
+type LucideIcon = typeof Bold & { displayName?: string };
 
 /**
  * Wrap a raw `lucide-react` icon so it inherits our project-wide
@@ -79,12 +79,7 @@ type LucideIcon = (typeof Bold) & { displayName?: string };
  */
 function withDefaults(Icon: LucideIcon, displayName: string) {
   const Wrapped = forwardRef<SVGSVGElement, LucideProps>((props, ref) => (
-    <Icon
-      ref={ref}
-      size={DEFAULT_SIZE}
-      strokeWidth={DEFAULT_STROKE}
-      {...props}
-    />
+    <Icon ref={ref} size={DEFAULT_SIZE} strokeWidth={DEFAULT_STROKE} {...props} />
   ));
   Wrapped.displayName = displayName;
   return Wrapped;

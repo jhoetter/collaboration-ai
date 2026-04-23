@@ -38,7 +38,7 @@ export function Avatar({ name, imageUrl, kind = "human", size = 24, className }:
         "inline-flex select-none items-center justify-center overflow-hidden rounded-full bg-hover font-medium text-foreground",
         SIZE_CLASS[size],
         ring,
-        className,
+        className
       )}
       title={name}
     >

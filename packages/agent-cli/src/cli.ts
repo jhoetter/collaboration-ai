@@ -126,7 +126,7 @@ program
     rows.sort((a, b) => b.mention_count - a.mention_count || b.unread - a.unread);
     for (const row of rows) {
       console.log(
-        `${row.channel_id.padEnd(24)} unread=${String(row.unread).padStart(4)}  mentions=${row.mention_count}`,
+        `${row.channel_id.padEnd(24)} unread=${String(row.unread).padStart(4)}  mentions=${row.mention_count}`
       );
     }
   });

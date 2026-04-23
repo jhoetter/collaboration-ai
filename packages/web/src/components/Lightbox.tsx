@@ -142,7 +142,7 @@ export function useLightbox(): UseLightbox {
         return peers[next] ?? cur;
       });
     },
-    [peers],
+    [peers]
   );
   return {
     entry,

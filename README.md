@@ -17,15 +17,15 @@ application so it can deploy standalone _and_ embed cleanly into
 
 ## Stack
 
-| Layer        | Tech                                                                |
-| ------------ | ------------------------------------------------------------------- |
-| Backend      | Python 3.12 + FastAPI + SQLAlchemy 2.0 + Postgres 16 + Redis 7      |
-| Framework    | `hof-engine` (Tables / `@function` / Flows / Cron, Celery, Vite UI) |
-| Web UI       | Vite + React 19 + Tailwind v4 + Lexical + `@collabai/ui`            |
-| Agent CLI    | Python Typer + Rich, mirroring the `hofos` CLI shape                |
-| MCP          | Auto-generated from the `@function` registry                        |
-| Real-time    | Redis pub/sub fan-out + FastAPI WebSockets                          |
-| Storage      | S3-compatible (MinIO in dev) for attachments                        |
+| Layer     | Tech                                                                |
+| --------- | ------------------------------------------------------------------- |
+| Backend   | Python 3.12 + FastAPI + SQLAlchemy 2.0 + Postgres 16 + Redis 7      |
+| Framework | `hof-engine` (Tables / `@function` / Flows / Cron, Celery, Vite UI) |
+| Web UI    | Vite + React 19 + Tailwind v4 + Lexical + `@collabai/ui`            |
+| Agent CLI | Python Typer + Rich, mirroring the `hofos` CLI shape                |
+| MCP       | Auto-generated from the `@function` registry                        |
+| Real-time | Redis pub/sub fan-out + FastAPI WebSockets                          |
+| Storage   | S3-compatible (MinIO in dev) for attachments                        |
 
 ## Repo layout
 
@@ -139,7 +139,7 @@ Slack-style feature in two minutes:
 4. **`#engineering`** — open the seeded thread "Heads up team…" in the
    right rail. Type `@a` to mention Alex (the mention picker is local).
 5. **Drag-and-drop** any image into the composer to upload an
-   attachment; rich text supports `**bold**`, `*italic*`, ``` `code` ```
+   attachment; rich text supports `**bold**`, `*italic*`, `` `code` ``
    and `> quote`.
 6. **`Cmd-K`** opens the spotlight palette. Tabs: Channels, People,
    Messages — Messages hits the backend full-text search.

@@ -10,9 +10,7 @@ import remarkGfm from "remark-gfm";
 import { describe, expect, it } from "vitest";
 
 function render(markdown: string): string {
-  return renderToStaticMarkup(
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>,
-  );
+  return renderToStaticMarkup(<ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>);
 }
 
 describe("react-markdown link rendering", () => {

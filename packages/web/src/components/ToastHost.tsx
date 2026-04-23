@@ -42,9 +42,7 @@ export function ToastHost() {
             ? {
                 label: t("toasts.jump"),
                 onClick: () => {
-                  const anchor = n.target_event_id
-                    ? `#message-${n.target_event_id}`
-                    : "";
+                  const anchor = n.target_event_id ? `#message-${n.target_event_id}` : "";
                   navigate(`/w/${params.workspaceId}/c/${n.channel_id}${anchor}`);
                   void callFunction("notifications:mark-read", {
                     notification_id: n.id,

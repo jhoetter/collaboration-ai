@@ -119,6 +119,6 @@ export function PopoverPortal({
     >
       {children}
     </div>,
-    document.body,
+    document.body
   );
 }

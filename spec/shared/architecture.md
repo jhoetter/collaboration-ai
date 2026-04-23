@@ -68,12 +68,12 @@ React surfaces** (`packages/react-embeds`), and the design tokens.
 
 ## Source-of-truth split
 
-| Where             | Truth                                       |
-| ----------------- | ------------------------------------------- |
-| `events` table    | The log. Append-only. Replay rebuilds all.  |
-| Projection tables | Read-side caches; **derivable**, not truth. |
+| Where             | Truth                                                                     |
+| ----------------- | ------------------------------------------------------------------------- |
+| `events` table    | The log. Append-only. Replay rebuilds all.                                |
+| Projection tables | Read-side caches; **derivable**, not truth.                               |
 | Redis             | Ephemeral only — presence, rate buckets, fan-out queues. Never persisted. |
-| MinIO / S3        | Attachment bytes (and thumbnails).          |
+| MinIO / S3        | Attachment bytes (and thumbnails).                                        |
 
 A `make replay` script wipes projections and rebuilds them from `events`
 to prove this property in CI.

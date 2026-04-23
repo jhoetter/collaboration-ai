@@ -46,13 +46,7 @@ interface TokenResponse {
   room: string;
 }
 
-export function HuddlePanel({
-  channelId,
-  onClose,
-}: {
-  channelId: string;
-  onClose: () => void;
-}) {
+export function HuddlePanel({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const huddle = useSync((s) => s.huddlesByChannel[channelId]);
   const [token, setToken] = useState<TokenResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +81,7 @@ export function HuddlePanel({
         <div>
           <p className="text-sm font-semibold text-foreground">{t("huddle.title")}</p>
           <p className="text-xs text-tertiary">
-            {huddle
-              ? t("huddle.participants", { n: huddle.participants.length })
-              : t("huddle.connecting")}
+            {huddle ? t("huddle.participants", { n: huddle.participants.length }) : t("huddle.connecting")}
           </p>
         </div>
         <Button variant="danger" size="sm" onClick={() => void handleLeave()}>
@@ -128,9 +120,7 @@ export function HuddlePanel({
           </LayoutContextProvider>
         </LiveKitRoom>
       ) : !error ? (
-        <div className="p-6 text-center text-xs text-tertiary">
-          {t("huddle.connecting")}
-        </div>
+        <div className="p-6 text-center text-xs text-tertiary">{t("huddle.connecting")}</div>
       ) : null}
     </div>
   );
@@ -146,14 +136,12 @@ function HuddleStage() {
       { source: Track.Source.Camera, withPlaceholder: true },
       { source: Track.Source.ScreenShare, withPlaceholder: false },
     ],
-    { onlySubscribed: false },
+    { onlySubscribed: false }
   );
   // If anyone is sharing their screen, focus that track and rail the
   // others on the right; otherwise show the standard equal-share grid.
   const focusTrack = usePinnedTracks() ?? [];
-  const screenShareTrack = tracks.find(
-    (t) => t.source === Track.Source.ScreenShare,
-  );
+  const screenShareTrack = tracks.find((t) => t.source === Track.Source.ScreenShare);
   const focused = focusTrack[0] ?? screenShareTrack;
   if (focused) {
     return (

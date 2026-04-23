@@ -30,22 +30,8 @@
  *   - Keyboard navigation (↑/↓ to move, ↵ to open, Esc to clear/close)
  *   - Footer hint bar with the same shortcuts.
  */
-import {
-  Avatar,
-  ChannelIcon,
-  IconFile,
-  IconHash,
-  IconMenu,
-  IconSearch,
-} from "@collabai/ui";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { Avatar, ChannelIcon, IconFile, IconHash, IconMenu, IconSearch } from "@collabai/ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
@@ -118,22 +104,18 @@ interface ResolvedFilters {
 function resolveFilters(
   parsed: ParsedQuery,
   channels: ReturnType<typeof useSync.getState>["channels"],
-  users: ReturnType<typeof useUsers.getState>["byId"],
+  users: ReturnType<typeof useUsers.getState>["byId"]
 ): ResolvedFilters {
   const channelIds = parsed.channels
     .map((slug) => {
-      const hit = Object.values(channels).find(
-        (c) => c.name?.toLowerCase() === slug,
-      );
+      const hit = Object.values(channels).find((c) => c.name?.toLowerCase() === slug);
       return hit?.id;
     })
     .filter((x): x is string => Boolean(x));
   const senderIds = parsed.senders
     .map((needle) => {
       const hit = Object.values(users).find(
-        (u) =>
-          u.user_id.toLowerCase() === needle ||
-          u.display_name.toLowerCase() === needle,
+        (u) => u.user_id.toLowerCase() === needle || u.display_name.toLowerCase() === needle
       );
       return hit?.user_id;
     })
@@ -224,10 +206,7 @@ export function TopBar() {
   }, [open]);
 
   const parsed = useMemo(() => parseQuery(query), [query]);
-  const resolved = useMemo(
-    () => resolveFilters(parsed, channels, usersById),
-    [parsed, channels, usersById],
-  );
+  const resolved = useMemo(() => resolveFilters(parsed, channels, usersById), [parsed, channels, usersById]);
 
   // Reset the keyboard cursor whenever the result set could change.
   useEffect(() => {
@@ -273,11 +252,7 @@ export function TopBar() {
     if (q.length < 1) return [];
     return Object.values(channels)
       .filter(
-        (c) =>
-          !c.archived &&
-          c.type !== "dm" &&
-          c.type !== "group_dm" &&
-          c.name?.toLowerCase().includes(q),
+        (c) => !c.archived && c.type !== "dm" && c.type !== "group_dm" && c.name?.toLowerCase().includes(q)
       )
       .slice(0, 5);
   }, [channels, parsed.text]);
@@ -286,17 +261,13 @@ export function TopBar() {
     const q = parsed.text.toLowerCase();
     if (q.length < 1) return [];
     return Object.values(usersById)
-      .filter(
-        (u) =>
-          u.display_name.toLowerCase().includes(q) ||
-          u.user_id.toLowerCase().includes(q),
-      )
+      .filter((u) => u.display_name.toLowerCase().includes(q) || u.user_id.toLowerCase().includes(q))
       .slice(0, 5);
   }, [usersById, parsed.text]);
 
   const fileHits = useMemo(
     () => filteredHits.filter((h) => h.has_files || (h.attachment_count ?? 0) > 0),
-    [filteredHits],
+    [filteredHits]
   );
 
   // Terms used to highlight matches in result snippets/labels.
@@ -314,7 +285,7 @@ export function TopBar() {
       setOpen(false);
       setRecents(rememberRecent(query));
     },
-    [navigate, params.workspaceId, query],
+    [navigate, params.workspaceId, query]
   );
 
   const navigateToChannel = useCallback(
@@ -323,7 +294,7 @@ export function TopBar() {
       setOpen(false);
       setRecents(rememberRecent(query));
     },
-    [navigate, params.workspaceId, query],
+    [navigate, params.workspaceId, query]
   );
 
   const openDmWith = useCallback(
@@ -343,7 +314,7 @@ export function TopBar() {
         console.error(err);
       }
     },
-    [navigate, params.workspaceId, query],
+    [navigate, params.workspaceId, query]
   );
 
   // Build a single flat row list so the keyboard cursor and the
@@ -395,14 +366,10 @@ export function TopBar() {
               shorten(h.content) ? (
                 highlight(shorten(h.content), highlightTerms)
               ) : (
-                <span className="text-tertiary">
-                  {channel ? `#${channel.name}` : h.channel_id}
-                </span>
+                <span className="text-tertiary">{channel ? `#${channel.name}` : h.channel_id}</span>
               )
             }
-            hint={`${channel ? `#${channel.name}` : h.channel_id} · ${
-              sender?.display_name ?? h.sender_id
-            }`}
+            hint={`${channel ? `#${channel.name}` : h.channel_id} · ${sender?.display_name ?? h.sender_id}`}
           />
         ),
       });
@@ -507,7 +474,7 @@ export function TopBar() {
       people: rows.filter((r) => r.tab === "people").length,
       channels: rows.filter((r) => r.tab === "channels").length,
     }),
-    [rows],
+    [rows]
   );
 
   const showEmptyState = query.length === 0;
@@ -550,9 +517,7 @@ export function TopBar() {
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls="topbar-search-listbox"
-          aria-activedescendant={
-            visibleRows[active] ? `topbar-row-${visibleRows[active].key}` : undefined
-          }
+          aria-activedescendant={visibleRows[active] ? `topbar-row-${visibleRows[active].key}` : undefined}
           className="h-8 w-full rounded-md border border-hairline bg-background pl-8 pr-3 text-sm text-foreground transition-colors placeholder:text-tertiary focus:border-accent-faint focus:outline-none focus:ring-2 focus:ring-accent-dim sm:h-7 sm:pr-12"
           data-testid="topbar-search"
         />
@@ -567,21 +532,14 @@ export function TopBar() {
           role="listbox"
           className="absolute left-1/2 top-full z-40 mt-1 flex max-h-[80dvh] w-[min(48rem,calc(100vw-1rem))] -translate-x-1/2 flex-col overflow-hidden rounded-md border border-border bg-card shadow-2xl"
         >
-          <Tabs
-            tab={tab}
-            counts={tabCounts}
-            onChange={setTab}
-            t={t}
-          />
+          <Tabs tab={tab} counts={tabCounts} onChange={setTab} t={t} />
           <ChipSuggestions
             parsed={parsed}
             currentChannelName={
               params.workspaceId ? findCurrentChannelName(channels, location.pathname) : null
             }
             onAppend={(chip) => {
-              setQuery((q) =>
-                q.endsWith(" ") || q.length === 0 ? `${q}${chip} ` : `${q} ${chip} `,
-              );
+              setQuery((q) => (q.endsWith(" ") || q.length === 0 ? `${q}${chip} ` : `${q} ${chip} `));
               inputRef.current?.focus();
             }}
             t={t}
@@ -608,15 +566,9 @@ export function TopBar() {
               </Group>
             )}
             {showEmptyState && recents.length === 0 && (
-              <div className="px-3 py-4 text-xs text-tertiary">
-                {t("topbar.hint")}
-              </div>
+              <div className="px-3 py-4 text-xs text-tertiary">{t("topbar.hint")}</div>
             )}
-            {showNoMatches && (
-              <div className="px-3 py-4 text-sm text-tertiary">
-                {t("topbar.noResults")}
-              </div>
-            )}
+            {showNoMatches && <div className="px-3 py-4 text-sm text-tertiary">{t("topbar.noResults")}</div>}
             {!showEmptyState && visibleRows.length > 0 && (
               <div>
                 {visibleRows.map((row, idx) => (
@@ -685,9 +637,7 @@ function Tabs({
             }}
             onClick={() => onChange(id)}
             className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs transition-colors ${
-              isActive
-                ? "bg-accent-light text-accent"
-                : "text-secondary hover:bg-hover hover:text-foreground"
+              isActive ? "bg-accent-light text-accent" : "text-secondary hover:bg-hover hover:text-foreground"
             }`}
           >
             <span>{labels[id]}</span>
@@ -781,18 +731,10 @@ function FooterHint({ t }: { t: ReturnType<typeof useTranslator>["t"] }) {
   );
 }
 
-function Group({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="px-3 pb-0.5 pt-2 text-[10px] uppercase tracking-wider text-tertiary">
-        {label}
-      </p>
+      <p className="px-3 pb-0.5 pt-2 text-[10px] uppercase tracking-wider text-tertiary">{label}</p>
       {children}
     </div>
   );
@@ -815,9 +757,7 @@ function ResultRow({
         active ? "bg-accent-light text-accent" : "text-foreground"
       }`}
     >
-      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-tertiary">
-        {icon}
-      </span>
+      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-tertiary">{icon}</span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">{title}</span>
         {hint && <span className="truncate text-xs text-tertiary">{hint}</span>}
@@ -898,10 +838,7 @@ export function highlight(text: string, terms: string[]): ReactNode {
   return parts.map((part, idx) => {
     if (idx % 2 === 1) {
       return (
-        <mark
-          key={idx}
-          className="rounded-sm bg-accent-light px-0.5 text-accent"
-        >
+        <mark key={idx} className="rounded-sm bg-accent-light px-0.5 text-accent">
           {part}
         </mark>
       );
@@ -959,7 +896,7 @@ function formatRelative(ts: number): string {
  */
 function findCurrentChannelName(
   channels: ReturnType<typeof useSync.getState>["channels"],
-  pathname: string,
+  pathname: string
 ): string | null {
   const m = pathname.match(/\/c\/([^/?#]+)/);
   if (!m) return null;

@@ -18,8 +18,7 @@ const theme = {
     italic: "italic",
     strikethrough: "line-through",
     underline: "underline",
-    code:
-      "rounded bg-hover px-1 py-0.5 font-mono text-[0.85em] text-foreground",
+    code: "rounded bg-hover px-1 py-0.5 font-mono text-[0.85em] text-foreground",
   },
   heading: {
     h1: "text-base font-semibold text-foreground",
@@ -36,8 +35,7 @@ const theme = {
   },
   quote: "border-l-2 border-border pl-3 text-muted-foreground",
   link: "text-accent underline decoration-accent/40 hover:decoration-accent",
-  code:
-    "block rounded bg-hover px-3 py-2 font-mono text-[0.85em] text-foreground overflow-x-auto",
+  code: "block rounded bg-hover px-3 py-2 font-mono text-[0.85em] text-foreground overflow-x-auto",
 };
 
 export function buildEditorConfig(namespace: string): InitialConfigType {

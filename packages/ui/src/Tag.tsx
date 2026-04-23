@@ -18,7 +18,7 @@ export function Tag({ accent = "neutral", className, ...rest }: TagProps) {
       className={cn(
         "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium",
         ACCENT[accent],
-        className,
+        className
       )}
       {...rest}
     />

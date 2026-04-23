@@ -44,16 +44,9 @@ export function ConfirmDialog({
   const busyText = busyLabel ?? t("dialogs.busy");
 
   return (
-    <Modal
-      title={title}
-      onClose={busy ? () => undefined : onCancel}
-      size="sm"
-      ariaLabel={title}
-    >
+    <Modal title={title} onClose={busy ? () => undefined : onCancel} size="sm" ariaLabel={title}>
       <div className="flex flex-col gap-4 p-4">
-        {description && (
-          <p className="text-sm leading-relaxed text-secondary">{description}</p>
-        )}
+        {description && <p className="text-sm leading-relaxed text-secondary">{description}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
             {cancelText}

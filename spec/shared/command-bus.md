@@ -70,6 +70,7 @@ This is the "single API surface" principle from `hof-os/AGENTS.md` §A3:
 ## Staging policy
 
 `channels.staging_policy` ∈
+
 - `all-require-approval` — every command (human or agent) goes through
   approval. Useful for compliance channels.
 - `agent-messages-require-approval` — default. Human commands go
@@ -80,7 +81,7 @@ This is the "single API surface" principle from `hof-os/AGENTS.md` §A3:
   agent rooms.
 
 The bus enforces this by checking `state.channels[channel_id]
-.staging_policy` *before* calling the handler. If staging is required,
+.staging_policy` _before_ calling the handler. If staging is required,
 the handler returns an `agent.proposal.create` envelope instead of the
 underlying `message.send`. The CommandResult's `status` becomes
 `'staged'`, and `proposal_id` is set so the agent / UI can poll for

@@ -24,10 +24,7 @@ import { findBareLinks } from "../../lib/autolink.ts";
 // because the AutoLinkPlugin only consumes the first match per pass.
 const HTTP_URL_RE = /https?:\/\/[^\s<>"]+/i;
 
-export const httpMatcher: LinkMatcher = createLinkMatcherWithRegExp(
-  HTTP_URL_RE,
-  (url) => url,
-);
+export const httpMatcher: LinkMatcher = createLinkMatcherWithRegExp(HTTP_URL_RE, (url) => url);
 
 export const bareMatcher: LinkMatcher = (text) => {
   const matches = findBareLinks(text);

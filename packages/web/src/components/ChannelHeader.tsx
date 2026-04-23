@@ -40,13 +40,7 @@ interface MemberRow {
   role: string;
 }
 
-export function ChannelHeader({
-  channelId,
-  channel,
-}: {
-  channelId: string;
-  channel: Channel | undefined;
-}) {
+export function ChannelHeader({ channelId, channel }: { channelId: string; channel: Channel | undefined }) {
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const huddle = useSync((s) => s.huddlesByChannel[channelId]);
   const presence = useSync((s) => s.presence);
@@ -60,8 +54,7 @@ export function ChannelHeader({
   const navigate = useNavigate();
   const params = useParams<{ workspaceId: string }>();
   const qc = useQueryClient();
-  const pref: NotificationPref =
-    (me ? notificationPrefByChannel[me]?.[channelId] : undefined) ?? "all";
+  const pref: NotificationPref = (me ? notificationPrefByChannel[me]?.[channelId] : undefined) ?? "all";
 
   const { data: members = [] } = useQuery({
     queryKey: ["channel-members", channelId],
@@ -141,9 +134,7 @@ export function ChannelHeader({
               </span>
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold text-foreground">
-                {partner.display_name}
-              </h1>
+              <h1 className="truncate text-sm font-semibold text-foreground">{partner.display_name}</h1>
               <p className="truncate text-xs text-tertiary">{t("channelHeader.directMessage")}</p>
             </div>
           </>
@@ -161,9 +152,7 @@ export function ChannelHeader({
                   className="text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
                 />
               </h1>
-              {channel?.topic && (
-                <p className="truncate text-xs text-tertiary">{channel.topic}</p>
-              )}
+              {channel?.topic && <p className="truncate text-xs text-tertiary">{channel.topic}</p>}
             </div>
           </>
         )}
@@ -195,9 +184,7 @@ export function ChannelHeader({
                 </span>
               ))}
             </span>
-            <span className="text-xs text-secondary tabular-nums">
-              {members.length.toLocaleString()}
-            </span>
+            <span className="text-xs text-secondary tabular-nums">{members.length.toLocaleString()}</span>
           </button>
         )}
         {huddle ? (
@@ -249,20 +236,12 @@ export function ChannelHeader({
           onClose={() => setDetailTab(null)}
         />
       )}
-      {showHuddle && (
-        <HuddlePanel channelId={channelId} onClose={() => setShowHuddle(false)} />
-      )}
+      {showHuddle && <HuddlePanel channelId={channelId} onClose={() => setShowHuddle(false)} />}
     </header>
   );
 }
 
-function NotificationMenu({
-  channelId,
-  pref,
-}: {
-  channelId: string;
-  pref: NotificationPref;
-}) {
+function NotificationMenu({ channelId, pref }: { channelId: string; pref: NotificationPref }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { t } = useTranslator();
@@ -337,15 +316,7 @@ function NotificationMenu({
   );
 }
 
-function PrefRow({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function PrefRow({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -446,9 +417,7 @@ function ChannelKebab({
               )}
             </button>
           )}
-          {(onSearch || onMembers) && !isDm && (
-            <div className="my-1 h-px bg-border md:hidden" />
-          )}
+          {(onSearch || onMembers) && !isDm && <div className="my-1 h-px bg-border md:hidden" />}
           {!isDm && (
             <button
               type="button"
@@ -480,11 +449,7 @@ function ChannelKebab({
               </button>
             </>
           )}
-          {isDm && (
-            <p className="px-3 py-2 text-xs text-tertiary">
-              {t("channelHeader.dmHint")}
-            </p>
-          )}
+          {isDm && <p className="px-3 py-2 text-xs text-tertiary">{t("channelHeader.dmHint")}</p>}
         </div>
       )}
     </div>

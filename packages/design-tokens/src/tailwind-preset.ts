@@ -127,10 +127,7 @@ export const collabAIPreset = {
     // Narrow desktop windows (mouse / trackpad) are intentionally
     // excluded so resizing a browser doesn't switch to a bottom-sheet.
     plugin(({ addVariant }) => {
-      addVariant(
-        "mobile-sheet",
-        "@media (pointer: coarse) and (max-width: 640px)",
-      );
+      addVariant("mobile-sheet", "@media (pointer: coarse) and (max-width: 640px)");
     }),
   ],
 };

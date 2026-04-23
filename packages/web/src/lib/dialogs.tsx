@@ -14,14 +14,7 @@
  * Promise wrapper so call sites read like the native `window.confirm`
  * they replace.
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { LinkPromptDialog } from "../components/LinkPromptDialog.tsx";
 import { PromptDialog } from "../components/PromptDialog.tsx";
@@ -101,19 +94,13 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const linkPrompt = useCallback(
-    (options: LinkPromptOptions = {}): Promise<LinkPromptResult | null> => {
-      return new Promise<LinkPromptResult | null>((resolve) => {
-        setLinkPromptState({ ...options, resolve });
-      });
-    },
-    [],
-  );
+  const linkPrompt = useCallback((options: LinkPromptOptions = {}): Promise<LinkPromptResult | null> => {
+    return new Promise<LinkPromptResult | null>((resolve) => {
+      setLinkPromptState({ ...options, resolve });
+    });
+  }, []);
 
-  const api = useMemo<DialogsApi>(
-    () => ({ confirm, prompt, linkPrompt }),
-    [confirm, prompt, linkPrompt],
-  );
+  const api = useMemo<DialogsApi>(() => ({ confirm, prompt, linkPrompt }), [confirm, prompt, linkPrompt]);
 
   function closeConfirm(result: boolean) {
     if (!confirmState) return;
@@ -158,9 +145,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           cancelLabel={promptState.cancelLabel}
           readOnly={promptState.readOnly}
           onCancel={() => closePrompt(null)}
-          onConfirm={(value) =>
-            closePrompt(promptState.readOnly ? null : value === "" ? null : value)
-          }
+          onConfirm={(value) => closePrompt(promptState.readOnly ? null : value === "" ? null : value)}
         />
       )}
       {linkPromptState && (

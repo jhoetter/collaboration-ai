@@ -13,11 +13,13 @@ export interface ToastEntry {
 
 export interface ToastsState {
   items: ToastEntry[];
-  push(toast: Omit<ToastEntry, "id" | "tone" | "durationMs"> & {
-    id?: string;
-    tone?: ToastTone;
-    durationMs?: number;
-  }): string;
+  push(
+    toast: Omit<ToastEntry, "id" | "tone" | "durationMs"> & {
+      id?: string;
+      tone?: ToastTone;
+      durationMs?: number;
+    }
+  ): string;
   dismiss(id: string): void;
 }
 
@@ -25,7 +27,8 @@ export const useToasts = create<ToastsState>((set) => ({
   items: [],
   push(toast) {
     const id =
-      toast.id ?? (typeof crypto !== "undefined" && "randomUUID" in crypto
+      toast.id ??
+      (typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `toast_${Date.now()}_${Math.random().toString(36).slice(2)}`);
     const entry: ToastEntry = {

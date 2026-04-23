@@ -65,7 +65,7 @@ The `attachment:upload-init` `@function` returns:
 {
   "file_id": "att_…",
   "put_url": "<presigned PUT, 5-minute TTL>",
-  "headers": {"Content-Type": "...", "x-amz-checksum-sha256": "..."},
+  "headers": { "Content-Type": "...", "x-amz-checksum-sha256": "..." },
   "object_key": "workspaces/<ws>/attachments/<file_id>"
 }
 ```

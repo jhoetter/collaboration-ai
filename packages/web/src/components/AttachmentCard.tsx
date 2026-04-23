@@ -33,8 +33,7 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
   const officeKind = attachmentKindFor(attachment.mime, attachment.name);
   const isPdf = officeKind === "pdf";
   const isOfficeFile = officeKind !== "other" && !isImage;
-  const isLinkPreview =
-    (attachment as Attachment & { kind?: string }).kind === "link_preview";
+  const isLinkPreview = (attachment as Attachment & { kind?: string }).kind === "link_preview";
   const url = useDownloadUrl(attachment, isLinkPreview);
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -59,12 +58,7 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
         onClick={() => onOpenImage?.(attachment)}
         className="block overflow-hidden rounded-md border border-border bg-card transition-shadow hover:shadow-md"
       >
-        <img
-          src={url}
-          alt={attachment.name}
-          className="max-h-80 max-w-sm object-cover"
-          loading="lazy"
-        />
+        <img src={url} alt={attachment.name} className="max-h-80 max-w-sm object-cover" loading="lazy" />
       </button>
     );
   }
@@ -180,13 +174,13 @@ export function PdfThumb({ url, size = 96 }: { url: string | null; size?: number
 }
 
 function LinkPreviewCard({ attachment }: { attachment: Attachment }) {
-  const meta = (attachment as Attachment & {
+  const meta = attachment as Attachment & {
     title?: string;
     description?: string;
     site_name?: string;
     image_url?: string;
     url?: string;
-  });
+  };
   return (
     <a
       href={meta.url ?? "#"}
@@ -196,15 +190,9 @@ function LinkPreviewCard({ attachment }: { attachment: Attachment }) {
     >
       <span className="w-1 shrink-0 bg-accent" aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 text-xs">
-        {meta.site_name && (
-          <span className="text-tertiary">{meta.site_name}</span>
-        )}
-        {meta.title && (
-          <span className="text-sm font-medium text-foreground">{meta.title}</span>
-        )}
-        {meta.description && (
-          <span className="line-clamp-2 text-secondary">{meta.description}</span>
-        )}
+        {meta.site_name && <span className="text-tertiary">{meta.site_name}</span>}
+        {meta.title && <span className="text-sm font-medium text-foreground">{meta.title}</span>}
+        {meta.description && <span className="line-clamp-2 text-secondary">{meta.description}</span>}
       </div>
       {meta.image_url && (
         <img

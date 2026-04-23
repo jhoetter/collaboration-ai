@@ -10,14 +10,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  primary:
-    "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85",
-  secondary:
-    "bg-hover text-foreground hover:bg-border active:bg-border",
-  ghost:
-    "bg-transparent text-secondary hover:bg-hover hover:text-foreground active:bg-hover",
-  danger:
-    "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/85",
+  primary: "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85",
+  secondary: "bg-hover text-foreground hover:bg-border active:bg-border",
+  ghost: "bg-transparent text-secondary hover:bg-hover hover:text-foreground active:bg-hover",
+  danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/85",
 };
 
 const SIZE_CLASS: Record<Size, string> = {
@@ -25,13 +21,7 @@ const SIZE_CLASS: Record<Size, string> = {
   md: "h-9 px-3 text-sm rounded-md",
 };
 
-export function Button({
-  variant = "secondary",
-  size = "md",
-  className,
-  type,
-  ...rest
-}: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", className, type, ...rest }: ButtonProps) {
   return (
     <button
       type={type ?? "button"}
@@ -41,7 +31,7 @@ export function Button({
         "disabled:cursor-not-allowed disabled:opacity-50",
         VARIANT_CLASS[variant],
         SIZE_CLASS[size],
-        className,
+        className
       )}
       {...rest}
     />

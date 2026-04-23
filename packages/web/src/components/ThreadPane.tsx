@@ -21,13 +21,8 @@ export function ThreadPane() {
   const rootId = useThread((s) => s.rootId);
   const close = useThread((s) => s.close);
   const root = useSync((s) => (rootId ? s.messageById[rootId] : undefined));
-  const all = useSync((s) =>
-    root ? s.messagesByChannel[root.channel_id] ?? EMPTY : EMPTY,
-  );
-  const replies = useMemo(
-    () => (root ? all.filter((m) => m.thread_root === root.id) : []),
-    [all, root],
-  );
+  const all = useSync((s) => (root ? (s.messagesByChannel[root.channel_id] ?? EMPTY) : EMPTY));
+  const replies = useMemo(() => (root ? all.filter((m) => m.thread_root === root.id) : []), [all, root]);
   const identity = useAuth((s) => s.identity);
   const applyOptimistic = useSync((s) => s.applyOptimistic);
   const reconcile = useSync((s) => s.reconcileOptimistic);
@@ -106,7 +101,9 @@ export function ThreadPane() {
         {replies.length > 0 && (
           <div className="my-3 flex items-center gap-2 text-xs text-tertiary">
             <span className="h-px flex-1 bg-border" />
-            <span>{replies.length} {replies.length === 1 ? "reply" : "replies"}</span>
+            <span>
+              {replies.length} {replies.length === 1 ? "reply" : "replies"}
+            </span>
             <span className="h-px flex-1 bg-border" />
           </div>
         )}
@@ -120,12 +117,7 @@ export function ThreadPane() {
         <div ref={tailRef} />
       </div>
       <div className="border-t border-border">
-        <Composer
-          channelId={root.channel_id}
-          threadRoot={root.id}
-          placeholder="Reply…"
-          onSend={handleSend}
-        />
+        <Composer channelId={root.channel_id} threadRoot={root.id} placeholder="Reply…" onSend={handleSend} />
       </div>
     </aside>
   );
@@ -138,15 +130,18 @@ function ThreadEntry({ message, compact }: { message: Message; compact?: boolean
       <Avatar name={name || message.sender_id} kind={message.sender_type} size={compact ? 24 : 32} />
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-2 text-xs text-tertiary">
-          <span className="text-sm font-semibold text-foreground">
-            {name || message.sender_id}
-          </span>
+          <span className="text-sm font-semibold text-foreground">{name || message.sender_id}</span>
           {message.sender_type === "agent" && (
             <Badge tone="agent" className="!normal-case">
               agent
             </Badge>
           )}
-          <span>{new Date(message.origin_ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+          <span>
+            {new Date(message.origin_ts).toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </span>
         </p>
         <p className="whitespace-pre-wrap break-words text-sm text-foreground">
           {message.redacted ? <em className="text-tertiary">[deleted]</em> : message.content}

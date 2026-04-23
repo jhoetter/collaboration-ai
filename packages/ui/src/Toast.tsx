@@ -27,19 +27,13 @@ const TONE_DOT: Record<ToastTone, string> = {
   danger: "bg-danger",
 };
 
-export function Toast({
-  title,
-  description,
-  tone = "info",
-  action,
-  onDismiss,
-}: ToastProps) {
+export function Toast({ title, description, tone = "info", action, onDismiss }: ToastProps) {
   return (
     <div
       role="status"
       className={cn(
         "pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-md border border-border bg-card p-3 text-sm text-foreground shadow-xl ring-1",
-        TONE_RING[tone],
+        TONE_RING[tone]
       )}
     >
       <span
@@ -49,9 +43,7 @@ export function Toast({
       <div className="min-w-0 flex-1">
         {title && <p className="truncate font-medium leading-tight">{title}</p>}
         {description && (
-          <p className="mt-0.5 break-words text-xs leading-snug text-secondary">
-            {description}
-          </p>
+          <p className="mt-0.5 break-words text-xs leading-snug text-secondary">{description}</p>
         )}
       </div>
       {action && (

@@ -63,9 +63,7 @@ export function PromptDialog({
   return (
     <Modal title={title} onClose={onCancel} size="sm" ariaLabel={title}>
       <div className="flex flex-col gap-3 p-4">
-        {description && (
-          <p className="text-sm leading-relaxed text-secondary">{description}</p>
-        )}
+        {description && <p className="text-sm leading-relaxed text-secondary">{description}</p>}
         <input
           ref={inputRef}
           type="text"
