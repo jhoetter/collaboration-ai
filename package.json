@@ -1,6 +1,6 @@
 {
   "name": "collaboration-ai",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "collaboration-ai — AI-native, event-sourced team chat platform. Backend on hof-engine (Python + FastAPI + Postgres + Redis), web UI + agent CLI built per spec/.",
   "scripts": {

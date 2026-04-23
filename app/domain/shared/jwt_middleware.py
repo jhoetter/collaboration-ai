@@ -42,8 +42,11 @@ from urllib.parse import parse_qs
 from sqlalchemy import text
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from ..events.ids import make_event_id, now_ms
+from ..events.model import Event, EventEnvelope
+from ..events.projector import ProjectedState, project_event
 from .hof_jwt import HofIdentity, extract_bearer, verify_hof_jwt
-from .runtime import open_session
+from .runtime import get_command_bus, open_session
 
 logger = logging.getLogger("collabai.jwt_middleware")
 
@@ -201,7 +204,147 @@ class HofSubappJwtMiddleware:
             )
             session.commit()
 
+        # Bootstrap the event-sourced projection so this user can issue
+        # commands. The SQL upsert above keeps any direct SQL readers
+        # (e.g. ``users:list`` for the DM picker) consistent, but the
+        # `CommandBus` authorises against `ProjectedState` which is
+        # built **only** from the event log. Without these events the
+        # very first `channel:create` from a freshly-JIT'd user fails
+        # with "Actor is not a workspace member" even though the SQL
+        # row exists. See ``handlers._require_workspace_membership``.
+        self._bootstrap_projection_events(identity)
+
         self._upsert_cache[cache_key] = time.time()
+
+    def _bootstrap_projection_events(self, identity: HofIdentity) -> None:
+        """Append `workspace.create` + `workspace.member.add` to the log.
+
+        Idempotent in two layers:
+
+        1. Cheap in-memory short-circuit when the projection already
+           knows about this (workspace, user) pair — the common case
+           for a long-lived sidecar.
+        2. Deterministic ``idempotency_key`` per envelope so a parallel
+           racer (or a missed cache hit) collapses to the existing row
+           via ``PostgresCommitter`` 's unique index, instead of
+           inserting a duplicate.
+
+        Errors are swallowed (logged) — the JWT verify path must not
+        fail because of bootstrap drift; downstream handlers will
+        re-attempt to authorise on the next command and will fail with
+        a useful "forbidden" if the events truly never landed.
+        """
+        try:
+            bus = get_command_bus()
+        except Exception:  # noqa: BLE001 — first-boot bus init can fail before tables exist
+            logger.exception(
+                "command bus unavailable during JIT bootstrap (user=%s tenant=%s)",
+                identity.user_id,
+                identity.tenant_id,
+            )
+            return
+
+        state = bus.projector_state
+        if state is not None:
+            members = state.workspace_members.get(identity.tenant_id, {})
+            if identity.user_id in members:
+                return  # already in the event-projection — nothing to emit
+
+        envelopes: list[EventEnvelope] = []
+        workspace_known = state is not None and identity.tenant_id in state.workspaces
+        if not workspace_known:
+            envelopes.append(
+                EventEnvelope(
+                    event_id=make_event_id(),
+                    type="workspace.create",
+                    content={
+                        "name": identity.tenant_id,
+                        "slug": identity.tenant_id.lower().replace(" ", "-"),
+                    },
+                    workspace_id=identity.tenant_id,
+                    room_id=identity.tenant_id,
+                    sender_id=identity.user_id,
+                    sender_type="system",
+                    idempotency_key=f"bootstrap:workspace:{identity.tenant_id}",
+                )
+            )
+
+        envelopes.append(
+            EventEnvelope(
+                event_id=make_event_id(),
+                type="workspace.member.add",
+                content={"user_id": identity.user_id, "role": "admin"},
+                workspace_id=identity.tenant_id,
+                room_id=identity.tenant_id,
+                sender_id=identity.user_id,
+                sender_type="system",
+                idempotency_key=f"bootstrap:member:{identity.tenant_id}:{identity.user_id}",
+            )
+        )
+
+        try:
+            if bus.committer is not None:
+                committed = bus.committer.commit(envelopes)
+            elif state is not None:
+                # Test / standalone mode without a real Postgres log:
+                # fabricate sequences off the in-memory state so the
+                # projector can still apply them. Mirrors
+                # ``CommandBus._local_commit`` (kept inline to avoid
+                # importing a private helper from the bus module).
+                committed = _fabricate_local_events(envelopes, state)
+            else:
+                return
+        except Exception:  # noqa: BLE001 — observability over correctness
+            logger.exception(
+                "bootstrap projection events failed (user=%s tenant=%s)",
+                identity.user_id,
+                identity.tenant_id,
+            )
+            return
+
+        # Project synchronously so subsequent commands in this very
+        # request (e.g. the channel:create that triggered the JWT
+        # verify) see the actor as a workspace member without waiting
+        # for the Celery projector to catch up.
+        if state is not None:
+            for evt in committed:
+                project_event(state, evt)
+
+
+def _fabricate_local_events(
+    envelopes: list[EventEnvelope], state: ProjectedState
+) -> list[Event]:
+    """Mint workspace-monotonic sequences off ``state.last_sequence``.
+
+    Used when no real ``Committer`` is bound (unit tests / standalone
+    dev). The bus' built-in ``_local_commit`` does the same; we
+    duplicate the few lines instead of importing a private helper to
+    keep the middleware decoupled from the bus internals.
+    """
+    ts = now_ms()
+    out: list[Event] = []
+    for env in envelopes:
+        last = state.last_sequence.get(env.workspace_id, 0)
+        seq = last + 1
+        state.last_sequence[env.workspace_id] = seq
+        out.append(
+            Event(
+                event_id=env.event_id,
+                type=env.type,
+                content=env.content,
+                workspace_id=env.workspace_id,
+                room_id=env.room_id,
+                sender_id=env.sender_id,
+                sender_type=env.sender_type,
+                origin_ts=ts,
+                sequence=seq,
+                agent_id=env.agent_id,
+                relates_to=env.relates_to,
+                idempotency_key=env.idempotency_key,
+                origin=env.origin,
+            )
+        )
+    return out
 
 
 __all__ = ["HofSubappJwtMiddleware"]
