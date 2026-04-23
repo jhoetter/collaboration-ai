@@ -151,59 +151,44 @@ jobs:
     needs: [build-app-image, build-agent-tarball, build-react-embeds-tarball, publish-release]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Mirrors office-ai's notify-hof-os gate: runs whenever a new
-    # version is cut. The token check happens implicitly when the
-    # checkout step runs against jhoetter/hof-os.
+    # Triggers on every successful release. The previous design pushed
+    # straight to ``jhoetter/hof-os@main`` using a long-lived
+    # ``COLLABAI_SYNC_TOKEN`` PAT (``contents: write`` on the entire
+    # hof-os repo); the new design fires a single
+    # ``repository_dispatch`` event and lets hof-os' own
+    # ``sister-product-lock.yml`` workflow open a PR. The credential
+    # we ship here (``HOFOS_DISPATCH_TOKEN``) is a fine-grained PAT
+    # scoped to ``repository_dispatch: write`` on hof-os only, so a
+    # leak can't push code or read other repos.
     if: needs.build-app-image.outputs.version != ''
     steps:
-      - name: Checkout hof-os
-        uses: actions/checkout@v4
-        with:
-          repository: jhoetter/hof-os
-          token: ${{ secrets.COLLABAI_SYNC_TOKEN }}
-          ref: main
-
-      - name: Update collabai lockfile
+      - name: Dispatch lockfile bump to hof-os
         env:
+          GH_TOKEN: ${{ secrets.HOFOS_DISPATCH_TOKEN }}
           NEW_VERSION: ${{ needs.build-app-image.outputs.version }}
           IMAGE_REF: ${{ needs.build-app-image.outputs.image_ref }}
           GIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          mkdir -p infra
-          PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          REPO="${{ github.repository }}"
-          APP_TARBALL="https://github.com/${REPO}/releases/download/v${NEW_VERSION}/collabai-app-${NEW_VERSION}.tar"
-          AGENT_TARBALL="https://github.com/${REPO}/releases/download/v${NEW_VERSION}/collabai-agent-${NEW_VERSION}.tgz"
-          EMBEDS_TARBALL="https://github.com/${REPO}/releases/download/v${NEW_VERSION}/collabai-react-embeds-${NEW_VERSION}.tgz"
-          cat > infra/collabai.lock.json <<EOF
-          {
-            "version": "${NEW_VERSION}",
-            "app_image": "${IMAGE_REF}",
-            "app_image_tarball": "${APP_TARBALL}",
-            "agent_version": "${NEW_VERSION}",
-            "agent_tarball": "${AGENT_TARBALL}",
-            "react_embeds_version": "${NEW_VERSION}",
-            "react_embeds_tarball": "${EMBEDS_TARBALL}",
-            "published_at": "${PUBLISHED_AT}",
-            "source_repo": "${REPO}",
-            "source_sha": "${GIT_SHA}"
-          }
-          EOF
-          cat infra/collabai.lock.json
-
-      - name: Commit and push
-        env:
-          NEW_VERSION: ${{ needs.build-app-image.outputs.version }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add infra/collabai.lock.json
-          if git diff --cached --quiet; then
-            echo "collabai.lock.json already at ${NEW_VERSION}; nothing to commit"
-            exit 0
-          fi
-          git commit -m "chore(collabai): bump to ${NEW_VERSION}"
-          git pull --rebase origin main
-          git push origin main
+          payload="$(jq -nc \
+            --arg version "${NEW_VERSION}" \
+            --arg tag "v${NEW_VERSION}" \
+            --arg source_sha "${GIT_SHA}" \
+            --arg image_ref "${IMAGE_REF}" \
+            '{version: $version, tag: $tag, source_sha: $source_sha, image_ref: $image_ref}')"
+          # Three attempts with exponential backoff (3s, 9s, 27s).
+          # GitHub's dispatch API is normally instant but flaky bursts
+          # do happen during outages, and an unfired dispatch silently
+          # leaves hof-os pinned to the previous version.
+          for attempt in 1 2 3; do
+            if gh api repos/jhoetter/hof-os/dispatches \
+              -X POST \
+              -f event_type=collabai-released \
+              --raw-field client_payload="${payload}"; then
+              echo "Dispatched collabai-released v${NEW_VERSION} (attempt ${attempt})"
+              exit 0
+            fi
+            sleep $((3 ** attempt))
+          done
+          echo "Failed to dispatch after 3 attempts" >&2
+          exit 1
