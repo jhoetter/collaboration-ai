@@ -59,20 +59,19 @@ jobs:
     needs: build-app-image
     steps:
       - uses: actions/checkout@v4
-      # No `version:` pin — let pnpm/action-setup honor `packageManager`
-      # in package.json (the explicit pin collided and triggered
-      # ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @collabai/agent-cli build
       - name: Pack
         working-directory: packages/agent-cli
         run: |
-          npm version --no-git-tag-version --allow-same-version "${{ needs.build-app-image.outputs.version }}"
+          npm version --no-git-tag-version "${{ needs.build-app-image.outputs.version }}"
           npm pack
           mv collabai-agent-cli-*.tgz "/tmp/collabai-agent-${{ needs.build-app-image.outputs.version }}.tgz"
       - uses: actions/upload-artifact@v4
@@ -86,22 +85,31 @@ jobs:
     needs: build-app-image
     steps:
       - uses: actions/checkout@v4
-      # No `version:` pin — let pnpm/action-setup honor `packageManager`
-      # in package.json (the explicit pin collided and triggered
-      # ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @collabai/react-embeds build
-      - name: Pack
+      - name: Bump version + build bundle
         working-directory: packages/react-embeds
         run: |
           npm version --no-git-tag-version --allow-same-version "${{ needs.build-app-image.outputs.version }}"
-          npm pack
-          mv collabai-react-embeds-*.tgz "/tmp/collabai-react-embeds-${{ needs.build-app-image.outputs.version }}.tgz"
+          pnpm build
+      - name: Build release bundle (collabai-react-embeds)
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.build-app-image.outputs.version }}"
+          DEPLOY_DIR="${RUNNER_TEMP}/collabai-react-embeds"
+          rm -rf "${DEPLOY_DIR}"
+          # `pnpm deploy --prod` rewrites workspace:* to the resolved
+          # versions and inlines them into the deploy dir, so consumers
+          # (hof-os data-app, future host apps) don't need workspace
+          # resolution at install time.
+          pnpm --filter @collabai/react-embeds --prod deploy "${DEPLOY_DIR}"
+          test -f "${DEPLOY_DIR}/dist/index.js" || (echo "missing dist/index.js" && exit 1)
+          tar czf "/tmp/collabai-react-embeds-${VERSION}.tgz" -C "${RUNNER_TEMP}" collabai-react-embeds
+          ls -lh "/tmp/collabai-react-embeds-${VERSION}.tgz"
       - uses: actions/upload-artifact@v4
         with:
           name: react-embeds
