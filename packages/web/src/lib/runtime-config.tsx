@@ -84,6 +84,18 @@ export interface RuntimeConfigProviderProps {
 
 export function RuntimeConfigProvider({ runtime, children }: RuntimeConfigProviderProps) {
   const value = useMemo<RuntimeConfig>(() => runtime ?? DEFAULT, [runtime]);
+  // Set the singleton synchronously during render. Children
+  // (`useEventStream`, EventSource, `callFunction`) read the
+  // singleton during their own render via `runtimeApiBase()` /
+  // `runtimeWsBase()`. If we deferred to a mount effect the first
+  // render would see the standalone default — producing
+  // origin-relative `/api/...` (404 HTML in the host data-app) and
+  // bare `ws://host/ws` (proxy 404, retry storm). Idempotent
+  // assignment is safe to do during render for module-level
+  // singletons; cleanup still runs in `useEffect` for unmount.
+  if (_config !== value) {
+    setRuntimeConfig(value);
+  }
   useEffect(() => {
     setRuntimeConfig(value);
     return () => {
