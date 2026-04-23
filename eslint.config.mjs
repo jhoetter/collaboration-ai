@@ -3,6 +3,7 @@ import js from "@eslint/js";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
+import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
   {
@@ -79,6 +80,8 @@ export default [
         HTMLCanvasElement: "readonly",
         CanvasRenderingContext2D: "readonly",
         EventListener: "readonly",
+        MediaQueryListEvent: "readonly",
+        HTMLSpanElement: "readonly",
         // React's classic JSX runtime is implicit in TS/Vite, but the
         // codebase still references the `React.*` namespace for type
         // annotations (e.g. `React.ReactNode`). Mark it as a known
@@ -90,11 +93,14 @@ export default [
     plugins: {
       "@typescript-eslint": tseslint,
       import: importPlugin,
+      "react-hooks": reactHooks,
     },
     rules: {
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "import/no-restricted-paths": [
         "error",
         {

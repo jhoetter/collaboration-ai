@@ -130,10 +130,10 @@ jobs:
     needs: [build-app-image, build-agent-tarball, build-react-embeds-tarball, publish-release]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # First-class job. Skips silently when the secret/var isn't
-    # configured (forks, fresh repos pre-setup) — matches the office-ai
-    # auto-release flow exactly so all three sister repos behave the same.
-    if: vars.COLLABAI_SYNC_ENABLED == 'true'
+    # Mirrors office-ai's notify-hof-os gate: runs whenever a new
+    # version is cut. The token check happens implicitly when the
+    # checkout step runs against jhoetter/hof-os.
+    if: needs.build-app-image.outputs.version != ''
     steps:
       - name: Checkout hof-os
         uses: actions/checkout@v4

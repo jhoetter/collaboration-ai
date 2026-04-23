@@ -104,7 +104,7 @@ export function searchEmojiShortcodes(query: string, limit = 8): EmojiSuggestion
 }
 
 /** Token regex: `:` then 1+ allowed chars then `:`. Not anchored. */
-export const EMOJI_SHORTCODE_RE = /:([a-z0-9_+\-]+):/gi;
+export const EMOJI_SHORTCODE_RE = /:([a-z0-9_+-]+):/gi;
 
 /** Replace every known `:shortcode:` token in `text` with its native emoji. */
 export function replaceEmojiShortcodes(text: string): string {

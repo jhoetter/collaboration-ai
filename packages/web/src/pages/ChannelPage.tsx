@@ -60,7 +60,6 @@ export function ChannelPage() {
     // Only react to channel switches and freshly arriving notifications;
     // re-running on every minor change to `notifications` would still be
     // safe but emits redundant requests.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId, notifications, setNotificationRead]);
 
   // Human-readable composer placeholder. For DMs we resolve the other

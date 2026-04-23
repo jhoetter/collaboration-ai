@@ -381,7 +381,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
         // Emoji trigger: a `:` at the start of the line or after
         // whitespace, followed by 0+ shortcode-allowed chars (and no
         // closing `:` — that path is handled by inline replacement).
-        const emoji = upTo.match(/(^|\s):([a-z0-9_+\-]*)$/i);
+        const emoji = upTo.match(/(^|\s):([a-z0-9_+-]*)$/i);
         if (emoji && !mention) {
           setEmojiState({ query: emoji[2].toLowerCase(), index: 0 });
         } else {
@@ -509,7 +509,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
       const upTo = nodeText.slice(0, anchor.offset);
       // Strip the `:query` token (no closing colon) we replaced from
       // and splice the native emoji in its place.
-      const m = upTo.match(/:([a-z0-9_+\-]*)$/i);
+      const m = upTo.match(/:([a-z0-9_+-]*)$/i);
       if (!m) return;
       const start = anchor.offset - m[0].length;
       const after = nodeText.slice(anchor.offset);
