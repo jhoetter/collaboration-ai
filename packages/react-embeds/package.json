@@ -1,6 +1,6 @@
 {
   "name": "@collabai/react-embeds",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": false,
   "type": "module",
   "description": "Embeddable React surfaces (<ChatPanel />, <ChannelView />, <AgentInbox />) for hosting collaboration-ai inside other apps (e.g. hof-os data-app).",

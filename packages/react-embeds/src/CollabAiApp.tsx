@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MemoryRouter, Navigate, Route, Routes } from "react-router";
 import { type RuntimeConfig, type RuntimeIdentity } from "../../web/src/lib/runtime-config.tsx";
 import { useAuth } from "../../web/src/state/auth.ts";
-import { WorkspaceShell } from "../../web/src/pages/WorkspaceShell.tsx";
+import { WorkspaceShell, type WorkspaceShellChrome } from "../../web/src/pages/WorkspaceShell.tsx";
 import { AppProviders } from "./AppProviders.js";
 
 export interface CollabAiHostHooks {
@@ -35,16 +35,26 @@ export interface CollabAiHostHooks {
 
 export interface CollabAiAppProps {
   hooks: CollabAiHostHooks;
+  /**
+   * Visual chrome mode forwarded to {@link WorkspaceShell}.
+   *
+   * - `"full"` (default) renders the standalone chrome (TopBar with
+   *   workspace search). Matches the legacy v0.2.0 behaviour.
+   * - `"content"` drops the TopBar so a host (e.g. hof-os) can supply
+   *   its own header without a duplicated search row. The channel-list
+   *   sidebar is preserved.
+   */
+  chrome?: WorkspaceShellChrome;
 }
 
-export function CollabAiApp({ hooks }: CollabAiAppProps) {
+export function CollabAiApp({ hooks, chrome = "full" }: CollabAiAppProps) {
   const runtime = useMemo<RuntimeConfig>(() => runtimeConfigFromHooks(hooks), [hooks]);
   return (
     <AppProviders runtime={runtime}>
       <CollabHydrator hooks={hooks}>
         <MemoryRouter initialEntries={[`/w/${encodeURIComponent(hooks.workspaceId)}`]}>
           <Routes>
-            <Route path="/w/:workspaceId/*" element={<WorkspaceShell />} />
+            <Route path="/w/:workspaceId/*" element={<WorkspaceShell chrome={chrome} />} />
             <Route
               path="*"
               element={<Navigate to={`/w/${encodeURIComponent(hooks.workspaceId)}`} replace />}

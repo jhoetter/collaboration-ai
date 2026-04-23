@@ -24,7 +24,20 @@ interface UnreadRow {
   last_sequence: number;
 }
 
-export function WorkspaceShell() {
+/**
+ * Visual mode for the workspace shell.
+ *
+ * - `"full"` (default) — renders the standalone chrome (TopBar with
+ *   workspace search). Used by the standalone web app and any host
+ *   that wants the full collab-ai UI.
+ * - `"content"` — drops the TopBar so a host (e.g. hof-os) can supply
+ *   its own header without a duplicated search row. The channel-list
+ *   Sidebar is preserved because hosts don't enumerate channels in
+ *   their own nav. CommandPalette and ToastHost remain mounted.
+ */
+export type WorkspaceShellChrome = "full" | "content";
+
+export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChrome } = {}) {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const authedWorkspaceId = useAuth((s) => s.workspaceId);
   const authStatus = useAuth((s) => s.status);
@@ -111,7 +124,7 @@ export function WorkspaceShell() {
 
   return (
     <div className="flex h-[100dvh] flex-col">
-      <TopBar />
+      {chrome === "full" ? <TopBar /> : null}
       <div className="relative flex flex-1 min-h-0">
         {sidebarOpen && (
           <button

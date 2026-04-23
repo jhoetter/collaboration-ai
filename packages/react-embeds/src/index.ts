@@ -20,5 +20,6 @@ export type { AttachmentKind, AttachmentViewerProps } from "./components/Attachm
 // recommended integration path.
 export { CollabAiApp } from "./CollabAiApp";
 export type { CollabAiAppProps, CollabAiHostHooks } from "./CollabAiApp";
+export type { WorkspaceShellChrome } from "../../web/src/pages/WorkspaceShell";
 export { AppProviders } from "./AppProviders";
 export type { AppProvidersProps } from "./AppProviders";
