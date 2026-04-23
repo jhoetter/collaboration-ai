@@ -47,6 +47,21 @@ export interface CollabAiAppProps {
   chrome?: WorkspaceShellChrome;
 }
 
+/**
+ * @deprecated For embed use; standalone-only.
+ *
+ * `CollabAiApp` mounts the full `WorkspaceShell` (sidebar + main pane
+ * + thread rail + command palette) inside a `MemoryRouter`. It's the
+ * legacy "all-or-nothing" embed surface — it works, but couples the
+ * host to collab-ai's chrome.
+ *
+ * Hosts integrating from v0.3.0 onwards should compose the headless
+ * pieces instead — `CollabAiProvider` + `CollabAiChannelList` +
+ * `CollabAiChannel` + `CollabAiThreadPane` + `CollabAiActivityPane`
+ * (+ `collabaiCommands`, `CollabAiSearchInput`) — and supply their
+ * own chrome around them. The standalone web app keeps using
+ * `CollabAiApp` directly.
+ */
 export function CollabAiApp({ hooks, chrome = "full" }: CollabAiAppProps) {
   const runtime = useMemo<RuntimeConfig>(() => runtimeConfigFromHooks(hooks), [hooks]);
   return (

@@ -54,3 +54,52 @@ export interface AgentInboxProps extends EmbedCommonProps {
   /** Filter by channel; omit for "all channels in the workspace". */
   channel?: string;
 }
+
+/**
+ * Single entry in a host-driven command palette. The collab-ai embed
+ * exposes its action surface as a list of these so the host (e.g. the
+ * hof-os data-app) can interleave them with its own commands inside a
+ * single palette UI instead of mounting collab-ai's chrome.
+ *
+ * Mirrors the shape office-ai uses for its `editorCommands(ctx)` so
+ * the host can register both with the same dispatcher.
+ */
+export interface CommandPaletteItem {
+  /** Stable identifier; used for "recent commands" persistence + dedup. */
+  id: string;
+  /** Section header label (e.g. "Collab", "Channels"). */
+  group: string;
+  /** Primary, human-readable label rendered as the palette row. */
+  label: string;
+  /** Secondary line under the label (description / context). */
+  hint?: string;
+  /** Optional keyboard shortcut hint (display only — host owns binding). */
+  shortcut?: string;
+  /** Invoked when the host activates the row. May be async. */
+  perform(): void | Promise<void>;
+  /**
+   * Optional pre-computed match score; the host's palette is free to
+   * combine this with its own fuzzy-match output.
+   */
+  score?: number;
+}
+
+/**
+ * Context passed into {@link import("./commands").collabaiCommands} so
+ * the returned items can navigate, open dialogs, etc. without dragging
+ * in the full WorkspaceShell.
+ */
+export interface CollabAiCommandContext {
+  /** Active workspace; commands scope themselves to it. */
+  workspaceId: string;
+  /**
+   * Called when a command wants to navigate inside the embed. Path is
+   * embed-relative (e.g. `/c/<channelId>`). The host translates this
+   * into its own router push.
+   */
+  navigate?: (path: string) => void;
+  /** Opens the host-supplied "create channel" affordance, if any. */
+  openCreateChannel?: () => void;
+  /** Opens the host-supplied "new direct message" affordance, if any. */
+  openNewDm?: () => void;
+}

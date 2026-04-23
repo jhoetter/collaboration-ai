@@ -123,7 +123,12 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col">
+    // Embed-friendly sizing: `h-full min-h-0 w-full` lets the host
+    // size the shell however it likes (full-page, panel, drawer)
+    // instead of always forcing 100dvh / 100vw. Standalone mounts
+    // hand it a `h-screen` parent in `main.tsx` so behaviour is
+    // unchanged there.
+    <div className="relative flex h-full min-h-0 w-full flex-col">
       {chrome === "full" ? <TopBar /> : null}
       <div className="relative flex flex-1 min-h-0">
         {sidebarOpen && (
@@ -131,11 +136,11 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
             type="button"
             aria-label={t("common.close")}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-30 bg-foreground/40 backdrop-blur-sm lg:hidden"
+            className="absolute inset-0 z-30 bg-foreground/40 backdrop-blur-sm lg:hidden"
           />
         )}
         <div
-          className={`fixed inset-y-0 left-0 z-40 w-72 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
+          className={`absolute inset-y-0 left-0 z-40 w-72 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

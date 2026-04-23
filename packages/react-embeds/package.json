@@ -1,9 +1,9 @@
 {
   "name": "@collabai/react-embeds",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
-  "description": "Embeddable React surfaces (<ChatPanel />, <ChannelView />, <AgentInbox />) for hosting collaboration-ai inside other apps (e.g. hof-os data-app).",
+  "description": "Embeddable React surfaces (<ChatPanel />, <ChannelView />, <AgentInbox />, headless composables) for hosting collaboration-ai inside other apps (e.g. hof-os data-app).",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -20,6 +20,30 @@
     "./providers": {
       "types": "./src/AppProviders.tsx",
       "import": "./dist/AppProviders.js"
+    },
+    "./commands": {
+      "types": "./src/commands.ts",
+      "import": "./dist/commands.js"
+    },
+    "./channel-list": {
+      "types": "./src/CollabAiChannelList.tsx",
+      "import": "./dist/CollabAiChannelList.js"
+    },
+    "./channel": {
+      "types": "./src/CollabAiChannel.tsx",
+      "import": "./dist/CollabAiChannel.js"
+    },
+    "./thread-pane": {
+      "types": "./src/CollabAiThreadPane.tsx",
+      "import": "./dist/CollabAiThreadPane.js"
+    },
+    "./activity-pane": {
+      "types": "./src/CollabAiActivityPane.tsx",
+      "import": "./dist/CollabAiActivityPane.js"
+    },
+    "./search-input": {
+      "types": "./src/CollabAiSearchInput.tsx",
+      "import": "./dist/CollabAiSearchInput.js"
     },
     "./components/attachment-viewer": {
       "types": "./src/components/AttachmentViewer.tsx",

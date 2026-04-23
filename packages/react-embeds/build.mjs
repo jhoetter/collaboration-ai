@@ -19,9 +19,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const entries = [
   "src/index.ts",
   "src/contract.ts",
+  "src/commands.ts",
   "src/components/AttachmentViewer.tsx",
   "src/CollabAiApp.tsx",
   "src/AppProviders.tsx",
+  "src/CollabAiChannelList.tsx",
+  "src/CollabAiChannel.tsx",
+  "src/CollabAiThreadPane.tsx",
+  "src/CollabAiActivityPane.tsx",
+  "src/CollabAiSearchInput.tsx",
 ];
 
 await build({
