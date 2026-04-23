@@ -26,7 +26,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22 because @collabai/agent-cli's tests use
+          # `node --test --experimental-strip-types` (added in 22.6).
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
