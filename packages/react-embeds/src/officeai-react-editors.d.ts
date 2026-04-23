@@ -6,22 +6,28 @@
 // dynamic imports in `AttachmentViewer.tsx` already handle missing
 // modules at runtime via try/catch.
 
+interface OfficeEditorProps {
+  url: string;
+  readOnly?: boolean;
+  [key: string]: unknown;
+}
+
 declare module "@officeai/react-editors/components/pdf" {
   import type { ComponentType } from "react";
-  export const PdfEditor: ComponentType<Record<string, unknown>>;
+  export const PdfEditor: ComponentType<OfficeEditorProps>;
 }
 
 declare module "@officeai/react-editors/components/docx" {
   import type { ComponentType } from "react";
-  export const DocxEditor: ComponentType<Record<string, unknown>>;
+  export const DocxEditor: ComponentType<OfficeEditorProps>;
 }
 
 declare module "@officeai/react-editors/components/xlsx" {
   import type { ComponentType } from "react";
-  export const XlsxEditor: ComponentType<Record<string, unknown>>;
+  export const XlsxEditor: ComponentType<OfficeEditorProps>;
 }
 
 declare module "@officeai/react-editors/components/pptx" {
   import type { ComponentType } from "react";
-  export const PptxEditor: ComponentType<Record<string, unknown>>;
+  export const PptxEditor: ComponentType<OfficeEditorProps>;
 }

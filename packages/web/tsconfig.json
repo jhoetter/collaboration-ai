@@ -13,6 +13,6 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "../react-embeds/src/officeai-react-editors.d.ts"],
   "exclude": ["dist", "node_modules", "tests"]
 }

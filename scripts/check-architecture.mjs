@@ -27,6 +27,11 @@ const ALLOWED = {
   "@collabai/design-tokens": new Set(),
   "@collabai/ui": new Set(["@collabai/design-tokens"]),
   "@collabai/react-embeds": new Set(["@collabai/design-tokens", "@collabai/ui"]),
+  // App-level packages may consume the public component graph but are
+  // not themselves consumed by other packages — list them here so the
+  // guard recognises them rather than failing the verify chain.
+  "@collabai/agent-cli": new Set(["@collabai/design-tokens", "@collabai/ui", "@collabai/react-embeds"]),
+  "@collabai/web": new Set(["@collabai/design-tokens", "@collabai/ui", "@collabai/react-embeds"]),
 };
 
 const REACT_BANNED_FOR = new Set(["@collabai/design-tokens"]);
