@@ -59,19 +59,20 @@ jobs:
     needs: build-app-image
     steps:
       - uses: actions/checkout@v4
+      # No `version:` pin — let pnpm/action-setup honor `packageManager`
+      # in package.json (the explicit pin collided and triggered
+      # ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @collabai/agent-cli build
       - name: Pack
         working-directory: packages/agent-cli
         run: |
-          npm version --no-git-tag-version "${{ needs.build-app-image.outputs.version }}"
+          npm version --no-git-tag-version --allow-same-version "${{ needs.build-app-image.outputs.version }}"
           npm pack
           mv collabai-agent-cli-*.tgz "/tmp/collabai-agent-${{ needs.build-app-image.outputs.version }}.tgz"
       - uses: actions/upload-artifact@v4
@@ -85,19 +86,20 @@ jobs:
     needs: build-app-image
     steps:
       - uses: actions/checkout@v4
+      # No `version:` pin — let pnpm/action-setup honor `packageManager`
+      # in package.json (the explicit pin collided and triggered
+      # ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @collabai/react-embeds build
       - name: Pack
         working-directory: packages/react-embeds
         run: |
-          npm version --no-git-tag-version "${{ needs.build-app-image.outputs.version }}"
+          npm version --no-git-tag-version --allow-same-version "${{ needs.build-app-image.outputs.version }}"
           npm pack
           mv collabai-react-embeds-*.tgz "/tmp/collabai-react-embeds-${{ needs.build-app-image.outputs.version }}.tgz"
       - uses: actions/upload-artifact@v4
