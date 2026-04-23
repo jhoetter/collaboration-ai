@@ -32,6 +32,11 @@ export default [
       globals: {
         console: "readonly",
         process: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        Buffer: "readonly",
+        module: "readonly",
+        require: "readonly",
         window: "readonly",
         document: "readonly",
         globalThis: "readonly",
