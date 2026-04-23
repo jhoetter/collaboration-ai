@@ -52,7 +52,20 @@ def _client():  # type: ignore[no-untyped-def]
 
 
 def _object_key(workspace_id: str, file_id: str) -> str:
-    return f"workspaces/{workspace_id}/attachments/{file_id}"
+    """Build a per-attachment S3 object key.
+
+    When ``S3_KEY_PREFIX`` is set (collaboration-ai running as a hof-os
+    sidecar — the data-app threads e.g. ``tenants/<t>/chat`` into the
+    container env), every key is rooted there so the data-app can
+    re-validate them via ``ensure_key_under_tenant_prefix``. Standalone
+    ``make dev`` leaves the env unset and keys keep the legacy
+    ``workspaces/…`` shape.
+    """
+    base = f"workspaces/{workspace_id}/attachments/{file_id}"
+    prefix = (os.environ.get("S3_KEY_PREFIX") or "").strip().strip("/")
+    if not prefix:
+        return base
+    return f"{prefix}/{base}"
 
 
 @function(name="attachment:upload-init", mcp_expose=True, mcp_scope="write:attachments")

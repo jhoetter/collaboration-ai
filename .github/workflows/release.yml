@@ -125,13 +125,64 @@ jobs:
             "/tmp/release/react-embeds/collabai-react-embeds-${VERSION}.tgz" \
             --title "v${VERSION}" \
             --notes "Auto-generated release. See CHANGELOG."
-      - name: Open hof-os bump PR
-        if: ${{ secrets.HOFOS_BUMP_TOKEN != '' }}
+  notify-hof-os:
+    name: Notify hof-os of new release
+    needs: [build-app-image, build-agent-tarball, build-react-embeds-tarball, publish-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # First-class job. Skips silently when the secret/var isn't
+    # configured (forks, fresh repos pre-setup) — matches the office-ai
+    # auto-release flow exactly so all three sister repos behave the same.
+    if: vars.COLLABAI_SYNC_ENABLED == 'true'
+    steps:
+      - name: Checkout hof-os
+        uses: actions/checkout@v4
+        with:
+          repository: jhoetter/hof-os
+          token: ${{ secrets.COLLABAI_SYNC_TOKEN }}
+          ref: main
+
+      - name: Update collabai lockfile
         env:
-          GH_TOKEN: ${{ secrets.HOFOS_BUMP_TOKEN }}
-          VERSION: ${{ needs.build-app-image.outputs.version }}
+          NEW_VERSION: ${{ needs.build-app-image.outputs.version }}
           IMAGE_REF: ${{ needs.build-app-image.outputs.image_ref }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          GIT_SHA: ${{ github.sha }}
         run: |
-          ./infra/release/open-hofos-pr.sh
+          set -euo pipefail
+          mkdir -p infra
+          PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          REPO="${{ github.repository }}"
+          APP_TARBALL="https://github.com/${REPO}/releases/download/v${NEW_VERSION}/collabai-app-${NEW_VERSION}.tar"
+          AGENT_TARBALL="https://github.com/${REPO}/releases/download/v${NEW_VERSION}/collabai-agent-${NEW_VERSION}.tgz"
+          EMBEDS_TARBALL="https://github.com/${REPO}/releases/download/v${NEW_VERSION}/collabai-react-embeds-${NEW_VERSION}.tgz"
+          cat > infra/collabai.lock.json <<EOF
+          {
+            "version": "${NEW_VERSION}",
+            "app_image": "${IMAGE_REF}",
+            "app_image_tarball": "${APP_TARBALL}",
+            "agent_version": "${NEW_VERSION}",
+            "agent_tarball": "${AGENT_TARBALL}",
+            "react_embeds_version": "${NEW_VERSION}",
+            "react_embeds_tarball": "${EMBEDS_TARBALL}",
+            "published_at": "${PUBLISHED_AT}",
+            "source_repo": "${REPO}",
+            "source_sha": "${GIT_SHA}"
+          }
+          EOF
+          cat infra/collabai.lock.json
+
+      - name: Commit and push
+        env:
+          NEW_VERSION: ${{ needs.build-app-image.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add infra/collabai.lock.json
+          if git diff --cached --quiet; then
+            echo "collabai.lock.json already at ${NEW_VERSION}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore(collabai): bump to ${NEW_VERSION}"
+          git pull --rebase origin main
+          git push origin main

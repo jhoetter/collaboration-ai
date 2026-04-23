@@ -18,7 +18,8 @@ import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
 import type { Attachment } from "../state/sync.ts";
 import { FileTypeIcon } from "./FileTypeIcon.tsx";
-import { PdfViewer } from "./PdfViewer.tsx";
+import { AttachmentLightbox } from "./AttachmentLightbox.tsx";
+import { attachmentKindFor } from "@collabai/react-embeds";
 
 export interface AttachmentCardProps {
   attachment: Attachment;
@@ -29,11 +30,13 @@ export interface AttachmentCardProps {
 export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps) {
   const { t } = useTranslator();
   const isImage = attachment.mime.startsWith("image/");
-  const isPdf = attachment.mime === "application/pdf";
+  const officeKind = attachmentKindFor(attachment.mime, attachment.name);
+  const isPdf = officeKind === "pdf";
+  const isOfficeFile = officeKind !== "other" && !isImage;
   const isLinkPreview =
     (attachment as Attachment & { kind?: string }).kind === "link_preview";
   const url = useDownloadUrl(attachment, isLinkPreview);
-  const [pdfOpen, setPdfOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   if (isLinkPreview) {
     return <LinkPreviewCard attachment={attachment} />;
@@ -66,20 +69,25 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
     );
   }
 
-  if (isPdf) {
+  if (isOfficeFile) {
+    const label = officeKind.toUpperCase();
     return (
       <>
         <button
           type="button"
-          onClick={() => setPdfOpen(true)}
+          onClick={() => setViewerOpen(true)}
           className="group flex w-full max-w-[18rem] items-stretch overflow-hidden rounded-md border border-border bg-card text-left transition-shadow hover:shadow-md sm:w-72"
         >
-          <PdfThumb url={url} />
+          {isPdf ? (
+            <PdfThumb url={url} />
+          ) : (
+            <FileTypeIcon mime={attachment.mime} filename={attachment.name} size={48} />
+          )}
           <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 p-2.5 text-xs">
             <div className="min-w-0">
               <p className="truncate font-medium text-foreground">{attachment.name}</p>
               <p className="text-tertiary">
-                PDF · {formatBytes(attachment.size_bytes)}
+                {label} · {formatBytes(attachment.size_bytes)}
               </p>
             </div>
             <span className="inline-flex items-center gap-1 text-accent opacity-0 transition-opacity group-hover:opacity-100">
@@ -88,8 +96,13 @@ export function AttachmentCard({ attachment, onOpenImage }: AttachmentCardProps)
             </span>
           </div>
         </button>
-        {pdfOpen && url && (
-          <PdfViewer url={url} name={attachment.name} onClose={() => setPdfOpen(false)} />
+        {viewerOpen && url && (
+          <AttachmentLightbox
+            url={url}
+            name={attachment.name}
+            mime={attachment.mime}
+            onClose={() => setViewerOpen(false)}
+          />
         )}
       </>
     );
