@@ -40,9 +40,7 @@ export function CollabAiChannel({ initialPath = "/", onNavigate }: CollabAiChann
   return (
     <MemoryRouter initialEntries={[seed]}>
       <NavBridge
-        onNavigate={
-          onNavigate ? (path) => onNavigate(stripWorkspacePrefix(path, wsSegment)) : undefined
-        }
+        onNavigate={onNavigate ? (path) => onNavigate(stripWorkspacePrefix(path, wsSegment)) : undefined}
       />
       <ChannelRouterSync initialPath={initialPath} workspaceSegment={wsSegment} />
       <Routes>

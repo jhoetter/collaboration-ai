@@ -32,7 +32,9 @@ export function CollabAiChannelList({ workspaceId, onNavigate }: CollabAiChannel
   const initialPath = `/w/${encodeURIComponent(workspaceId)}`;
   return (
     <MemoryRouter initialEntries={[initialPath]}>
-      <NavBridge onNavigate={onNavigate ? (path) => onNavigate(stripWorkspacePrefix(path, workspaceId)) : undefined} />
+      <NavBridge
+        onNavigate={onNavigate ? (path) => onNavigate(stripWorkspacePrefix(path, workspaceId)) : undefined}
+      />
       <Routes>
         <Route path="/w/:workspaceId/*" element={<Sidebar />} />
       </Routes>
