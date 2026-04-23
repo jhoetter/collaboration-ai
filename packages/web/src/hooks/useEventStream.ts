@@ -2,6 +2,12 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "../state/auth.ts";
 import { type Event, useSync } from "../state/sync.ts";
 import { useUsers } from "../state/users.ts";
+import {
+  runtimeApiBase,
+  runtimeAuthHeaders,
+  runtimeWsBase,
+  getRuntimeConfig,
+} from "../lib/runtime-config.tsx";
 
 /**
  * Bring the local sync state up to date with the workspace event log.
@@ -85,11 +91,13 @@ export function useEventStream(workspaceId: string | undefined) {
 
     async function backfill() {
       const cursor = useSync.getState().cursor;
-      const url = new URL("/api/sync", location.origin);
+      const base = runtimeApiBase();
+      const auth = await runtimeAuthHeaders();
+      const url = new URL(`${base}/api/sync`, base.startsWith("http") ? undefined : location.origin);
       url.searchParams.set("workspace_id", workspaceId!);
       if (cursor) url.searchParams.set("since", cursor);
       try {
-        const res = await fetch(url.toString());
+        const res = await fetch(url.toString(), { headers: auth });
         if (!res.ok) return;
         const env = (await res.json()) as SyncEnvelope;
         handleEnvelope(env);
@@ -98,11 +106,23 @@ export function useEventStream(workspaceId: string | undefined) {
       }
     }
 
-    function startWebSocket() {
-      const proto = location.protocol === "https:" ? "wss" : "ws";
+    async function startWebSocket() {
+      const wsBase = runtimeWsBase();
       const params = new URLSearchParams({ workspace_id: workspaceId! });
       if (userId) params.set("user_id", userId);
-      socket = new WebSocket(`${proto}://${location.host}/ws/events?${params.toString()}`);
+      // Browsers reject custom headers on `new WebSocket(...)`, so we
+      // append the bearer token as a query param. The proxy + sidecar
+      // both accept `?token=` and treat it as an Authorization header.
+      const get = getRuntimeConfig().getAuthToken;
+      if (get) {
+        try {
+          const token = await get();
+          if (token) params.set("token", token);
+        } catch {
+          /* fall through; sidecar will close with policy violation */
+        }
+      }
+      socket = new WebSocket(`${wsBase}/ws/events?${params.toString()}`);
       socketRef.current = socket;
       socket.onopen = () => {
         // Heartbeat every 25s so the presence TTL doesn't expire on
@@ -151,7 +171,7 @@ export function useEventStream(workspaceId: string | undefined) {
     }
 
     void backfill().then(() => {
-      if (!stopped) startWebSocket();
+      if (!stopped) void startWebSocket();
     });
 
     return () => {

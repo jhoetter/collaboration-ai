@@ -7,20 +7,24 @@
  * IDs so every subsequent API call can attach `actor_id` /
  * `workspace_id` automatically.
  *
- * There is no real auth here on purpose — when this app is mounted
- * inside hof-os the host owns identity and this store gets replaced
- * with a thin adapter over the host's session.
+ * When mounted inside hof-os, the host calls `hydrate({identity,
+ * workspaceId})` synchronously from JWT claims before any UI renders;
+ * subsequent `bootstrap()` calls then short-circuit so the embed never
+ * issues `demo:onboard` against the host's identity.
  */
 import { create } from "zustand";
 import { getOrCreateIdentity, type AnonymousIdentity } from "../lib/identity.ts";
+import { runtimeApiBase, runtimeAuthHeaders } from "../lib/runtime-config.tsx";
 
 // NOTE: this file deliberately does NOT import from `lib/api.ts` to avoid a
 // circular dependency (api.ts reads the actor/workspace IDs from this
 // store). We hand-roll a tiny unwrapping fetcher for the bootstrap path.
 async function rawCall<T>(name: string, body: unknown): Promise<T> {
-  const res = await fetch(`/api/functions/${encodeURIComponent(name)}`, {
+  const base = runtimeApiBase();
+  const auth = await runtimeAuthHeaders();
+  const res = await fetch(`${base}/api/functions/${encodeURIComponent(name)}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...auth },
     body: JSON.stringify(body ?? {}),
   });
   if (!res.ok) {
@@ -45,6 +49,19 @@ export interface AuthState {
   workspaceId: string | null;
   defaultChannelId: string | null;
   bootstrap(): Promise<void>;
+  /**
+   * Host-driven identity injection. The hof-os embed mints a JWT with
+   * `sub` (user id), `tid` (workspace id) and a display name and
+   * passes them in here so the workspace shell can render without
+   * ever calling `demo:onboard`. Idempotent.
+   */
+  hydrate(opts: HydrateOptions): void;
+}
+
+export interface HydrateOptions {
+  identity: AnonymousIdentity;
+  workspaceId: string;
+  defaultChannelId?: string | null;
 }
 
 interface OnboardResponse {
@@ -63,6 +80,16 @@ export const useAuth = create<AuthState>((set, get) => ({
   identity: null,
   workspaceId: null,
   defaultChannelId: null,
+
+  hydrate({ identity, workspaceId, defaultChannelId }) {
+    set({
+      identity,
+      workspaceId,
+      defaultChannelId: defaultChannelId ?? null,
+      status: "ready",
+      error: null,
+    });
+  },
 
   async bootstrap() {
     if (get().status === "ready") return;

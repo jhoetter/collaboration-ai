@@ -8,7 +8,12 @@
  * blanket-attach them to every call. The `*Raw` variant skips the
  * injection — used by the auth bootstrap (which has not yet hydrated
  * the store) and by tests that want full control over the payload.
+ *
+ * Both helpers read the active API base + auth token from the
+ * runtime-config singleton so the same module works standalone (empty
+ * apiBase, cookie auth) and embedded (apiBase=`/api/chat`, JWT bearer).
  */
+import { runtimeApiBase, runtimeAuthHeaders } from "./runtime-config.tsx";
 import { useAuth } from "../state/auth.ts";
 
 interface FunctionEnvelope<T> {
@@ -19,9 +24,11 @@ interface FunctionEnvelope<T> {
 }
 
 export async function callFunctionRaw<T = unknown>(name: string, body: unknown): Promise<T> {
-  const res = await fetch(`/api/functions/${encodeURIComponent(name)}`, {
+  const base = runtimeApiBase();
+  const auth = await runtimeAuthHeaders();
+  const res = await fetch(`${base}/api/functions/${encodeURIComponent(name)}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...auth },
     body: JSON.stringify(body ?? {}),
   });
   if (!res.ok) {

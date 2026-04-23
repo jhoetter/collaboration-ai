@@ -13,6 +13,14 @@
       "types": "./src/contract.ts",
       "import": "./dist/contract.js"
     },
+    "./app": {
+      "types": "./src/CollabAiApp.tsx",
+      "import": "./dist/CollabAiApp.js"
+    },
+    "./providers": {
+      "types": "./src/AppProviders.tsx",
+      "import": "./dist/AppProviders.js"
+    },
     "./components/attachment-viewer": {
       "types": "./src/components/AttachmentViewer.tsx",
       "import": "./dist/components/AttachmentViewer.js"
@@ -33,15 +41,21 @@
   },
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router": "^7.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@tanstack/react-query": "^5.62.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "esbuild": "^0.24.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "typescript": "^5.6.3"
+    "react-router": "^7.1.0",
+    "typescript": "^5.6.3",
+    "zustand": "^5.0.2"
   },
   "license": "MIT"
 }

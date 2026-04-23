@@ -29,6 +29,35 @@ from domain.users import functions as _users  # noqa: F401
 from domain.workspaces import functions as _workspaces  # noqa: F401
 
 
+def _install_hof_jwt_middleware() -> None:
+    """Install the hof-os JWT verifier as a FastAPI middleware.
+
+    Uses ``hof.api.extensions.register_middleware``, which lands in
+    hof-engine alongside the existing ``register_router`` hook. The
+    middleware is a no-op when the request carries no Authorization
+    header (or fails verification), so the standalone ``demo:onboard``
+    flow keeps working in dev.
+    """
+    try:
+        from hof.api.extensions import register_middleware
+    except ImportError:
+        # Older hof-engine without the register_middleware hook.
+        # Surface as a warning rather than a hard failure so the
+        # standalone backend keeps booting; the embed will simply
+        # 401 from collab-ai's side until the engine is upgraded.
+        import logging
+
+        logging.getLogger("collabai.bootstrap").warning(
+            "hof.api.extensions.register_middleware not available; "
+            "hof-os JWT bridge disabled (upgrade hof-engine to enable).",
+        )
+        return
+
+    from domain.shared.jwt_middleware import HofSubappJwtMiddleware
+
+    register_middleware(HofSubappJwtMiddleware, audience="collabai")
+
+
 def _install_sync_router_hook() -> None:
     """Wedge our realtime router onto hof's FastAPI app.
 
@@ -60,4 +89,5 @@ def _install_sync_router_hook() -> None:
     _hof_server._collabai_sync_mounted = True
 
 
+_install_hof_jwt_middleware()
 _install_sync_router_hook()

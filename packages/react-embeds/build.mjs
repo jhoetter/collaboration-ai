@@ -20,6 +20,8 @@ const entries = [
   "src/index.ts",
   "src/contract.ts",
   "src/components/AttachmentViewer.tsx",
+  "src/CollabAiApp.tsx",
+  "src/AppProviders.tsx",
 ];
 
 await build({
@@ -31,6 +33,15 @@ await build({
   target: "es2022",
   jsx: "automatic",
   sourcemap: true,
+  // Break the import cycle: when we bundle the WorkspaceShell from
+  // packages/web/src, two of its components (AttachmentCard +
+  // AttachmentLightbox) import back into `@collabai/react-embeds`.
+  // Aliasing to our own source files lets esbuild resolve those
+  // imports directly without recursing into the package's compiled
+  // dist (which may not yet exist on a clean build).
+  alias: {
+    "@collabai/react-embeds": resolve(here, "src/index.ts"),
+  },
   // @officeai/react-editors is host-provided (the hof-os data-app
   // dedupes a single copy across editor + chat + mail embeds; standalone
   // collab-ai's web app installs it directly). Externalizing it keeps
@@ -39,6 +50,9 @@ await build({
     "react",
     "react-dom",
     "react/jsx-runtime",
+    "react-router",
+    "@tanstack/react-query",
+    "zustand",
     "@officeai/react-editors",
     "@officeai/react-editors/*",
   ],
