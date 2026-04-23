@@ -59,18 +59,19 @@ jobs:
     needs: build-app-image
     steps:
       - uses: actions/checkout@v4
-      # No `version:` so pnpm/action-setup picks up `packageManager` from package.json
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @collabai/agent-cli build
       - name: Pack
         working-directory: packages/agent-cli
         run: |
-          npm version --no-git-tag-version --allow-same-version "${{ needs.build-app-image.outputs.version }}"
+          npm version --no-git-tag-version "${{ needs.build-app-image.outputs.version }}"
           npm pack
           mv collabai-agent-cli-*.tgz "/tmp/collabai-agent-${{ needs.build-app-image.outputs.version }}.tgz"
       - uses: actions/upload-artifact@v4
@@ -84,18 +85,19 @@ jobs:
     needs: build-app-image
     steps:
       - uses: actions/checkout@v4
-      # No `version:` so pnpm/action-setup picks up `packageManager` from package.json
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @collabai/react-embeds build
       - name: Pack
         working-directory: packages/react-embeds
         run: |
-          npm version --no-git-tag-version --allow-same-version "${{ needs.build-app-image.outputs.version }}"
+          npm version --no-git-tag-version "${{ needs.build-app-image.outputs.version }}"
           npm pack
           mv collabai-react-embeds-*.tgz "/tmp/collabai-react-embeds-${{ needs.build-app-image.outputs.version }}.tgz"
       - uses: actions/upload-artifact@v4
@@ -109,9 +111,22 @@ jobs:
     needs: [build-app-image, build-agent-tarball, build-react-embeds-tarball]
     steps:
       - uses: actions/checkout@v4
+      # Pull each named artifact separately. Skipping the unnamed
+      # download lets us avoid docker/build-push-action@v6's auto-
+      # uploaded `*.dockerbuild` summary artifact (which sometimes
+      # 5xx's during download) and gives clearer per-artifact errors.
       - uses: actions/download-artifact@v4
         with:
-          path: /tmp/release
+          name: app-image
+          path: /tmp/release/app-image
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-cli
+          path: /tmp/release/agent-cli
+      - uses: actions/download-artifact@v4
+        with:
+          name: react-embeds
+          path: /tmp/release/react-embeds
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
