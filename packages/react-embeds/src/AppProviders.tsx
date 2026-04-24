@@ -20,6 +20,7 @@ import { ThemeProvider } from "../../web/src/lib/theme/index.ts";
 import { DialogProvider } from "../../web/src/lib/dialogs.tsx";
 import { RuntimeConfigProvider, type RuntimeConfig } from "../../web/src/lib/runtime-config.tsx";
 import { useAuth } from "../../web/src/state/auth.ts";
+import { useEventStream } from "../../web/src/hooks/useEventStream.ts";
 
 export interface AppProvidersProps {
   runtime?: RuntimeConfig | null;
@@ -34,13 +35,15 @@ export function AppProviders({ runtime = null, children }: AppProvidersProps) {
   return (
     <RuntimeConfigProvider runtime={runtime}>
       <RuntimeAuthBridge runtime={runtime}>
-        <I18nProvider>
-          <ThemeProvider>
-            <QueryClientProvider client={queryClient}>
-              <DialogProvider>{children}</DialogProvider>
-            </QueryClientProvider>
-          </ThemeProvider>
-        </I18nProvider>
+        <EventStreamBridge>
+          <I18nProvider>
+            <ThemeProvider>
+              <QueryClientProvider client={queryClient}>
+                <DialogProvider>{children}</DialogProvider>
+              </QueryClientProvider>
+            </ThemeProvider>
+          </I18nProvider>
+        </EventStreamBridge>
       </RuntimeAuthBridge>
     </RuntimeConfigProvider>
   );
@@ -89,5 +92,30 @@ function RuntimeAuthBridge({ runtime, children }: { runtime: RuntimeConfig | nul
     // String deps avoid re-running on every parent re-render that
     // produces a new `runtime` object identity but the same values.
   }, [identityId, identityName, workspaceId]);
+  return <>{children}</>;
+}
+
+/**
+ * Drives `/api/sync` backfill + `/ws/events` subscription for the
+ * headless embed.
+ *
+ * Background: the standalone `WorkspaceShell` calls
+ * `useEventStream(effectiveWorkspaceId)` so its Zustand projection
+ * (channels, messages, unread counts) stays current. The headless
+ * `AppProviders` path used by hof-os only ran `RuntimeAuthBridge` —
+ * it hydrated the auth identity but never subscribed to the event
+ * stream, so embeds rendered an empty store: channel UUIDs in place
+ * of names, no live updates, and nothing to replay after a reload.
+ *
+ * Mounting this bridge inside `RuntimeAuthBridge` (which has already
+ * pushed `workspaceId` into `useAuth`) means we get the same wiring
+ * as the standalone shell. `useEventStream` itself short-circuits
+ * when its argument is `undefined`, so it's safe to call before the
+ * auth store has been hydrated; it'll start the subscription as
+ * soon as `workspaceId` becomes a string.
+ */
+function EventStreamBridge({ children }: { children: ReactNode }) {
+  const workspaceId = useAuth((s) => s.workspaceId ?? undefined);
+  useEventStream(workspaceId);
   return <>{children}</>;
 }
