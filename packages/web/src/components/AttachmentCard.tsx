@@ -16,6 +16,7 @@ import { IconDownload, IconExternal } from "@collabai/ui";
 import { useEffect, useRef, useState } from "react";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { ensurePdfjsWorker } from "../lib/pdfjs.ts";
 import type { Attachment } from "../state/sync.ts";
 import { FileTypeIcon } from "./FileTypeIcon.tsx";
 import { AttachmentLightbox } from "./AttachmentLightbox.tsx";
@@ -134,9 +135,7 @@ export function PdfThumb({ url, size = 96 }: { url: string | null; size?: number
     let cancelled = false;
     (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist");
-        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        const pdfjs = await ensurePdfjsWorker();
         const doc = await pdfjs.getDocument({ url }).promise;
         const page = await doc.getPage(1);
         if (cancelled) return;

@@ -7,6 +7,7 @@
  */
 import { IconChevronLeft, IconChevronRight, IconClose, IconDownload } from "@collabai/ui";
 import { useEffect, useRef, useState } from "react";
+import { ensurePdfjsWorker } from "../lib/pdfjs.ts";
 
 export interface PdfViewerProps {
   url: string;
@@ -26,9 +27,7 @@ export function PdfViewer({ url, name, onClose }: PdfViewerProps) {
     setLoading(true);
     (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist");
-        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        const pdfjs = await ensurePdfjsWorker();
         const doc = await pdfjs.getDocument({ url }).promise;
         if (cancelled) return;
         docRef.current = doc;

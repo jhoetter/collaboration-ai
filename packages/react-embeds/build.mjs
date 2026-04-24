@@ -11,6 +11,7 @@
 // which only ships dist + src + package.json.
 
 import { build } from "esbuild";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -29,6 +30,76 @@ const entries = [
   "src/CollabAiActivityPane.tsx",
   "src/CollabAiSearchInput.tsx",
 ];
+
+/**
+ * esbuild plugin: honour Vite's `?url` import suffix.
+ *
+ * Vite-native source files in `packages/web/src` (e.g. the pdfjs-dist
+ * worker bootstrap shared by `PdfThumb` + `PdfViewer`) import worker
+ * assets like:
+ *
+ *   import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+ *
+ * Vite resolves the `?url` suffix to a fingerprinted asset path. Plain
+ * esbuild treats the suffix as part of the path, fails to resolve, and
+ * falls back to bundling the worker module's exports — which yields
+ * `workerUrl === undefined` at runtime and pdfjs throws "Invalid
+ * `workerSrc` type." This plugin closes the gap so the embed bundle
+ * behaves identically:
+ *
+ *   1. Strip `?url` from the specifier and let esbuild's resolver find
+ *      the underlying file (still anchored at the importer's dir, so
+ *      pnpm's nested layout works).
+ *   2. Replace the import with a one-line proxy that re-imports the
+ *      resolved file through the `file` loader (which copies the asset
+ *      into `dist/` and returns its relative path) and wraps the
+ *      result in `new URL(..., import.meta.url).href` so the consumer
+ *      gets a fully-qualified URL anchored at the chunk's runtime
+ *      location — survives both Vite's dev server and a static-host
+ *      production build.
+ *
+ * Entirely offline: no CDN URLs, no `globalThis.__*` host overrides
+ * required. The pdfjs-dist version that ships is whatever the
+ * workspace pins (currently 5.6.205 → `build/pdf.worker.min.mjs`).
+ */
+const urlImportPlugin = {
+  name: "url-import",
+  setup(pluginBuild) {
+    pluginBuild.onResolve({ filter: /\?url$/ }, async (args) => {
+      const cleanPath = args.path.slice(0, -"?url".length);
+      const resolved = await pluginBuild.resolve(cleanPath, {
+        importer: args.importer,
+        resolveDir: args.resolveDir,
+        kind: args.kind,
+      });
+      if (resolved.errors.length > 0) return { errors: resolved.errors };
+      return { path: resolved.path, namespace: "url-import-wrapper" };
+    });
+
+    pluginBuild.onLoad(
+      { filter: /.*/, namespace: "url-import-wrapper" },
+      (args) => ({
+        contents: `import asset from ${JSON.stringify(`${args.path}?url-import-asset`)};\nexport default new URL(asset, import.meta.url).href;\n`,
+        loader: "js",
+        resolveDir: dirname(args.path),
+      }),
+    );
+
+    pluginBuild.onResolve({ filter: /\?url-import-asset$/ }, (args) => ({
+      path: args.path.slice(0, -"?url-import-asset".length),
+      namespace: "url-import-asset",
+    }));
+
+    pluginBuild.onLoad(
+      { filter: /.*/, namespace: "url-import-asset" },
+      async (args) => ({
+        contents: await readFile(args.path),
+        loader: "file",
+        resolveDir: dirname(args.path),
+      }),
+    );
+  },
+};
 
 await build({
   entryPoints: entries.map((e) => resolve(here, e)),
@@ -63,6 +134,11 @@ await build({
     "@officeai/react-editors/*",
   ],
   loader: { ".css": "copy" },
+  // Asset filenames keep the original basename so consumers can grep
+  // `pdf.worker` in `dist/` to confirm the worker shipped (and to
+  // reason about cache headers when self-hosting the bundle).
+  assetNames: "[name]-[hash]",
+  plugins: [urlImportPlugin],
   logLevel: "info",
 });
 console.log("react-embeds: built");
