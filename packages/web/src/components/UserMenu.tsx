@@ -11,6 +11,7 @@ import { callFunction } from "../lib/api.ts";
 import { useDialogs } from "../lib/dialogs.tsx";
 import { clearIdentity } from "../lib/identity.ts";
 import { LocaleToggle, useTranslator } from "../lib/i18n/index.ts";
+import { useRuntimeConfig } from "../lib/runtime-config.tsx";
 import { useColorScheme } from "../lib/theme/index.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type PresenceStatus } from "../state/sync.ts";
@@ -21,6 +22,7 @@ export function UserMenu() {
   const { t } = useTranslator();
   const { confirm } = useDialogs();
   const { colorScheme, setColorScheme } = useColorScheme();
+  const { hideUserMenuSubtitle } = useRuntimeConfig();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(identity?.display_name ?? "");
@@ -91,7 +93,9 @@ export function UserMenu() {
           </span>
         </span>
         <span className="min-w-0">
-          <p className="truncate text-xs text-tertiary">{t("userMenu.youAre")}</p>
+          {!hideUserMenuSubtitle && (
+            <p className="truncate text-xs text-tertiary">{t("userMenu.youAre")}</p>
+          )}
           <p className="truncate text-sm font-semibold text-foreground">
             {identity?.display_name ?? t("userMenu.anonymous")}
           </p>

@@ -32,6 +32,13 @@ export { AppProviders as CollabAiProvider } from "./AppProviders";
 export type { AppProvidersProps } from "./AppProviders";
 export type { AppProvidersProps as CollabAiProviderProps } from "./AppProviders";
 
+// Runtime config types. Hosts that build a `RuntimeConfig` to pass
+// to `<CollabAiProvider runtime={...}>` (or any of the headless
+// composables) need access to the type. Notable optional flag:
+// `hideUserMenuSubtitle` for embeds whose host chrome already
+// surfaces the user identity.
+export type { RuntimeConfig, RuntimeIdentity } from "../../web/src/lib/runtime-config";
+
 // Headless composable embeds (v0.3.0+). The hof-os data-app composes
 // these inside its own chrome; standalone keeps using `CollabAiApp`.
 export { CollabAiChannelList } from "./CollabAiChannelList";

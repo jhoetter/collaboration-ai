@@ -35,6 +35,15 @@ export interface RuntimeConfig {
   workspaceId?: string;
   /** Returns a bearer token. Empty string ⇒ no Authorization header. */
   getAuthToken?: () => Promise<string>;
+  /**
+   * Hides the small "you are …" subtitle line above the display name
+   * in `UserMenu`. Set to `true` when the embedding host already
+   * surfaces the user identity in its own chrome (e.g. the hof-os
+   * data-app shell shows the signed-in user in the bottom-left
+   * sidebar, making the in-embed line redundant). Standalone leaves
+   * this `undefined` → subtitle stays visible.
+   */
+  hideUserMenuSubtitle?: boolean;
 }
 
 const DEFAULT: RuntimeConfig = { apiBase: "" };

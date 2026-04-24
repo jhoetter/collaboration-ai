@@ -87,6 +87,11 @@ export default [
         EventListener: "readonly",
         MediaQueryListEvent: "readonly",
         HTMLSpanElement: "readonly",
+        HTMLFormElement: "readonly",
+        HTMLTextAreaElement: "readonly",
+        HTMLSelectElement: "readonly",
+        HTMLAnchorElement: "readonly",
+        HTMLLabelElement: "readonly",
         // React's classic JSX runtime is implicit in TS/Vite, but the
         // codebase still references the `React.*` namespace for type
         // annotations (e.g. `React.ReactNode`). Mark it as a known
