@@ -168,13 +168,9 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
   const dismissedUrlsRef = useRef<Set<string>>(new Set());
   const inflightUnfurlsRef = useRef<Set<string>>(new Set());
   const [showEmoji, setShowEmoji] = useState(false);
-  // The formatting toolbar takes a row of vertical real estate that's a
-  // luxury we can't afford on phones, so default it off below `md` and let
-  // the user opt in via the `<IconType />` toggle.
-  const [showFormatting, setShowFormatting] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return window.matchMedia("(min-width: 768px)").matches;
-  });
+  // Keep formatting visible by default in hofOS; the type button still
+  // lets users collapse it when they want the compact composer.
+  const [showFormatting, setShowFormatting] = useState(true);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [mentionState, setMentionState] = useState<{
     query: string;
@@ -973,7 +969,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
   return (
     <div
       ref={editorContainerRef}
-      className="relative px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:px-4 md:pb-4"
+      className="relative px-3 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-4 md:pb-6"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
@@ -1007,7 +1003,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
         {showFormatting && (
           <Toolbar
             density="comfortable"
-            className="gap-2 overflow-hidden rounded-t-lg border-b border-hairline px-3 py-2"
+            className="gap-2 overflow-hidden border-b border-border/80 px-2 py-1.5"
             onClick={(e) => e.stopPropagation()}
           >
             <ToolbarButton label={t("composer.bold")} shortcut="⌘B" onClick={() => format("bold")}>
@@ -1061,7 +1057,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
           />
         </div>
         <div
-          className="flex items-center gap-2 overflow-x-auto border-t border-hairline px-3 pb-2.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-center gap-2 overflow-x-auto border-t border-border/80 px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onClick={(e) => e.stopPropagation()}
         >
           <ToolbarButton
@@ -1136,7 +1132,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
       )}
       {mentionState && filteredUsers.length > 0 && (
         <PopoverPortal anchor={composerCardRef.current} placement="bottom-start">
-          <ul className="max-h-56 w-[min(16rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
+          <ul className="max-h-56 w-[min(16rem,100%)] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredUsers.map((u, i) => (
               <li key={u.user_id}>
                 <button
@@ -1159,7 +1155,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
       )}
       {slashState && filteredSlash.length > 0 && (
         <PopoverPortal anchor={composerCardRef.current} placement="bottom-start">
-          <ul className="max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
+          <ul className="max-h-64 w-[min(18rem,100%)] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredSlash.map((c, i) => (
               <li key={c.id}>
                 <button
@@ -1182,7 +1178,7 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
       )}
       {emojiState && filteredEmoji.length > 0 && (
         <PopoverPortal anchor={composerCardRef.current} placement="bottom-start">
-          <ul className="max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-border bg-card shadow-xl">
+          <ul className="max-h-64 w-[min(18rem,100%)] overflow-auto rounded-md border border-border bg-card shadow-xl">
             {filteredEmoji.map((s, i) => (
               <li key={s.shortcode}>
                 <button

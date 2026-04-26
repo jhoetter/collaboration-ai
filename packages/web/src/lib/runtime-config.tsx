@@ -1,11 +1,9 @@
 /**
  * Runtime config seam.
  *
- * The same React tree is mounted twice: standalone (`apps/web`) where
- * the API lives at the same origin and identity is minted on first
- * paint via `demo:onboard`, and embedded (hof-os data-app) where the
- * host owns identity, supplies a JWT, and proxies API + WS through
- * `/api/chat/...`.
+ * The same React tree can run in the standalone CollabAI harness or
+ * as the native hofOS data-app module. In hofOS, the shell owns
+ * identity and proxies API + WS through `/api/chat/...`.
  *
  * Network code (`callFunction`, `useEventStream`, EventSource, raw
  * fetches) reads the active config from the module-level singleton so
@@ -14,6 +12,7 @@
  * with the React lifecycle so HMR / route remounts pick up changes.
  */
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { HOF_COLLAB_WORKSPACE_ID } from "./workspace";
 
 export interface RuntimeIdentity {
   id: string;
@@ -23,11 +22,11 @@ export interface RuntimeIdentity {
 }
 
 export interface RuntimeConfig {
-  /** Empty string → same-origin (standalone). e.g. "/api/chat" when embedded. */
+  /** Empty string -> same-origin standalone. Use "/api/chat" in hofOS. */
   apiBase: string;
   /**
    * Optional WebSocket origin. When omitted we derive `ws(s)://<host>`
-   * from `location` at call time. Embeds set this to the proxy's WS
+   * from `location` at call time. hofOS sets this to the proxy's WS
    * mount (e.g. `wss://app.example.com/api/chat`).
    */
   wsBase?: string;
@@ -36,11 +35,11 @@ export interface RuntimeConfig {
   /** Returns a bearer token. Empty string ⇒ no Authorization header. */
   getAuthToken?: () => Promise<string>;
   /**
-   * Hides the small "you are …" subtitle line above the display name
+   * Hides the small "you are ..." subtitle line above the display name
    * in `UserMenu`. Set to `true` when the embedding host already
-   * surfaces the user identity in its own chrome (e.g. the hof-os
+   * surfaces the user identity in its own chrome (e.g. the hofOS
    * data-app shell shows the signed-in user in the bottom-left
-   * sidebar, making the in-embed line redundant). Standalone leaves
+   * sidebar, making the module line redundant). Standalone leaves
    * this `undefined` → subtitle stays visible.
    */
   hideUserMenuSubtitle?: boolean;
@@ -48,10 +47,10 @@ export interface RuntimeConfig {
 
 const DEFAULT: RuntimeConfig = { apiBase: "" };
 
-let _config: RuntimeConfig = DEFAULT;
+let _config: RuntimeConfig = defaultRuntimeConfig();
 
 export function setRuntimeConfig(next: RuntimeConfig | null): void {
-  _config = next ?? DEFAULT;
+  _config = next ?? defaultRuntimeConfig();
 }
 
 export function getRuntimeConfig(): RuntimeConfig {
@@ -74,7 +73,10 @@ export function runtimeWsBase(): string {
 
 export async function runtimeAuthHeaders(): Promise<Record<string, string>> {
   const get = _config.getAuthToken;
-  if (!get) return {};
+  if (!get) {
+    const token = readHofToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
   try {
     const token = await get();
     if (!token) return {};
@@ -92,7 +94,7 @@ export interface RuntimeConfigProviderProps {
 }
 
 export function RuntimeConfigProvider({ runtime, children }: RuntimeConfigProviderProps) {
-  const value = useMemo<RuntimeConfig>(() => runtime ?? DEFAULT, [runtime]);
+  const value = useMemo<RuntimeConfig>(() => runtime ?? defaultRuntimeConfig(), [runtime]);
   // Set the singleton synchronously during render. Children
   // (`useEventStream`, EventSource, `callFunction`) read the
   // singleton during their own render via `runtimeApiBase()` /
@@ -108,7 +110,9 @@ export function RuntimeConfigProvider({ runtime, children }: RuntimeConfigProvid
   useEffect(() => {
     setRuntimeConfig(value);
     return () => {
-      setRuntimeConfig(null);
+      if (getRuntimeConfig() === value) {
+        setRuntimeConfig(null);
+      }
     };
   }, [value]);
   return <RuntimeConfigContext.Provider value={value}>{children}</RuntimeConfigContext.Provider>;
@@ -120,4 +124,39 @@ export function useRuntimeConfig(): RuntimeConfig {
 
 function stripTrailingSlash(s: string): string {
   return s.endsWith("/") ? s.slice(0, -1) : s;
+}
+
+function defaultRuntimeConfig(): RuntimeConfig {
+  if (isHofChatRoute()) {
+    return {
+      apiBase: "/api/chat",
+      wsBase: wsBase("/api/chat"),
+      workspaceId: HOF_COLLAB_WORKSPACE_ID,
+      getAuthToken: async () => readHofToken() ?? "",
+    };
+  }
+  return DEFAULT;
+}
+
+function isHofChatRoute(): boolean {
+  // Fallback only: the native route should provide RuntimeConfig.
+  // This keeps direct page refreshes from leaking standalone URLs if
+  // the provider is not mounted yet.
+  if (typeof window === "undefined") return false;
+  return window.location.pathname === "/chat" || window.location.pathname.startsWith("/chat/");
+}
+
+function readHofToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem("hof_token");
+  } catch {
+    return null;
+  }
+}
+
+function wsBase(path: string): string {
+  if (typeof window === "undefined") return path;
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${window.location.host}${path}`;
 }

@@ -19,9 +19,27 @@ export interface ThreadState {
 export const useThread = create<ThreadState>((set) => ({
   rootId: null,
   open(rootId) {
+    writeThreadQuery(rootId);
     set({ rootId });
   },
   close() {
+    writeThreadQuery(null);
     set({ rootId: null });
   },
 }));
+
+function writeThreadQuery(rootId: string | null) {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/chat" && !window.location.pathname.startsWith("/chat/")) {
+    return;
+  }
+  const params = new URLSearchParams(window.location.search);
+  if (rootId) params.set("thread", rootId);
+  else params.delete("thread");
+  const q = params.toString();
+  const next = q ? `${window.location.pathname}?${q}` : window.location.pathname;
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (current === next) return;
+  window.history.pushState({}, "", next);
+  window.dispatchEvent(new Event("popstate"));
+}

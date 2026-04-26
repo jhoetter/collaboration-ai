@@ -137,6 +137,8 @@ export function Sidebar() {
   }, [messageById]);
 
   const totalUnreadActivity = mentionRows.length;
+  const channelHref = (channelId: string, suffix = "") =>
+    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}${suffix}`;
 
   return (
     <aside className="flex h-full w-full flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface p-2">
@@ -148,6 +150,7 @@ export function Sidebar() {
           type="button"
           onClick={() => setSidebarOpen(false)}
           aria-label={t("common.close")}
+          data-collab-sidebar-close
           className="-mr-1 inline-flex h-9 w-9 flex-none items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 lg:hidden"
         >
           <IconClose size={16} />
@@ -168,7 +171,7 @@ export function Sidebar() {
             <ChannelRow
               key={c.id}
               channel={c}
-              to={`/w/${params.workspaceId}/c/${c.id}`}
+              to={channelHref(c.id)}
               active={params.channelId === c.id}
               unread={unreadDisplay[c.id]}
               muted={isMuted(c.id)}
@@ -191,7 +194,7 @@ export function Sidebar() {
             <DmRow
               key={c.id}
               channel={c}
-              to={`/w/${params.workspaceId}/c/${c.id}`}
+              to={channelHref(c.id)}
               active={params.channelId === c.id}
               unread={unreadDisplay[c.id]}
               muted={isMuted(c.id)}
@@ -251,7 +254,7 @@ export function Sidebar() {
                   }).catch(() => undefined);
                   if (m.channel_id) {
                     const anchor = m.target_event_id ? `#message-${m.target_event_id}` : "";
-                    navigate(`/w/${params.workspaceId}/c/${m.channel_id}${anchor}`);
+                    navigate(channelHref(m.channel_id, anchor));
                   }
                 }}
                 className="flex flex-col items-start rounded-md px-2 py-1.5 text-left text-xs text-warning transition-colors duration-150 hover:bg-hover"
@@ -277,7 +280,7 @@ export function Sidebar() {
             draftRows.map((d) => (
               <Link
                 key={d.id}
-                to={`/w/${params.workspaceId}/c/${d.id}`}
+                to={channelHref(d.id)}
                 className="flex flex-col rounded-md px-2 py-1.5 text-xs text-secondary transition-colors duration-150 hover:bg-hover"
               >
                 <span className="truncate">#{channelLabel(channels[d.id])}</span>

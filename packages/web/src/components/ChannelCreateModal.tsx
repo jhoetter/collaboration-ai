@@ -52,7 +52,7 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
       }
       const newId = res.events[0].room_id;
       onClose();
-      navigate(`/w/${params.workspaceId}/c/${newId}`);
+      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${newId}`);
     } catch (err) {
       setError(String(err));
     } finally {

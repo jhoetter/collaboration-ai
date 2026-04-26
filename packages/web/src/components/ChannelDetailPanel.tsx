@@ -398,8 +398,7 @@ function PinnedTab({ channelId, onJump }: { channelId: string; onJump: () => voi
   }
 
   function jump(messageId: string) {
-    if (!params.workspaceId) return;
-    navigate(`/w/${params.workspaceId}/c/${channelId}#${messageId}`);
+    navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}#${messageId}`);
     onJump();
   }
 

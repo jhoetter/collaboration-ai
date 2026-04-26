@@ -119,7 +119,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
     try {
       await callFunction("channel:leave", { channel_id: channelId });
       setOpen(false);
-      navigate(`/w/${params.workspaceId}`);
+      navigate(params.workspaceId ? `/w/${params.workspaceId}` : "/");
     } catch (err) {
       console.error("channel:leave", err);
     }

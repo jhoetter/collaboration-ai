@@ -15,7 +15,10 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "architecture": "node scripts/check-architecture.mjs",
-    "verify": "pnpm format:check && pnpm lint:root && pnpm architecture && pnpm typecheck && pnpm test && pnpm build"
+    "hofos:check": "node scripts/check-hofos-ui-contract.mjs",
+    "hofos:harness": "HOFOS_MODE=1 pnpm --filter @collabai/web build && node scripts/check-hofos-harness-smoke.mjs",
+    "export:hofos-ui": "node scripts/export-hofos-ui.mjs",
+    "verify": "pnpm format:check && pnpm lint:root && pnpm architecture && pnpm run hofos:check && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

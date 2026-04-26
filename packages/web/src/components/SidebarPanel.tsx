@@ -156,7 +156,7 @@ function ActivityPanel({ onClose }: { onClose: () => void }) {
       }
       if (n.channel_id) {
         const anchor = n.target_event_id ? `#message-${n.target_event_id}` : "";
-        navigate(`/w/${params.workspaceId}/c/${n.channel_id}${anchor}`);
+        navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${n.channel_id}${anchor}`);
         onClose();
       }
     },
@@ -321,7 +321,9 @@ function LaterPanel({ onClose }: { onClose: () => void }) {
                 message={m}
                 channelName={channels[m.channel_id]?.name ?? m.channel_id}
                 onJump={() => {
-                  navigate(`/w/${params.workspaceId}/c/${m.channel_id}#message-${m.id}`);
+                  navigate(
+                    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${m.channel_id}#message-${m.id}`
+                  );
                   onClose();
                 }}
               />
@@ -430,7 +432,9 @@ function FilesPanel({ onClose }: { onClose: () => void }) {
                 entry={e}
                 channelName={channels[e.channelId]?.name ?? e.channelId}
                 onJump={() => {
-                  navigate(`/w/${params.workspaceId}/c/${e.channelId}#message-${e.messageId}`);
+                  navigate(
+                    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${e.channelId}#message-${e.messageId}`
+                  );
                   onClose();
                 }}
               />

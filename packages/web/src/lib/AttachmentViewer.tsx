@@ -10,11 +10,17 @@
 // app keeps building.
 
 import { lazy, Suspense } from "react";
+import type { ComponentType } from "react";
+
+interface OfficeEditorProps {
+  url: string;
+  readOnly?: boolean;
+}
 
 const PdfEditor = lazy(async () => {
   try {
     const mod = await import("@officeai/react-editors/components/pdf");
-    return { default: mod.PdfEditor };
+    return { default: mod.PdfEditor as ComponentType<OfficeEditorProps> };
   } catch {
     return { default: () => null };
   }
@@ -23,7 +29,7 @@ const PdfEditor = lazy(async () => {
 const DocxEditor = lazy(async () => {
   try {
     const mod = await import("@officeai/react-editors/components/docx");
-    return { default: mod.DocxEditor };
+    return { default: mod.DocxEditor as ComponentType<OfficeEditorProps> };
   } catch {
     return { default: () => null };
   }
@@ -32,7 +38,7 @@ const DocxEditor = lazy(async () => {
 const XlsxEditor = lazy(async () => {
   try {
     const mod = await import("@officeai/react-editors/components/xlsx");
-    return { default: mod.XlsxEditor };
+    return { default: mod.XlsxEditor as ComponentType<OfficeEditorProps> };
   } catch {
     return { default: () => null };
   }
@@ -41,7 +47,7 @@ const XlsxEditor = lazy(async () => {
 const PptxEditor = lazy(async () => {
   try {
     const mod = await import("@officeai/react-editors/components/pptx");
-    return { default: mod.PptxEditor };
+    return { default: mod.PptxEditor as ComponentType<OfficeEditorProps> };
   } catch {
     return { default: () => null };
   }
@@ -52,21 +58,11 @@ export type AttachmentKind = "pdf" | "docx" | "xlsx" | "pptx" | "other";
 export function attachmentKindFor(mime: string, filename?: string): AttachmentKind {
   const ext = (filename ?? "").toLowerCase().split(".").pop() ?? "";
   if (mime === "application/pdf" || ext === "pdf") return "pdf";
-  if (
-    mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    ext === "docx"
-  )
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || ext === "docx")
     return "docx";
-  if (
-    mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    ext === "xlsx"
-  )
+  if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || ext === "xlsx")
     return "xlsx";
-  if (
-    mime ===
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
-    ext === "pptx"
-  )
+  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || ext === "pptx")
     return "pptx";
   return "other";
 }

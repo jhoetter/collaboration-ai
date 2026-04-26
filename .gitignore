@@ -84,6 +84,7 @@ coverage/
 *.tgz
 .tmp/
 scratch/
+release-out/
 
 # Playwright artifacts
 playwright-report/

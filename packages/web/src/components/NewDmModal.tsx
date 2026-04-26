@@ -79,7 +79,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
         return;
       }
       onClose();
-      navigate(`/w/${params.workspaceId}/c/${newId}`);
+      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${newId}`);
     } catch (err) {
       setError(String(err));
     } finally {

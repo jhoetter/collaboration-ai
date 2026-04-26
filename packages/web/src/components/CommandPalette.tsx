@@ -80,14 +80,16 @@ export function CommandPalette() {
       const ke = e as globalThis.KeyboardEvent;
       if ((ke.metaKey || ke.ctrlKey) && ke.key.toLowerCase() === "k") {
         ke.preventDefault();
+        ke.stopPropagation();
+        ke.stopImmediatePropagation();
         setOpen((v) => !v);
       } else if (ke.key === "Escape" && open) {
         ke.preventDefault();
         close();
       }
     }
-    window.addEventListener("keydown", onKey as EventListener);
-    return () => window.removeEventListener("keydown", onKey as EventListener);
+    window.addEventListener("keydown", onKey as EventListener, { capture: true });
+    return () => window.removeEventListener("keydown", onKey as EventListener, { capture: true });
   }, [open, close]);
 
   // ── focus + reset on open ────────────────────────────────────────
@@ -106,6 +108,12 @@ export function CommandPalette() {
   }, [query]);
 
   // ── Build items ──────────────────────────────────────────────────
+  const channelPath = useCallback(
+    (channelId: string, suffix = "") =>
+      `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}${suffix}`,
+    [params.workspaceId]
+  );
+
   const openDmWith = useCallback(
     async (userId: string) => {
       try {
@@ -114,12 +122,12 @@ export function CommandPalette() {
           dm_channel_id?: string;
         }>("dm:open", { participant_ids: [userId] });
         const room = res.dm_channel_id ?? res.events[0]?.room_id;
-        if (room) navigate(`/w/${params.workspaceId}/c/${room}`);
+        if (room) navigate(channelPath(room));
       } catch (err) {
         console.error(err);
       }
     },
-    [navigate, params.workspaceId]
+    [channelPath, navigate]
   );
 
   const actions = useMemo<PaletteItem[]>(() => {
@@ -191,9 +199,9 @@ export function CommandPalette() {
         section: sectionLabel,
         label: `#${c.name}`,
         hint: c.topic || undefined,
-        run: () => navigate(`/w/${params.workspaceId}/c/${c.id}`),
+        run: () => navigate(channelPath(c.id)),
       }));
-  }, [channels, navigate, params.workspaceId, t]);
+  }, [channelPath, channels, navigate, t]);
 
   const peopleItems = useMemo<PaletteItem[]>(() => {
     const sectionLabel = t("palette.sectionPeople");
@@ -218,9 +226,9 @@ export function CommandPalette() {
       hint: `#${channelMap[h.channel_id]?.name ?? h.channel_id} · ${
         usersById[h.sender_id]?.display_name ?? h.sender_id
       }`,
-      run: () => navigate(`/w/${params.workspaceId}/c/${h.channel_id}#${h.message_id}`),
+      run: () => navigate(channelPath(h.channel_id, `#${h.message_id}`)),
     }));
-  }, [hits, channelMap, usersById, navigate, params.workspaceId, t]);
+  }, [channelPath, hits, channelMap, usersById, navigate, t]);
 
   const allItems = useMemo<PaletteItem[]>(
     () => [...actions, ...channelItems, ...peopleItems, ...messageItems],

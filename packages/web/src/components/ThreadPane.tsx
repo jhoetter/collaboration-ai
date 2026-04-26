@@ -6,7 +6,7 @@
  * pane is mounted by `WorkspaceShell` whenever `useThread().rootId` is
  * set; closing dispatches `close()` to the same store.
  */
-import { Avatar, Badge, Button } from "@collabai/ui";
+import { Avatar, Badge } from "@collabai/ui";
 import { useEffect, useMemo, useRef } from "react";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
@@ -81,7 +81,7 @@ export function ThreadPane() {
   }
 
   return (
-    <aside className="fixed inset-0 z-40 flex flex-col bg-background lg:static lg:z-auto lg:w-96 lg:border-l lg:border-border">
+    <aside className="fixed inset-0 z-40 flex flex-col bg-background md:static md:z-auto md:w-96 md:border-l md:border-border">
       <header className="flex items-center justify-between border-b border-border px-3 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">Thread</p>

@@ -1,0 +1,15 @@
+{
+  "$schema": "../hof-os/infra/sister-ui-contract.json",
+  "product": "collabai",
+  "hofOsPath": "../hof-os",
+  "harness": {
+    "mode": "hofos",
+    "command": "HOFOS_MODE=1 pnpm --filter @collabai/web build",
+    "requiredRoutes": ["/chat", "/chat/c/example", "/chat/c/example?thread=example-message"],
+    "requiredProxyPrefix": "/api/chat",
+    "officeAiAttachmentContract": "Use the hofOS SisterAppAttachmentLightbox/EditAssetEditorMount path; do not bundle a separate Office-AI editor runtime."
+  },
+  "export": {
+    "outDir": "release-out/hofos-ui"
+  }
+}

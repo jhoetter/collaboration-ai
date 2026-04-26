@@ -90,7 +90,7 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
     try {
       await callFunction("channel:leave", { channel_id: channelId });
       await qc.invalidateQueries({ queryKey: ["channel-members", channelId] });
-      navigate(`/w/${params.workspaceId}`);
+      navigate(params.workspaceId ? `/w/${params.workspaceId}` : "/");
     } catch (err) {
       console.error("channel:leave", err);
     }

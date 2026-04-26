@@ -1,5 +1,10 @@
 # hof-os integration
 
+> Deprecated for hofOS browser UI: hofOS now consumes CollabAI as native
+> runtime source under `packages/hof-components/modules/collabai`, not as a
+> standalone `@collabai/react-embeds` package. Use
+> [`hofos-native-ui.md`](./hofos-native-ui.md) for the current workflow.
+
 How hof-os consumes [collaboration-ai](https://github.com/jhoetter/collaboration-ai)
 to give every data-app workspace AI-native team chat (sidebar
 embed, agent inbox, MCP-driven automation), driven entirely off

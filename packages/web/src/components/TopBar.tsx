@@ -281,7 +281,7 @@ export function TopBar() {
 
   const navigateToMessage = useCallback(
     (channelId: string, messageId: string) => {
-      navigate(`/w/${params.workspaceId}/c/${channelId}#message-${messageId}`);
+      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}#message-${messageId}`);
       setOpen(false);
       setRecents(rememberRecent(query));
     },
@@ -290,7 +290,7 @@ export function TopBar() {
 
   const navigateToChannel = useCallback(
     (channelId: string) => {
-      navigate(`/w/${params.workspaceId}/c/${channelId}`);
+      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}`);
       setOpen(false);
       setRecents(rememberRecent(query));
     },
@@ -306,7 +306,7 @@ export function TopBar() {
         }>("dm:open", { participant_ids: [userId] });
         const room = res.dm_channel_id ?? res.events[0]?.room_id;
         if (room) {
-          navigate(`/w/${params.workspaceId}/c/${room}`);
+          navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${room}`);
           setOpen(false);
           setRecents(rememberRecent(query));
         }
@@ -535,9 +535,7 @@ export function TopBar() {
           <Tabs tab={tab} counts={tabCounts} onChange={setTab} t={t} />
           <ChipSuggestions
             parsed={parsed}
-            currentChannelName={
-              params.workspaceId ? findCurrentChannelName(channels, location.pathname) : null
-            }
+            currentChannelName={findCurrentChannelName(channels, location.pathname)}
             onAppend={(chip) => {
               setQuery((q) => (q.endsWith(" ") || q.length === 0 ? `${q}${chip} ` : `${q} ${chip} `));
               inputRef.current?.focus();

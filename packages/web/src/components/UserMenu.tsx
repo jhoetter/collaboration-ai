@@ -93,9 +93,7 @@ export function UserMenu() {
           </span>
         </span>
         <span className="min-w-0">
-          {!hideUserMenuSubtitle && (
-            <p className="truncate text-xs text-tertiary">{t("userMenu.youAre")}</p>
-          )}
+          {!hideUserMenuSubtitle && <p className="truncate text-xs text-tertiary">{t("userMenu.youAre")}</p>}
           <p className="truncate text-sm font-semibold text-foreground">
             {identity?.display_name ?? t("userMenu.anonymous")}
           </p>
