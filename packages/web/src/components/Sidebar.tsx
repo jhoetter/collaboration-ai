@@ -42,7 +42,7 @@ import { ChannelCreateModal } from "./ChannelCreateModal.tsx";
 import { NewDmModal } from "./NewDmModal.tsx";
 import { UserMenu } from "./UserMenu.tsx";
 
-export function Sidebar() {
+export function Sidebar({ showCloseButton = true }: { showCloseButton?: boolean } = {}) {
   const params = useParams<{ workspaceId: string; channelId?: string }>();
   const channels = useSync((s) => s.channels);
   const messageById = useSync((s) => s.messageById);
@@ -146,15 +146,17 @@ export function Sidebar() {
         <div className="min-w-0 flex-1">
           <UserMenu />
         </div>
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          aria-label={t("common.close")}
-          data-collab-sidebar-close
-          className="-mr-1 inline-flex h-9 w-9 flex-none items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 lg:hidden"
-        >
-          <IconClose size={16} />
-        </button>
+        {showCloseButton ? (
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label={t("common.close")}
+            data-collab-sidebar-close
+            className="-mr-1 inline-flex h-9 w-9 flex-none items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 lg:hidden"
+          >
+            <IconClose size={16} />
+          </button>
+        ) : null}
       </div>
 
       <SectionHeader
@@ -460,6 +462,12 @@ function DmRow({
       : channel.name.includes(":")
         ? channel.name.split(":").filter((p) => p && p !== me)
         : [];
+  const isSelfDm =
+    channel.type === "dm" &&
+    !!me &&
+    Array.isArray(channel.members) &&
+    channel.members.length > 0 &&
+    channel.members.every((p) => p === me);
 
   // A DM is a "group" if the backend tagged it as such OR there is more
   // than one peer (handles legacy 3+ DMs that were created before the
@@ -504,6 +512,7 @@ function DmRow({
       muted={muted}
       unread={unread}
       partnerId={partnerId}
+      isSelfDm={isSelfDm}
       dim={dim}
       hasUnread={hasUnread}
       presence={presence}
@@ -516,6 +525,7 @@ function DmRowSingle({
   active,
   unread,
   partnerId,
+  isSelfDm,
   dim,
   hasUnread,
   presence,
@@ -525,6 +535,7 @@ function DmRowSingle({
   muted: boolean;
   unread?: { unread: number; mentions: number };
   partnerId: string | null;
+  isSelfDm: boolean;
   dim: string;
   hasUnread: boolean;
   presence: Record<string, PresenceStatus>;
@@ -532,7 +543,7 @@ function DmRowSingle({
   const { t } = useTranslator();
   const partnerName = useDisplayName(partnerId ?? "");
   const status = partnerId ? mapPresence(presence[partnerId]) : "offline";
-  const label = partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
+  const label = isSelfDm ? t("sidebar.selfDirectMessage") : partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
   return (
     <Link
       to={to}

@@ -45,6 +45,7 @@
     "later": "Later",
     "files": "Files",
     "directMessage": "Direct message",
+    "selfDirectMessage": "Yourself",
     "toggle": "Toggle navigation"
   },
   "sidebarPanel": {
@@ -88,6 +89,7 @@
     "placeholder": "Send a message",
     "messageChannel": "Message #{name}",
     "messageDm": "Message {name}",
+    "messageSelf": "Message yourself",
     "sending": "sending…",
     "uploading": "uploading…",
     "uploadFailed": "failed",
@@ -159,7 +161,8 @@
     "empty": "No messages yet — say hi.",
     "welcomeToChannel": "Welcome to #{name}",
     "channelStart": "This is the very beginning of the #{name} channel.",
-    "dmStart": "This is the very beginning of your direct message history with {name}."
+    "dmStart": "This is the very beginning of your direct message history with {name}.",
+    "selfDmStart": "This is your direct message with yourself."
   },
   "thread": {
     "title": "Thread",
@@ -238,6 +241,7 @@
     "more": "More options",
     "dmHint": "Direct messages can't be left.",
     "directMessage": "Direct message",
+    "selfDirectMessage": "Direct message with yourself",
     "groupDirectMessage": "Group direct message · {n} people",
     "openDetail": "Open channel details",
     "searchInChannel": "Search in this channel",

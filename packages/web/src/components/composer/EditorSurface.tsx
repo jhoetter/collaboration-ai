@@ -7,6 +7,15 @@
  * to the parent through the `onKeyDownCapture` prop because we need
  * to coordinate with mention / slash popovers that live outside the
  * editor tree.
+ *
+ * Layout note: padding lives on the ContentEditable and the
+ * placeholder uses `inset-0` with the same padding. That keeps the
+ * placeholder text and the empty paragraph's caret on the exact same
+ * line-box so they overlap pixel-perfectly. Putting padding on the
+ * outer wrapper while the placeholder uses `top-x` from the padding
+ * edge introduces a sub-pixel/line-height drift that reads as a
+ * visible "extra newline" above the placeholder when the editor is
+ * empty.
  */
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
@@ -39,18 +48,18 @@ export function EditorSurface({
   onPaste,
 }: EditorSurfaceProps) {
   return (
-    <div className="relative px-4 py-3.5" onKeyDownCapture={onKeyDownCapture} onPaste={onPaste}>
+    <div className="relative" onKeyDownCapture={onKeyDownCapture} onPaste={onPaste}>
       <RichTextPlugin
         contentEditable={
           <ContentEditable
             aria-label={ariaLabel}
             aria-placeholder={typeof placeholder === "string" ? placeholder : ""}
             placeholder={
-              <div className="pointer-events-none absolute left-4 top-3.5 select-none text-[15px] leading-relaxed text-tertiary">
+              <div className="pointer-events-none absolute inset-0 select-none px-4 py-2.5 text-[15px] leading-relaxed text-tertiary">
                 {placeholder}
               </div>
             }
-            className="max-h-48 min-h-[22px] overflow-y-auto whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground outline-none"
+            className="block max-h-48 min-h-[2.625rem] overflow-y-auto whitespace-pre-wrap break-words px-4 py-2.5 text-[15px] leading-relaxed text-foreground outline-none"
           />
         }
         ErrorBoundary={LexicalErrorBoundary}

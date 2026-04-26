@@ -110,14 +110,15 @@ export function useEventStream(workspaceId: string | undefined) {
       const wsBase = runtimeWsBase();
       const params = new URLSearchParams({ workspace_id: workspaceId! });
       if (userId) params.set("user_id", userId);
-      // Browsers reject custom headers on `new WebSocket(...)`, so we
-      // append the bearer token as a query param. The proxy + sidecar
-      // both accept `?token=` and treat it as an Authorization header.
+      // Browsers reject custom headers on `new WebSocket(...)`, so hofOS
+      // forwards the verified browser token through a same-origin query
+      // param. The data-app proxy requires the explicit `hof_token` name
+      // before it mints the upstream sidecar JWT.
       const get = getRuntimeConfig().getAuthToken;
       if (get) {
         try {
           const token = await get();
-          if (token) params.set("token", token);
+          if (token) params.set("hof_token", token);
         } catch {
           /* fall through; sidecar will close with policy violation */
         }

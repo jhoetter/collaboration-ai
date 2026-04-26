@@ -29,11 +29,8 @@ let pdfjsHandle: Promise<typeof pdfjsType> | null = null;
 export function ensurePdfjsWorker(): Promise<typeof pdfjsType> {
   if (!pdfjsHandle) {
     pdfjsHandle = (async () => {
-      const [pdfjs, workerMod] = await Promise.all([
-        import("pdfjs-dist"),
-        import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
-      ]);
-      pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
+      const pdfjs = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = "/node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
       return pdfjs;
     })();
   }

@@ -72,11 +72,19 @@ export function ChannelPage() {
     const ids = channel.members?.filter((p) => p && p !== me) ?? [];
     return ids[0] ?? null;
   }, [channel, isDm, identity?.user_id]);
+  const isSelfDm =
+    isDm &&
+    !!identity?.user_id &&
+    Array.isArray(channel?.members) &&
+    channel.members.length > 0 &&
+    channel.members.every((p) => p === identity.user_id);
   const partnerName = useDisplayName(dmPartnerId ?? "");
   const composerPlaceholder = isDm
-    ? t("composer.messageDm", {
-        name: partnerName || t("sidebar.directMessage"),
-      })
+    ? isSelfDm
+      ? t("composer.messageSelf")
+      : t("composer.messageDm", {
+          name: partnerName || t("sidebar.directMessage"),
+        })
     : t("composer.messageChannel", { name: channel?.name ?? channelId ?? "" });
 
   async function handleSend(payload: ComposerSendPayload) {

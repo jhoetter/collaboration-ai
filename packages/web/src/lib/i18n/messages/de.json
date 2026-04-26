@@ -45,6 +45,7 @@
     "later": "Später",
     "files": "Dateien",
     "directMessage": "Direktnachricht",
+    "selfDirectMessage": "Du selbst",
     "toggle": "Navigation umschalten"
   },
   "sidebarPanel": {
@@ -88,6 +89,7 @@
     "placeholder": "Nachricht senden",
     "messageChannel": "Nachricht an #{name}",
     "messageDm": "Nachricht an {name}",
+    "messageSelf": "Nachricht an dich selbst",
     "sending": "sende…",
     "uploading": "lade hoch…",
     "uploadFailed": "fehlgeschlagen",
@@ -159,7 +161,8 @@
     "empty": "Noch keine Nachrichten – sag Hallo.",
     "welcomeToChannel": "Willkommen in #{name}",
     "channelStart": "Hier beginnt der Kanal #{name}.",
-    "dmStart": "Hier beginnt euer Direktnachrichten-Verlauf mit {name}."
+    "dmStart": "Hier beginnt euer Direktnachrichten-Verlauf mit {name}.",
+    "selfDmStart": "Hier beginnt deine Direktnachricht mit dir selbst."
   },
   "thread": {
     "title": "Thread",
@@ -238,6 +241,7 @@
     "more": "Weitere Aktionen",
     "dmHint": "Direktnachrichten können nicht verlassen werden.",
     "directMessage": "Direktnachricht",
+    "selfDirectMessage": "Direktnachricht mit dir selbst",
     "groupDirectMessage": "Gruppen-Direktnachricht · {n} Personen",
     "openDetail": "Kanal-Details öffnen",
     "searchInChannel": "In diesem Kanal suchen",

@@ -41,7 +41,8 @@ interface MemberRow {
 }
 
 export function ChannelHeader({ channelId, channel }: { channelId: string; channel: Channel | undefined }) {
-  const me = useAuth((s) => s.identity?.user_id ?? null);
+  const identity = useAuth((s) => s.identity);
+  const me = identity?.user_id ?? null;
   const huddle = useSync((s) => s.huddlesByChannel[channelId]);
   const presence = useSync((s) => s.presence);
   const notificationPrefByChannel = useSync((s) => s.notificationPrefByChannel);
@@ -68,6 +69,15 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
   const isGroupDm = isDm && (channel?.type === "group_dm" || dmPeers.length > 1);
   const partner = isDm && !isGroupDm ? dmPeers[0] : undefined;
   const partnerStatus = partner ? mapPresence(presence[partner.user_id]) : "offline";
+  const selfMember = me ? members.find((m) => m.user_id === me) : undefined;
+  const isSelfDm =
+    isDm &&
+    !isGroupDm &&
+    !!me &&
+    (members.length > 0
+      ? members.every((m) => m.user_id === me)
+      : Array.isArray(channel?.members) && channel.members.length > 0 && channel.members.every((m) => m === me));
+  const selfDmLabel = selfMember?.display_name ?? identity?.display_name ?? t("sidebar.selfDirectMessage");
 
   async function startHuddle() {
     try {
@@ -123,6 +133,19 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
               <p className="truncate text-xs text-tertiary">
                 {t("channelHeader.groupDirectMessage", { n: dmPeers.length + 1 })}
               </p>
+            </div>
+          </>
+        ) : isSelfDm ? (
+          <>
+            <div className="relative">
+              <Avatar name={selfDmLabel} kind="human" size={28} />
+              <span className="absolute -bottom-0.5 -right-0.5">
+                <PresenceDot status={mapPresence(me ? presence[me] : undefined)} />
+              </span>
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold text-foreground">{t("sidebar.selfDirectMessage")}</h1>
+              <p className="truncate text-xs text-tertiary">{t("channelHeader.selfDirectMessage")}</p>
             </div>
           </>
         ) : isDm && partner ? (

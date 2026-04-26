@@ -969,7 +969,17 @@ function ComposerInner({ channelId, threadRoot = null, placeholder, onSend }: Co
   return (
     <div
       ref={editorContainerRef}
-      className="relative px-3 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-4 md:pb-6"
+      // Explicit bottom space so the composer card sits visibly above the
+      // chat panel's bottom edge. We avoid Tailwind's `pb-[max(env(...))]`
+      // arbitrary-value form because the JIT scanner inside the host
+      // sometimes drops it when sister-product modules are read through
+      // the `@source` glob, which left the composer "glued" to the
+      // bottom on desktop. The `safe-area-inset-bottom` padding for
+      // notched mobile is layered on as inline style instead.
+      className="relative px-3 pb-6 pt-1 md:px-4 md:pb-8"
+      style={{
+        paddingBottom: "max(env(safe-area-inset-bottom), 2rem)",
+      }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >

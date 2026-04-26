@@ -86,6 +86,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   const sidebarOpen = useUi((s) => s.sidebarOpen);
   const setSidebarOpen = useUi((s) => s.setSidebarOpen);
   const location = useLocation();
+  const embedded = chrome === "content";
 
   // Close the mobile drawer whenever the user navigates so tapping a
   // channel doesn't leave the sidebar covering the new pane.
@@ -131,7 +132,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
     <div className="relative flex h-full min-h-0 w-full flex-col">
       {chrome === "full" ? <TopBar /> : null}
       <div className="relative flex flex-1 min-h-0">
-        {sidebarOpen && (
+        {!embedded && sidebarOpen && (
           <button
             type="button"
             aria-label={t("common.close")}
@@ -140,11 +141,15 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
           />
         )}
         <div
-          className={`absolute inset-y-0 left-0 z-40 w-72 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={
+            embedded
+              ? "static z-auto w-64 shrink-0 translate-x-0 border-r border-border"
+              : `absolute inset-y-0 left-0 z-40 w-72 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
+                  sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                }`
+          }
         >
-          <Sidebar />
+          <Sidebar showCloseButton={!embedded} />
         </div>
         <main className="flex min-w-0 flex-1 flex-col">
           <Routes>

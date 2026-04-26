@@ -1070,7 +1070,13 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
           ? channel.name.split(":").filter((p) => p && p !== me)
           : [];
     const partnerId = memberIds[0] ?? null;
-    return <DmEmptyState partnerId={partnerId} />;
+    const isSelfDm =
+      channel.type === "dm" &&
+      !!me &&
+      Array.isArray(channel.members) &&
+      channel.members.length > 0 &&
+      channel.members.every((p) => p === me);
+    return <DmEmptyState partnerId={partnerId} isSelfDm={isSelfDm} />;
   }
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
@@ -1086,15 +1092,17 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
   );
 }
 
-function DmEmptyState({ partnerId }: { partnerId: string | null }) {
+function DmEmptyState({ partnerId, isSelfDm }: { partnerId: string | null; isSelfDm: boolean }) {
   const partnerName = useDisplayName(partnerId ?? "");
   const { t } = useTranslator();
-  const label = partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
+  const label = isSelfDm ? t("sidebar.selfDirectMessage") : partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
       <Avatar name={label} kind="human" size={40} />
       <h2 className="text-lg font-semibold text-foreground">{label}</h2>
-      <p className="max-w-md text-sm text-secondary">{t("messageList.dmStart", { name: label })}</p>
+      <p className="max-w-md text-sm text-secondary">
+        {isSelfDm ? t("messageList.selfDmStart") : t("messageList.dmStart", { name: label })}
+      </p>
     </div>
   );
 }

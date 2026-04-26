@@ -5,12 +5,6 @@
  * Cmd-K is for actions and navigation, the top bar is for content
  * discovery (messages, files, channels, people).
  *
- * Triggering
- * ----------
- *   ⌘F / Ctrl-F          Focuses the bar from anywhere and opens the
- *                        result panel (we capture the event so it
- *                        wins over the browser's "find on page").
- *
  * Filter chips (parsed inline)
  * ----------------------------
  *   in:#general          Restrict to a channel (also accepts the slug
@@ -176,22 +170,6 @@ export function TopBar() {
       inputRef.current?.setSelectionRange(len, len);
     });
   }, [seedQuery, setSeedQuery]);
-
-  // ⌘F / Ctrl-F focuses the bar and opens the panel. We listen in the
-  // capture phase so we beat the browser's native "find on page".
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        e.stopPropagation();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-        setOpen(true);
-      }
-    }
-    window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, []);
 
   // Close the dropdown when the user clicks outside.
   useEffect(() => {

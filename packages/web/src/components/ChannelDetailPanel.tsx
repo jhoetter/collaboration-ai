@@ -65,9 +65,12 @@ export function ChannelDetailPanel({
   onClose,
 }: ChannelDetailPanelProps) {
   const { t } = useTranslator();
+  const me = useAuth((s) => s.identity?.user_id ?? null);
   const [tab, setTab] = useState<DetailTab>(initialTab);
   const isDm = channel.type === "dm" || channel.type === "group_dm";
-  const title = isDm ? channel.name : `#${channel.name}`;
+  const isSelfDm =
+    channel.type === "dm" && !!me && members.length > 0 && members.every((member) => member.user_id === me);
+  const title = isSelfDm ? t("sidebar.selfDirectMessage") : isDm ? channel.name : `#${channel.name}`;
 
   return (
     <Modal onClose={onClose} title={title} size="lg" className="!max-w-3xl">
