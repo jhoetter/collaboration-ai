@@ -8,7 +8,7 @@
  */
 import { IconClose, IconDownload } from "@collabai/ui";
 import { useEffect } from "react";
-import { AttachmentViewer } from "@collabai/react-embeds";
+import { AttachmentViewer } from "../lib/AttachmentViewer";
 
 export interface AttachmentLightboxProps {
   url: string;

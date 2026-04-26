@@ -20,7 +20,7 @@ import { ensurePdfjsWorker } from "../lib/pdfjs.ts";
 import type { Attachment } from "../state/sync.ts";
 import { FileTypeIcon } from "./FileTypeIcon.tsx";
 import { AttachmentLightbox } from "./AttachmentLightbox.tsx";
-import { attachmentKindFor } from "@collabai/react-embeds";
+import { attachmentKindFor } from "../lib/AttachmentViewer";
 
 export interface AttachmentCardProps {
   attachment: Attachment;

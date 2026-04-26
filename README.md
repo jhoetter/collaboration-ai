@@ -40,7 +40,7 @@ collaboration-ai/
   packages/
     design-tokens/    # @collabai/design-tokens (cloned from office-ai)
     ui/               # @collabai/ui — shared React primitives
-    react-embeds/     # @collabai/react-embeds — embeddable surfaces
+    web/              # @collabai/web — standalone dev-harness UI
   cli/
     collabai/         # Python Typer CLI: `collab-agent`
   spec/               # phase-by-phase specs (architecture / events / sync / chat / agent / web)
@@ -168,11 +168,22 @@ See [`spec/shared/architecture.md`](spec/shared/architecture.md) for the full br
 
 ## Integration with hof-os
 
-Per [`docs/integration-with-hof-os.md`](docs/integration-with-hof-os.md), each push to `main` produces:
+After the **Approach C cutover** (April 2026), the hof-os chat surface
+is implemented natively as a first-class hof-components module
+([`hof-components/modules/collabai`](https://github.com/jhoetter/hof-os/tree/main/packages/hof-components/modules/collabai)).
+This repo is the **backend service** for that UI: the hof-engine app
+under `app/` exposes the `@function` API + `/ws/events` stream that
+hof-os' `/api/chat/*` proxy forwards to with a single `hof_token`
+Bearer.
 
-- `collabai-app:X.Y.Z` Docker image (the deployable backend + UI bundle)
+Each push to `main` therefore produces:
+
+- `collabai-app:X.Y.Z` Docker image (the backend deployable)
 - `collabai-agent-X.Y.Z.tgz` self-contained Python+CLI bundle for the hof-os sandbox image
-- `collabai-react-embeds-X.Y.Z.tgz` browser package with `<ChatPanel />`, `<ChannelView />`, `<AgentInbox />`
-- A PR against `hof-os` updating `infra/collabai.lock.json`
 
-This mirrors the `office-ai` integration pattern. See `hof-os/docs/officeai-integration.md` for the original blueprint.
+The previous `collabai-react-embeds-X.Y.Z.tgz` browser package and
+its hof-os `infra/collabai.lock.json` pin were retired alongside the
+embed React surface; the chat UI now ships from hof-os directly. The
+standalone `packages/web` Vite app remains as a developer harness so
+you can iterate on backend behaviour against a real React surface in
+isolation.

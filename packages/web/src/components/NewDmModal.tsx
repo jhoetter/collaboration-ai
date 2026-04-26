@@ -31,10 +31,14 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Self stays in the candidate list so the user can open a "notes
+  // to self" channel — backend's `dm:open` materialises a single-
+  // member DM when participant_ids == [actor_id]. The picker shows
+  // "(Notizen)" beside the user's name so they don't think it's a
+  // duplicate of themselves in the directory.
   const candidates = useMemo(
     () =>
       Object.values(usersById)
-        .filter((u) => u.user_id !== me)
         .filter(
           (u) =>
             !query ||
@@ -42,7 +46,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
             u.user_id.toLowerCase().includes(query.toLowerCase())
         )
         .slice(0, 50),
-    [usersById, me, query]
+    [usersById, query]
   );
 
   function toggle(id: string) {
@@ -120,21 +124,29 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
           {candidates.length === 0 ? (
             <li className="p-3 text-xs text-tertiary">{t("common.noMatches")}</li>
           ) : (
-            candidates.map((u) => (
-              <li key={u.user_id}>
-                <button
-                  type="button"
-                  onClick={() => toggle(u.user_id)}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors duration-150 ${
-                    picked.has(u.user_id) ? "bg-hover" : "hover:bg-hover"
-                  }`}
-                >
-                  <Avatar name={u.display_name} kind="human" size={24} />
-                  <span className="flex-1 truncate text-foreground">{u.display_name}</span>
-                  <span className="text-xs text-tertiary">{u.user_id}</span>
-                </button>
-              </li>
-            ))
+            candidates.map((u) => {
+              const isSelf = u.user_id === me;
+              return (
+                <li key={u.user_id}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(u.user_id)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors duration-150 ${
+                      picked.has(u.user_id) ? "bg-hover" : "hover:bg-hover"
+                    }`}
+                  >
+                    <Avatar name={u.display_name} kind="human" size={24} />
+                    <span className="flex-1 truncate text-foreground">
+                      {u.display_name}
+                      {isSelf ? (
+                        <span className="ml-1 text-xs text-tertiary">({t("dm.notesToSelf")})</span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs text-tertiary">{u.user_id}</span>
+                  </button>
+                </li>
+              );
+            })
           )}
         </ul>
         {error && <p className="text-xs text-destructive">{error}</p>}

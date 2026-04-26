@@ -176,7 +176,8 @@
     "openGroup": "Open group chat",
     "pickAtLeastOne": "Pick at least one person.",
     "couldNotOpen": "Could not open DM.",
-    "couldNotResolve": "Could not resolve DM channel."
+    "couldNotResolve": "Could not resolve DM channel.",
+    "notesToSelf": "Notes"
   },
   "channelCreate": {
     "title": "Create a channel",

@@ -1,12 +1,13 @@
-// Single-source attachment viewer for the @collabai/react-embeds
-// surface. Routes PDFs and OOXML (docx/xlsx/pptx) through
+// Single-source attachment viewer for the standalone collaboration-ai
+// dev-harness UI. Routes PDFs and OOXML (docx/xlsx/pptx) through
 // @officeai/react-editors so the same renderer is used here as in
 // hof-os' /edit-asset and mail-ai attachments. Falls back to a plain
 // download link for unsupported MIME types.
 //
-// @officeai/react-editors is an OPTIONAL peer dep — the embed can be
-// dropped into a host that hasn't installed the editors and the
-// viewer simply degrades to "download" affordances.
+// Inlined from the deleted @collabai/react-embeds package after the
+// hof-os Approach C cutover (sister-app UIs now ship natively from
+// hof-components/modules/collabai). Kept here so the standalone web
+// app keeps building.
 
 import { lazy, Suspense } from "react";
 
@@ -51,11 +52,21 @@ export type AttachmentKind = "pdf" | "docx" | "xlsx" | "pptx" | "other";
 export function attachmentKindFor(mime: string, filename?: string): AttachmentKind {
   const ext = (filename ?? "").toLowerCase().split(".").pop() ?? "";
   if (mime === "application/pdf" || ext === "pdf") return "pdf";
-  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || ext === "docx")
+  if (
+    mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    ext === "docx"
+  )
     return "docx";
-  if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || ext === "xlsx")
+  if (
+    mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    ext === "xlsx"
+  )
     return "xlsx";
-  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || ext === "pptx")
+  if (
+    mime ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    ext === "pptx"
+  )
     return "pptx";
   return "other";
 }

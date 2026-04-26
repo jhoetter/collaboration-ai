@@ -176,7 +176,8 @@
     "openGroup": "Gruppen-Chat öffnen",
     "pickAtLeastOne": "Wähle mindestens eine Person.",
     "couldNotOpen": "DM konnte nicht geöffnet werden.",
-    "couldNotResolve": "DM-Kanal konnte nicht aufgelöst werden."
+    "couldNotResolve": "DM-Kanal konnte nicht aufgelöst werden.",
+    "notesToSelf": "Notizen"
   },
   "channelCreate": {
     "title": "Kanal erstellen",

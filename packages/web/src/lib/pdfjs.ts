@@ -17,14 +17,10 @@
  *
  *   The `?url` suffix is the bundler-native way to ship the worker as
  *   a static asset that resolves to a fetchable URL at runtime. Vite
- *   handles it natively in `@collabai/web`'s standalone build. The
- *   esbuild bundle for `@collabai/react-embeds` (which transitively
- *   inlines this file via `ThreadPane`) registers a small
- *   `urlImportPlugin` in its `build.mjs` that mirrors the same
- *   semantics — emitting the worker as a sibling asset of each chunk
- *   and resolving the URL against `import.meta.url` at runtime. That
- *   keeps the embed offline-capable: no CDN fallback, no host-side
- *   global override required.
+ *   handles it natively in `@collabai/web`'s standalone build (the
+ *   only consumer remaining after the hof-os Approach C cutover —
+ *   the previous `@collabai/react-embeds` esbuild path was deleted
+ *   alongside the package).
  */
 import type * as pdfjsType from "pdfjs-dist";
 

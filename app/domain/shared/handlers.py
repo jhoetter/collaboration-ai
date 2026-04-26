@@ -818,12 +818,23 @@ def handle_agent_edit_and_approve(cmd: Command, state: ProjectedState) -> list[E
 
 def handle_dm_open(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
     _require_workspace_membership(cmd, state)
-    participants = list(cmd.payload.get("participant_ids") or [])
-    if cmd.actor_id not in participants:
-        participants.append(cmd.actor_id)
-    sorted_participants = sorted(set(participants))
-    if len(sorted_participants) < 2:
-        raise CommandRejected("invalid_payload", "DM requires at least 2 participants")
+    requested = list(cmd.payload.get("participant_ids") or [])
+    # "Notes to self" — the caller passes only their own user id (or
+    # nothing). We materialise this as a single-member DM channel so
+    # the UI can render it the same way as any other DM (sidebar row,
+    # composer, scheduled messages, search) without a special path.
+    is_notes_to_self = (
+        not requested
+        or set(requested) == {cmd.actor_id}
+    )
+    if is_notes_to_self:
+        sorted_participants = [cmd.actor_id]
+    else:
+        if cmd.actor_id not in requested:
+            requested.append(cmd.actor_id)
+        sorted_participants = sorted(set(requested))
+        if len(sorted_participants) < 2:
+            raise CommandRejected("invalid_payload", "DM requires at least 2 participants")
 
     workspace_members = state.workspace_members.get(cmd.workspace_id, {})
     for uid in sorted_participants:
@@ -853,6 +864,8 @@ def handle_dm_open(cmd: Command, state: ProjectedState) -> list[EventEnvelope]:
     # 1:1 DMs are `dm`; everything bigger (the user + 2+ others) is a
     # `group_dm` so the UI renders an avatar cluster + member name list
     # instead of pretending to be a 1:1 conversation with the first peer.
+    # Notes-to-self uses `dm` too so the picker / row UI just works
+    # (one participant, the user themselves).
     channel_type = "group_dm" if len(sorted_participants) > 2 else "dm"
     out: list[EventEnvelope] = [
         EventEnvelope(
