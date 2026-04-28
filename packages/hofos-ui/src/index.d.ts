@@ -2,9 +2,11 @@ import type { ComponentType } from "react";
 
 export interface CollabAiRuntimeConfig {
   apiBase?: string;
+  wsBase?: string;
   workspaceId?: string;
   identity?: { id: string; name?: string; email?: string };
   getAuthToken?: () => Promise<string>;
+  hideUserMenuSubtitle?: boolean;
 }
 export interface CollabAiHostProps {
   runtime?: CollabAiRuntimeConfig;

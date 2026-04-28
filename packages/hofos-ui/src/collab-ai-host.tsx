@@ -28,6 +28,8 @@ export const collabAiRoutes: CollabAiRouteDefinition[] = [
 const queryClient = new QueryClient();
 
 export function CollabAiHost({ runtime }: CollabAiHostProps) {
+  hydrateRuntimeIdentity(runtime);
+
   const content = (
     <I18nProvider>
       <ThemeProvider>
@@ -47,6 +49,25 @@ export function CollabAiHost({ runtime }: CollabAiHostProps) {
   );
 
   return runtime ? <RuntimeConfigProvider runtime={runtime}>{content}</RuntimeConfigProvider> : content;
+}
+
+function hydrateRuntimeIdentity(runtime: RuntimeConfig | undefined) {
+  if (!runtime?.identity?.id || !runtime.workspaceId) return;
+  const current = useAuth.getState();
+  const displayName = runtime.identity.name || runtime.identity.email || runtime.identity.id;
+  if (
+    current.status === "ready" &&
+    current.identity?.user_id === runtime.identity.id &&
+    current.identity?.display_name === displayName &&
+    current.workspaceId === runtime.workspaceId
+  ) {
+    return;
+  }
+  current.hydrate({
+    identity: { user_id: runtime.identity.id, display_name: displayName },
+    workspaceId: runtime.workspaceId,
+    defaultChannelId: null,
+  });
 }
 
 function Bootstrap() {
