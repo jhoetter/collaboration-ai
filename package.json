@@ -2,7 +2,7 @@
   "name": "collaboration-ai",
   "version": "0.4.0",
   "private": true,
-  "description": "collaboration-ai — AI-native, event-sourced team chat platform. Backend on hof-engine (Python + FastAPI + Postgres + Redis), web UI + agent CLI built per spec/.",
+  "description": "collaboration-ai \u2014 AI-native, event-sourced team chat platform. Backend on hof-engine (Python + FastAPI + Postgres + Redis), web UI + agent CLI built per spec/.",
   "scripts": {
     "postinstall": "node scripts/ensure-officeai-react-editors.cjs",
     "dev": "turbo dev",
@@ -18,7 +18,8 @@
     "hofos:check": "node scripts/check-hofos-ui-contract.mjs",
     "hofos:harness": "HOFOS_MODE=1 pnpm --filter @collabai/web build && node scripts/check-hofos-harness-smoke.mjs",
     "export:hofos-ui": "node scripts/export-hofos-ui.mjs",
-    "verify": "pnpm format:check && pnpm lint:root && pnpm architecture && pnpm run hofos:check && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm format:check && pnpm lint:root && pnpm architecture && pnpm run hofos:check && pnpm typecheck && pnpm test && pnpm build",
+    "build:dist": "pnpm --filter @collabai/hofos-ui build:dist"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

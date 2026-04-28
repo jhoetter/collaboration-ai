@@ -187,3 +187,14 @@ embed React surface; the chat UI now ships from hof-os directly. The
 standalone `packages/web` Vite app remains as a developer harness so
 you can iterate on backend behaviour against a real React surface in
 isolation.
+
+## Consumed Via Tarball URL
+
+The hofOS host consumes the built UI package from GitHub Releases rather than copying source trampolines into customer cells. Each release attaches `collabai-ui-<version>.tgz`, installable with:
+
+```json
+"@collabai/hofos-ui": "https://github.com/jhoetter/collaboration-ai/releases/download/v0.1.0/collabai-ui-0.1.0.tgz"
+```
+
+For local iteration, run `pnpm run build:dist` or point hofOS' local-dev override at `packages/hofos-ui`.
+
