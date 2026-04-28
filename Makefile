@@ -115,7 +115,7 @@ kill-ports:
 	echo "kill-ports: still in use after retries:$$busy" >&2; \
 	exit 1
 
-dev: db-up kill-ports
+dev: db-up kill-ports seed
 	@echo "→ API   http://localhost:$(API_PORT)"
 	@echo "→ Web   http://localhost:$(WEB_PORT)"
 	$(PNPM) -w exec concurrently -k -n api,web -c blue,magenta \

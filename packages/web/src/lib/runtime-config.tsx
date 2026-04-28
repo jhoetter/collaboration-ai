@@ -12,7 +12,6 @@
  * with the React lifecycle so HMR / route remounts pick up changes.
  */
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
-import { HOF_COLLAB_WORKSPACE_ID } from "./workspace";
 
 export interface RuntimeIdentity {
   id: string;
@@ -74,8 +73,7 @@ export function runtimeWsBase(): string {
 export async function runtimeAuthHeaders(): Promise<Record<string, string>> {
   const get = _config.getAuthToken;
   if (!get) {
-    const token = readHofToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return {};
   }
   try {
     const token = await get();
@@ -127,36 +125,5 @@ function stripTrailingSlash(s: string): string {
 }
 
 function defaultRuntimeConfig(): RuntimeConfig {
-  if (isHofChatRoute()) {
-    return {
-      apiBase: "/api/chat",
-      wsBase: wsBase("/api/chat"),
-      workspaceId: HOF_COLLAB_WORKSPACE_ID,
-      getAuthToken: async () => readHofToken() ?? "",
-    };
-  }
   return DEFAULT;
-}
-
-function isHofChatRoute(): boolean {
-  // Fallback only: the native route should provide RuntimeConfig.
-  // This keeps direct page refreshes from leaking standalone URLs if
-  // the provider is not mounted yet.
-  if (typeof window === "undefined") return false;
-  return window.location.pathname === "/chat" || window.location.pathname.startsWith("/chat/");
-}
-
-function readHofToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem("hof_token");
-  } catch {
-    return null;
-  }
-}
-
-function wsBase(path: string): string {
-  if (typeof window === "undefined") return path;
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${window.location.host}${path}`;
 }
