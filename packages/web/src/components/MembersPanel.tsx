@@ -23,10 +23,11 @@ import {
 } from "@collabai/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useDialogs } from "../lib/dialogs.tsx";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useWorkspaceHomeHref } from "../lib/route-prefix.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type PresenceStatus } from "../state/sync.ts";
 import { useToasts } from "../state/toasts.ts";
@@ -42,7 +43,9 @@ interface MemberRow {
 export function MembersPanel({ channelId }: { channelId: string }) {
   const open = useUi((s) => s.membersPanelOpen);
   const setOpen = useUi((s) => s.setMembersPanelOpen);
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts — `/chat` in embedded
+  // hof-os mode, `/w/<wsid>` standalone, `/` only as a last resort.
+  const homeHref = useWorkspaceHomeHref();
   const navigate = useNavigate();
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const channel = useSync((s) => s.channels[channelId]);
@@ -119,7 +122,7 @@ export function MembersPanel({ channelId }: { channelId: string }) {
     try {
       await callFunction("channel:leave", { channel_id: channelId });
       setOpen(false);
-      navigate(params.workspaceId ? `/w/${params.workspaceId}` : "/");
+      navigate(homeHref);
     } catch (err) {
       console.error("channel:leave", err);
     }

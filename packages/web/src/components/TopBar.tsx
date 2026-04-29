@@ -26,9 +26,10 @@
  */
 import { Avatar, ChannelIcon, IconFile, IconHash, IconMenu, IconSearch } from "@collabai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useSync } from "../state/sync.ts";
 import { useUi } from "../state/ui.ts";
 import { useUsers } from "../state/users.ts";
@@ -137,7 +138,8 @@ interface FlatRow {
 export function TopBar() {
   const { t } = useTranslator();
   const navigate = useNavigate();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -259,20 +261,20 @@ export function TopBar() {
 
   const navigateToMessage = useCallback(
     (channelId: string, messageId: string) => {
-      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}#message-${messageId}`);
+      navigate(`${routePrefix}/c/${channelId}#message-${messageId}`);
       setOpen(false);
       setRecents(rememberRecent(query));
     },
-    [navigate, params.workspaceId, query]
+    [navigate, routePrefix, query]
   );
 
   const navigateToChannel = useCallback(
     (channelId: string) => {
-      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}`);
+      navigate(`${routePrefix}/c/${channelId}`);
       setOpen(false);
       setRecents(rememberRecent(query));
     },
-    [navigate, params.workspaceId, query]
+    [navigate, routePrefix, query]
   );
 
   const openDmWith = useCallback(
@@ -284,7 +286,7 @@ export function TopBar() {
         }>("dm:open", { participant_ids: [userId] });
         const room = res.dm_channel_id ?? res.events[0]?.room_id;
         if (room) {
-          navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${room}`);
+          navigate(`${routePrefix}/c/${room}`);
           setOpen(false);
           setRecents(rememberRecent(query));
         }
@@ -292,7 +294,7 @@ export function TopBar() {
         console.error(err);
       }
     },
-    [navigate, params.workspaceId, query]
+    [navigate, routePrefix, query]
   );
 
   // Build a single flat row list so the keyboard cursor and the

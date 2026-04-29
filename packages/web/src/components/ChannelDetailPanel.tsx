@@ -17,11 +17,12 @@
 import { Avatar, Button, IconDownload, IconExternal, IconPin, Modal } from "@collabai/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
 import { useDialogs } from "../lib/dialogs.tsx";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment, type Channel } from "../state/sync.ts";
 import { FileTypeIcon } from "./FileTypeIcon.tsx";
@@ -385,7 +386,8 @@ async function downloadAttachment(attachment: Attachment) {
 function PinnedTab({ channelId, onJump }: { channelId: string; onJump: () => void }) {
   const { t } = useTranslator();
   const navigate = useNavigate();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const { data = [], isLoading } = useQuery({
     queryKey: ["channel-pinned", channelId],
     queryFn: () => callFunction<PinnedRow[]>("chat:list-pinned", { channel_id: channelId }),
@@ -401,7 +403,7 @@ function PinnedTab({ channelId, onJump }: { channelId: string; onJump: () => voi
   }
 
   function jump(messageId: string) {
-    navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}#${messageId}`);
+    navigate(`${routePrefix}/c/${channelId}#${messageId}`);
     onJump();
   }
 

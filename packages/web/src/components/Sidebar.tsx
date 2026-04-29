@@ -35,6 +35,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Channel, type PresenceStatus } from "../state/sync.ts";
 import { useUi, type SectionId, type SidebarPanelId } from "../state/ui.ts";
@@ -137,8 +138,15 @@ export function Sidebar({ showCloseButton = true }: { showCloseButton?: boolean 
   }, [messageById]);
 
   const totalUnreadActivity = mentionRows.length;
+  // Use the route-prefix helper so embedded hof-os mounts (where
+  // ``params.workspaceId`` is undefined because the URL is `/chat`,
+  // not `/w/:workspaceId/...`) generate `/chat/c/<id>` rather than
+  // bare `/c/<id>`. The latter slips through CollabAi's outer router
+  // (which only knows `/`, `/w/:workspaceId/*`, and `/chat/*`) and
+  // renders blank below the host's persistent chat shell.
+  const routePrefix = useChannelRoutePrefix();
   const channelHref = (channelId: string, suffix = "") =>
-    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}${suffix}`;
+    `${routePrefix}/c/${channelId}${suffix}`;
 
   return (
     <aside className="flex h-full w-full flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface p-2">

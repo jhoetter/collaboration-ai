@@ -25,10 +25,11 @@ import {
   IconSmile,
 } from "@collabai/ui";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { useDisplayName } from "../hooks/useDisplayName.ts";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync, type Attachment, type Message, type NotificationRow } from "../state/sync.ts";
 import { useUi, type SidebarPanelId } from "../state/ui.ts";
@@ -137,7 +138,8 @@ function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: strin
 
 function ActivityPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslator();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const navigate = useNavigate();
   const notifications = useSync((s) => s.notifications);
   const channels = useSync((s) => s.channels);
@@ -156,11 +158,11 @@ function ActivityPanel({ onClose }: { onClose: () => void }) {
       }
       if (n.channel_id) {
         const anchor = n.target_event_id ? `#message-${n.target_event_id}` : "";
-        navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${n.channel_id}${anchor}`);
+        navigate(`${routePrefix}/c/${n.channel_id}${anchor}`);
         onClose();
       }
     },
-    [navigate, onClose, params.workspaceId, setNotificationRead]
+    [navigate, onClose, routePrefix, setNotificationRead]
   );
 
   return (
@@ -280,7 +282,8 @@ function labelForKind(kind: string, t: (k: string) => string): string {
 
 function LaterPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslator();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const navigate = useNavigate();
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const messageById = useSync((s) => s.messageById);
@@ -321,9 +324,7 @@ function LaterPanel({ onClose }: { onClose: () => void }) {
                 message={m}
                 channelName={channels[m.channel_id]?.name ?? m.channel_id}
                 onJump={() => {
-                  navigate(
-                    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${m.channel_id}#message-${m.id}`
-                  );
+                  navigate(`${routePrefix}/c/${m.channel_id}#message-${m.id}`);
                   onClose();
                 }}
               />
@@ -385,7 +386,8 @@ interface FileEntry {
 
 function FilesPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslator();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const navigate = useNavigate();
   const messageById = useSync((s) => s.messageById);
   const channels = useSync((s) => s.channels);
@@ -432,9 +434,7 @@ function FilesPanel({ onClose }: { onClose: () => void }) {
                 entry={e}
                 channelName={channels[e.channelId]?.name ?? e.channelId}
                 onJump={() => {
-                  navigate(
-                    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${e.channelId}#message-${e.messageId}`
-                  );
+                  navigate(`${routePrefix}/c/${e.channelId}#message-${e.messageId}`);
                   onClose();
                 }}
               />

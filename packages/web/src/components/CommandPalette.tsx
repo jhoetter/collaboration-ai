@@ -17,10 +17,11 @@
  */
 import { Avatar } from "@collabai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
 import { useI18n, useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useSync, type PresenceStatus } from "../state/sync.ts";
 import { useUi } from "../state/ui.ts";
 import { useUsers } from "../state/users.ts";
@@ -62,7 +63,8 @@ export function CommandPalette() {
   const { t } = useTranslator();
   const { locale, setLocale } = useI18n();
   const navigate = useNavigate();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
 
   const channelMap = useSync((s) => s.channels);
   const usersById = useUsers((s) => s.byId);
@@ -109,9 +111,8 @@ export function CommandPalette() {
 
   // ── Build items ──────────────────────────────────────────────────
   const channelPath = useCallback(
-    (channelId: string, suffix = "") =>
-      `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${channelId}${suffix}`,
-    [params.workspaceId]
+    (channelId: string, suffix = "") => `${routePrefix}/c/${channelId}${suffix}`,
+    [routePrefix]
   );
 
   const openDmWith = useCallback(

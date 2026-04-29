@@ -10,9 +10,10 @@
  */
 import { Toast, ToastViewport } from "@collabai/ui";
 import { useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { useTranslator } from "../lib/i18n/index.ts";
 import { callFunction } from "../lib/api.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useSync, type NotificationRow } from "../state/sync.ts";
 import { useToasts } from "../state/toasts.ts";
 
@@ -21,7 +22,8 @@ export function ToastHost() {
   const dismiss = useToasts((s) => s.dismiss);
   const push = useToasts((s) => s.push);
   const setRead = useSync((s) => s.setNotificationRead);
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const navigate = useNavigate();
   const { t } = useTranslator();
   const seen = useRef<Set<string>>(new Set());
@@ -43,9 +45,7 @@ export function ToastHost() {
                 label: t("toasts.jump"),
                 onClick: () => {
                   const anchor = n.target_event_id ? `#message-${n.target_event_id}` : "";
-                  navigate(
-                    `${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${n.channel_id}${anchor}`
-                  );
+                  navigate(`${routePrefix}/c/${n.channel_id}${anchor}`);
                   void callFunction("notifications:mark-read", {
                     notification_id: n.id,
                   }).catch(() => undefined);
@@ -57,7 +57,7 @@ export function ToastHost() {
       }
     });
     return unsub;
-  }, [push, navigate, params.workspaceId, setRead, t]);
+  }, [push, navigate, routePrefix, setRead, t]);
 
   return (
     <ToastViewport>

@@ -7,9 +7,10 @@
  */
 import { Avatar, Button, Modal } from "@collabai/ui";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 import { useAuth } from "../state/auth.ts";
 import { useUsers } from "../state/users.ts";
 
@@ -21,8 +22,9 @@ interface DmOpenResponse {
 }
 
 export function NewDmModal({ onClose }: { onClose: () => void }) {
-  const params = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
+  // See packages/web/src/lib/route-prefix.ts.
+  const routePrefix = useChannelRoutePrefix();
   const me = useAuth((s) => s.identity?.user_id ?? null);
   const usersById = useUsers((s) => s.byId);
   const { t } = useTranslator();
@@ -79,7 +81,7 @@ export function NewDmModal({ onClose }: { onClose: () => void }) {
         return;
       }
       onClose();
-      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${newId}`);
+      navigate(`${routePrefix}/c/${newId}`);
     } catch (err) {
       setError(String(err));
     } finally {

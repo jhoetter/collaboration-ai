@@ -8,9 +8,10 @@
  */
 import { Button, Modal } from "@collabai/ui";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useChannelRoutePrefix } from "../lib/route-prefix.ts";
 
 interface CreateChannelResponse {
   status: string;
@@ -19,8 +20,10 @@ interface CreateChannelResponse {
 }
 
 export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
-  const params = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
+  // See packages/web/src/lib/route-prefix.ts — emits `/chat/c/<id>` in
+  // the embedded hof-os mount and `/w/<wsid>/c/<id>` standalone.
+  const routePrefix = useChannelRoutePrefix();
   const { t } = useTranslator();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -52,7 +55,7 @@ export function ChannelCreateModal({ onClose }: { onClose: () => void }) {
       }
       const newId = res.events[0].room_id;
       onClose();
-      navigate(`${params.workspaceId ? `/w/${params.workspaceId}` : ""}/c/${newId}`);
+      navigate(`${routePrefix}/c/${newId}`);
     } catch (err) {
       setError(String(err));
     } finally {

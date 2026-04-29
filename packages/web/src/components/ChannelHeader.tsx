@@ -24,10 +24,11 @@ import {
 } from "@collabai/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { useDialogs } from "../lib/dialogs.tsx";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { useWorkspaceHomeHref } from "../lib/route-prefix.ts";
 import { useAuth } from "../state/auth.ts";
 import { type Channel, type NotificationPref, useSync, type PresenceStatus } from "../state/sync.ts";
 import { useUi } from "../state/ui.ts";
@@ -53,7 +54,8 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
   const [detailTab, setDetailTab] = useState<DetailTab | null>(null);
   const [showHuddle, setShowHuddle] = useState(false);
   const navigate = useNavigate();
-  const params = useParams<{ workspaceId: string }>();
+  // See packages/web/src/lib/route-prefix.ts.
+  const homeHref = useWorkspaceHomeHref();
   const qc = useQueryClient();
   const pref: NotificationPref = (me ? notificationPrefByChannel[me]?.[channelId] : undefined) ?? "all";
 
@@ -100,7 +102,7 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
     try {
       await callFunction("channel:leave", { channel_id: channelId });
       await qc.invalidateQueries({ queryKey: ["channel-members", channelId] });
-      navigate(params.workspaceId ? `/w/${params.workspaceId}` : "/");
+      navigate(homeHref);
     } catch (err) {
       console.error("channel:leave", err);
     }
