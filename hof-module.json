@@ -1,0 +1,62 @@
+{
+  "$schema": "https://hofos.dev/schemas/hof-module-v1.json",
+  "name": "collabai",
+  "displayName": "CollaborationAI",
+  "version": "0.1.0",
+  "contract_version": "1.0.0",
+  "description": "Standalone CollaborationAI subapp stub for hofOS cells.",
+  "sidecars": [
+    {
+      "name": "collabai",
+      "image": "ghcr.io/jhoetter/collaboration-ai:0.1.0",
+      "ports": [
+        {
+          "container": 8300,
+          "public": 4005
+        }
+      ],
+      "auth": {
+        "mode": "inherit"
+      },
+      "healthcheck": {
+        "path": "/health"
+      }
+    }
+  ],
+  "data": {
+    "schema_name": "collabai",
+    "s3_prefix": "tenants/${tenant}/chat/",
+    "redis_prefix": "collabai:"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "label": "CollaborationAI",
+        "icon": "messages-square",
+        "entries": [
+          {
+            "label": "Channels",
+            "href": "/channels"
+          },
+          {
+            "label": "Direct messages",
+            "href": "/dm"
+          }
+        ]
+      }
+    ]
+  },
+  "design": {
+    "consume": true
+  },
+  "agent": {
+    "subagent": {
+      "enabled": false,
+      "system_prompt_path": "agent/system-prompt.md",
+      "tool_allowlist": [
+        "chat-agent status"
+      ],
+      "canvas_route": "/agent-sessions/collabai/<session_id>"
+    }
+  }
+}

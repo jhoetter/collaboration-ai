@@ -1,0 +1,15 @@
+{
+  "$schema": "https://hofos.dev/schemas/tools-v1.json",
+  "subapp": "collabai",
+  "contract_version": "1.0.0",
+  "cli_verbs": [
+    {
+      "name": "status",
+      "command": "chat-agent status",
+      "summary": "Return CollaborationAI status.",
+      "args": []
+    }
+  ],
+  "function_wrappers": [],
+  "subagent": null
+}
