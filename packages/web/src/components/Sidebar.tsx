@@ -145,8 +145,7 @@ export function Sidebar({ showCloseButton = true }: { showCloseButton?: boolean 
   // (which only knows `/`, `/w/:workspaceId/*`, and `/chat/*`) and
   // renders blank below the host's persistent chat shell.
   const routePrefix = useChannelRoutePrefix();
-  const channelHref = (channelId: string, suffix = "") =>
-    `${routePrefix}/c/${channelId}${suffix}`;
+  const channelHref = (channelId: string, suffix = "") => `${routePrefix}/c/${channelId}${suffix}`;
 
   return (
     <aside className="flex h-full w-full flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface p-2">
@@ -551,7 +550,9 @@ function DmRowSingle({
   const { t } = useTranslator();
   const partnerName = useDisplayName(partnerId ?? "");
   const status = partnerId ? mapPresence(presence[partnerId]) : "offline";
-  const label = isSelfDm ? t("sidebar.selfDirectMessage") : partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
+  const label = isSelfDm
+    ? t("sidebar.selfDirectMessage")
+    : partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
   return (
     <Link
       to={to}

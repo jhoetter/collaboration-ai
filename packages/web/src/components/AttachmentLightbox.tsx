@@ -19,10 +19,6 @@ export interface AttachmentLightboxProps {
 }
 
 export function AttachmentLightbox({ url, name, mime, onClose }: AttachmentLightboxProps) {
-  if (mime === "application/pdf" || name.toLowerCase().endsWith(".pdf")) {
-    return <PdfViewer url={url} name={name} onClose={onClose} />;
-  }
-
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -30,6 +26,10 @@ export function AttachmentLightbox({ url, name, mime, onClose }: AttachmentLight
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  if (mime === "application/pdf" || name.toLowerCase().endsWith(".pdf")) {
+    return <PdfViewer url={url} name={name} onClose={onClose} />;
+  }
 
   return (
     <div

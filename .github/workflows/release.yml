@@ -139,7 +139,7 @@ jobs:
             --notes "Auto-generated release. See CHANGELOG."
   notify-hof-os:
     name: Notify hof-os of new release
-    needs: [build-app-image, build-agent-tarball, build-react-embeds-tarball, publish-release]
+    needs: [build-app-image, build-agent-tarball, build-hofos-ui-tarball, publish-release]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # Triggers on every successful release. The previous design pushed

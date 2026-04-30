@@ -56,10 +56,7 @@ export function useChannelRoutePrefix(): string {
   const params = useParams<{ workspaceId?: string }>();
   const location = useLocation();
   if (params.workspaceId) return `/w/${params.workspaceId}`;
-  if (
-    location.pathname === EMBEDDED_HOST_ROOT ||
-    location.pathname.startsWith(`${EMBEDDED_HOST_ROOT}/`)
-  ) {
+  if (location.pathname === EMBEDDED_HOST_ROOT || location.pathname.startsWith(`${EMBEDDED_HOST_ROOT}/`)) {
     return EMBEDDED_HOST_ROOT;
   }
   return "";
@@ -75,10 +72,7 @@ export function useWorkspaceHomeHref(): string {
   const params = useParams<{ workspaceId?: string }>();
   const location = useLocation();
   if (params.workspaceId) return `/w/${params.workspaceId}`;
-  if (
-    location.pathname === EMBEDDED_HOST_ROOT ||
-    location.pathname.startsWith(`${EMBEDDED_HOST_ROOT}/`)
-  ) {
+  if (location.pathname === EMBEDDED_HOST_ROOT || location.pathname.startsWith(`${EMBEDDED_HOST_ROOT}/`)) {
     return EMBEDDED_HOST_ROOT;
   }
   return "/";

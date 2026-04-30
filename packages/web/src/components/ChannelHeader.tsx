@@ -78,7 +78,9 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
     !!me &&
     (members.length > 0
       ? members.every((m) => m.user_id === me)
-      : Array.isArray(channel?.members) && channel.members.length > 0 && channel.members.every((m) => m === me));
+      : Array.isArray(channel?.members) &&
+        channel.members.length > 0 &&
+        channel.members.every((m) => m === me));
   const selfDmLabel = selfMember?.display_name ?? identity?.display_name ?? t("sidebar.selfDirectMessage");
 
   async function startHuddle() {
@@ -146,7 +148,9 @@ export function ChannelHeader({ channelId, channel }: { channelId: string; chann
               </span>
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold text-foreground">{t("sidebar.selfDirectMessage")}</h1>
+              <h1 className="truncate text-sm font-semibold text-foreground">
+                {t("sidebar.selfDirectMessage")}
+              </h1>
               <p className="truncate text-xs text-tertiary">{t("channelHeader.selfDirectMessage")}</p>
             </div>
           </>

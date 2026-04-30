@@ -53,9 +53,7 @@
     "subagent": {
       "enabled": false,
       "system_prompt_path": "agent/system-prompt.md",
-      "tool_allowlist": [
-        "chat-agent status"
-      ],
+      "tool_allowlist": ["chat-agent status"],
       "canvas_route": "/agent-sessions/collabai/<session_id>"
     }
   }

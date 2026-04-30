@@ -31,6 +31,7 @@ const ALLOWED = {
   // not themselves consumed by other packages — list them here so the
   // guard recognises them rather than failing the verify chain.
   "@collabai/agent-cli": new Set(["@collabai/design-tokens", "@collabai/ui", "@collabai/react-embeds"]),
+  "@collabai/hofos-ui": new Set(["@collabai/design-tokens", "@collabai/ui"]),
   "@collabai/web": new Set(["@collabai/design-tokens", "@collabai/ui", "@collabai/react-embeds"]),
 };
 

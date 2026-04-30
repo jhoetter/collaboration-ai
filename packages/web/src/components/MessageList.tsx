@@ -1095,7 +1095,9 @@ function EmptyChannelState({ channelId }: { channelId: string }) {
 function DmEmptyState({ partnerId, isSelfDm }: { partnerId: string | null; isSelfDm: boolean }) {
   const partnerName = useDisplayName(partnerId ?? "");
   const { t } = useTranslator();
-  const label = isSelfDm ? t("sidebar.selfDirectMessage") : partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
+  const label = isSelfDm
+    ? t("sidebar.selfDirectMessage")
+    : partnerName || (partnerId ? partnerId : t("sidebar.directMessage"));
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
       <Avatar name={label} kind="human" size={40} />

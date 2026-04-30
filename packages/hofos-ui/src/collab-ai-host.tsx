@@ -89,8 +89,16 @@ function Bootstrap() {
   }, [navigate, status, workspaceId]);
 
   if (status === "error") {
-    return <main className="flex min-h-screen items-center justify-center bg-background p-6 text-sm text-destructive">{error}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background p-6 text-sm text-destructive">
+        {error}
+      </main>
+    );
   }
 
-  return <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">{t("common.joiningWorkspace")}</main>;
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+      {t("common.joiningWorkspace")}
+    </main>
+  );
 }
