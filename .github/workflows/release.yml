@@ -142,15 +142,9 @@ jobs:
     needs: [build-app-image, build-agent-tarball, build-hofos-ui-tarball, publish-release]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Triggers on every successful release. The previous design pushed
-    # straight to ``jhoetter/hof-os@main`` using a long-lived
-    # ``COLLABAI_SYNC_TOKEN`` PAT (``contents: write`` on the entire
-    # hof-os repo); the new design fires a single
-    # ``repository_dispatch`` event and lets hof-os' own
-    # ``sister-product-lock.yml`` workflow open a PR. The credential
-    # we ship here (``HOFOS_DISPATCH_TOKEN``) is a fine-grained PAT
-    # scoped to ``repository_dispatch: write`` on hof-os only, so a
-    # leak can't push code or read other repos.
+    # Triggers on every successful release. This fires a single
+    # repository_dispatch event and lets hof-os' own
+    # sister-product-lock workflow open a PR.
     if: needs.build-app-image.outputs.version != ''
     steps:
       - name: Dispatch lockfile bump to hof-os
@@ -161,21 +155,28 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "HOFOS_DISPATCH_TOKEN is not set; skipping hof-os dispatch."
+            exit 0
+          fi
           payload="$(jq -nc \
             --arg version "${NEW_VERSION}" \
             --arg tag "v${NEW_VERSION}" \
             --arg source_sha "${GIT_SHA}" \
             --arg image_ref "${IMAGE_REF}" \
             '{version: $version, tag: $tag, source_sha: $source_sha, image_ref: $image_ref}')"
+          request="$(jq -nc \
+            --arg event_type collabai-released \
+            --argjson client_payload "${payload}" \
+            '{event_type: $event_type, client_payload: $client_payload}')"
           # Three attempts with exponential backoff (3s, 9s, 27s).
           # GitHub's dispatch API is normally instant but flaky bursts
           # do happen during outages, and an unfired dispatch silently
           # leaves hof-os pinned to the previous version.
           for attempt in 1 2 3; do
             if gh api repos/jhoetter/hof-os/dispatches \
-              -X POST \
-              -f event_type=collabai-released \
-              --raw-field client_payload="${payload}"; then
+              --method POST \
+              --input - <<< "${request}"; then
               echo "Dispatched collabai-released v${NEW_VERSION} (attempt ${attempt})"
               exit 0
             fi
