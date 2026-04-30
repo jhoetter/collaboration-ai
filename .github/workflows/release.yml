@@ -97,7 +97,7 @@ jobs:
           test -f "packages/hofos-ui/dist/index.js" || (echo "missing packages/hofos-ui/dist/index.js" && exit 1)
           npm --prefix packages/hofos-ui version --no-git-tag-version --allow-same-version "${VERSION}"
           pnpm --dir packages/hofos-ui pack --pack-destination .
-          mv collabai-hofos-ui-*.tgz "/tmp/collabai-ui-${VERSION}.tgz"
+          mv packages/hofos-ui/collabai-hofos-ui-*.tgz "/tmp/collabai-ui-${VERSION}.tgz"
           ls -lh "/tmp/collabai-ui-${VERSION}.tgz"
       - uses: actions/upload-artifact@v4
         with:
