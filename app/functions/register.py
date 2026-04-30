@@ -78,11 +78,13 @@ def _install_sync_router_hook() -> None:
 
     def patched_mount(app, project_root, config):  # type: ignore[no-untyped-def]
         from domain.shared.runtime import get_session_factory
+        from domain.shared.static_web import mount_static_web
         from domain.sync.bridge import get_fanout
         from domain.sync.ws_gateway import build_router
 
         router = build_router(fanout=get_fanout(), session_factory=get_session_factory())
         app.include_router(router, tags=["realtime-collab"])
+        mount_static_web(app)
         return original_mount(app, project_root, config)
 
     _hof_server._mount_user_pages = patched_mount

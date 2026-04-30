@@ -41,15 +41,17 @@ class HofIdentity:
     display_name: str | None = None
 
 
-def _secret() -> bytes:
+def _secrets() -> list[bytes]:
     raw = (os.environ.get("HOF_SUBAPP_JWT_SECRET") or "").strip()
-    if not raw:
+    previous = (os.environ.get("HOF_SUBAPP_JWT_SECRET_PREVIOUS") or "").strip()
+    candidates = [secret for secret in (raw, previous) if secret]
+    if not candidates:
         if (os.environ.get("HOF_ENV") or "dev").lower() == "production":
             raise RuntimeError(
                 "HOF_SUBAPP_JWT_SECRET must be set in production",
             )
-        raw = _DEV_FALLBACK_SECRET
-    return raw.encode("utf-8")
+        candidates = [_DEV_FALLBACK_SECRET]
+    return [secret.encode("utf-8") for secret in candidates]
 
 
 def _b64url_decode(data: str) -> bytes:
@@ -67,9 +69,11 @@ def verify_hof_jwt(token: str, *, audience: str = DEFAULT_AUDIENCE) -> HofIdenti
         raise ValueError("malformed JWT")
     h, p, s = parts
     signing_input = f"{h}.{p}".encode("ascii")
-    expected = hmac.new(_secret(), signing_input, hashlib.sha256).digest()
     actual = _b64url_decode(s)
-    if not hmac.compare_digest(expected, actual):
+    if not any(
+        hmac.compare_digest(hmac.new(secret, signing_input, hashlib.sha256).digest(), actual)
+        for secret in _secrets()
+    ):
         raise ValueError("bad signature")
     claims_raw = json.loads(_b64url_decode(p))
     if not isinstance(claims_raw, dict):

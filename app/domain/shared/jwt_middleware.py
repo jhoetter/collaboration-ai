@@ -36,8 +36,10 @@ expiry) costs a single dict lookup per request.
 from __future__ import annotations
 
 import logging
+import os
 import time
-from urllib.parse import parse_qs
+from http.cookies import SimpleCookie
+from urllib.parse import parse_qs, urlencode
 
 from sqlalchemy import text
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -49,6 +51,9 @@ from .hof_jwt import HofIdentity, extract_bearer, verify_hof_jwt
 from .runtime import get_command_bus, open_session
 
 logger = logging.getLogger("collabai.jwt_middleware")
+HANDOFF_QUERY_PARAM = "__hof_jwt"
+SESSION_COOKIE = "hof_subapp_session"
+SESSION_TTL_SECONDS = 8 * 60 * 60
 
 
 class HofSubappJwtMiddleware:
@@ -70,6 +75,12 @@ class HofSubappJwtMiddleware:
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
+
+        if scope["type"] == "http":
+            handoff_token = self._extract_handoff_token(scope)
+            if handoff_token:
+                await self._handle_handoff(scope, send, handoff_token)
+                return
 
         token = self._extract_token(scope)
         if not token:
@@ -107,6 +118,46 @@ class HofSubappJwtMiddleware:
 
         await self.app(scope, receive, send)
 
+    def _extract_handoff_token(self, scope: Scope) -> str | None:
+        qs = scope.get("query_string", b"")
+        if not qs:
+            return None
+        params = parse_qs(qs.decode("latin-1", errors="ignore"))
+        vals = params.get(HANDOFF_QUERY_PARAM) or []
+        return vals[0] if vals else None
+
+    async def _handle_handoff(self, scope: Scope, send: Send, token: str) -> None:
+        cookie: str | None = None
+        try:
+            verify_hof_jwt(token, audience=self.audience)
+        except ValueError as err:
+            logger.debug("rejected hof JWT handoff: %s", err)
+        else:
+            secure = "; Secure" if (os.environ.get("HOF_ENV") or "dev").lower() == "production" else ""
+            cookie = (
+                f"{SESSION_COOKIE}={token}; HttpOnly; SameSite=Lax; Path=/; "
+                f"Max-Age={SESSION_TTL_SECONDS}{secure}"
+            )
+
+        headers: list[tuple[bytes, bytes]] = [(b"location", self._clean_handoff_path(scope).encode())]
+        if cookie:
+            headers.append((b"set-cookie", cookie.encode()))
+        await send({"type": "http.response.start", "status": 302, "headers": headers})
+        await send({"type": "http.response.body", "body": b""})
+
+    @staticmethod
+    def _clean_handoff_path(scope: Scope) -> str:
+        raw_qs = scope.get("query_string", b"").decode("latin-1", errors="ignore")
+        filtered = [
+            (key, value)
+            for key, values in parse_qs(raw_qs, keep_blank_values=True).items()
+            if key != HANDOFF_QUERY_PARAM
+            for value in values
+        ]
+        query = urlencode(filtered)
+        path = scope.get("path") or "/"
+        return f"{path}?{query}" if query else path
+
     @staticmethod
     def _extract_token(scope: Scope) -> str | None:
         # Authorization header — works for both http and websocket.
@@ -115,6 +166,13 @@ class HofSubappJwtMiddleware:
                 token = extract_bearer(value.decode("latin-1", errors="ignore"))
                 if token:
                     return token
+        for key, value in scope.get("headers", []):
+            if key == b"cookie":
+                cookie = SimpleCookie()
+                cookie.load(value.decode("latin-1", errors="ignore"))
+                morsel = cookie.get(SESSION_COOKIE)
+                if morsel and morsel.value:
+                    return morsel.value
         # WebSocket fallback: ?token=<jwt>. The browser cannot set
         # custom headers on `new WebSocket(...)`, so the upstream
         # client appends the JWT as a query param.

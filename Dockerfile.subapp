@@ -1,11 +1,50 @@
-# Structural WP-4 subapp Dockerfile stub for CollaborationAI.
-# Replace this with the product's production image build once the full
-# standalone-subdomain conversion is implemented.
-FROM node:20-bookworm-slim
+# Standalone subapp image for CollaborationAI: Vite SPA + hof-engine API.
+
+FROM node:20-bookworm-slim AS web-builder
+
+WORKDIR /workspace
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
+COPY infra ./infra
+COPY scripts ./scripts
+COPY packages ./packages
+RUN pnpm install --frozen-lockfile --prefer-offline
+RUN pnpm --filter @collabai/web build
+
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy \
+    HOF_SUBAPP_NAME=collabai \
+    HOF_SUBAPP_AUTH_MODE=inherit
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates git \
+ && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir uv
+
 WORKDIR /app
-COPY hof-module.json tools.json ./
+
+COPY app /app/
+# `--no-sources` ignores hof-engine's `[tool.uv.sources]` overrides that
+# point sibling deps (e.g. `llm-markdown`) at local checkouts only present
+# in the dev tree. Without it, uv tries to resolve them from `..` paths
+# that don't exist inside the image.
+RUN uv pip install --system --no-sources -e .
+COPY --from=web-builder /workspace/packages/web/dist /app/web
+
+# Subapp contract artifacts the OS shell reads at install time.
+COPY hof-module.json tools.json /app/
 COPY cli/chat-agent /usr/local/bin/chat-agent
 RUN chmod +x /usr/local/bin/chat-agent
-ENV HOF_SUBAPP_NAME=collabai HOF_SUBAPP_AUTH_MODE=inherit
+
 EXPOSE 8300
-CMD ["sh", "-c", "while true; do sleep 3600; done"]
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD curl -fsS http://localhost:8300/api/health || exit 1
+
+# hof-engine ships an idempotent migrate command; run it before uvicorn so
+# the schema is materialised on cold boot.
+CMD ["sh", "-c", "hof db migrate && exec uvicorn hof.api.server:create_app --factory --host 0.0.0.0 --port 8300"]
