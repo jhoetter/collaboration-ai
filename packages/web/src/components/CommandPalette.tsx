@@ -30,6 +30,14 @@ const RECENT_KEY = "collabai.palette.recent";
 const RECENT_LIMIT = 6;
 const SEARCH_DEBOUNCE_MS = 200;
 const SEARCH_MIN_CHARS = 2;
+const GLOBAL_APP_LINKS = [
+  { id: "os", label: "App", href: "http://localhost:3000/" },
+  { id: "hofos", label: "hofOS", href: "http://localhost:3600/customers" },
+  { id: "mailai", label: "Mail", href: "http://localhost:3010/inbox" },
+  { id: "collabai", label: "Chat", href: "http://localhost:8010/" },
+  { id: "driveai", label: "Drive", href: "http://localhost:3520/drive/home" },
+  { id: "pagesai", label: "Pages", href: "http://localhost:3399/pages" },
+] as const;
 
 type ItemKind = "action" | "channel" | "person" | "message";
 
@@ -91,7 +99,12 @@ export function CommandPalette() {
       }
     }
     window.addEventListener("keydown", onKey as EventListener, { capture: true });
-    return () => window.removeEventListener("keydown", onKey as EventListener, { capture: true });
+    const onOpenPalette = () => setOpen(true);
+    window.addEventListener("collabai:open-command-palette", onOpenPalette);
+    return () => {
+      window.removeEventListener("keydown", onKey as EventListener, { capture: true });
+      window.removeEventListener("collabai:open-command-palette", onOpenPalette);
+    };
   }, [open, close]);
 
   // ── focus + reset on open ────────────────────────────────────────
@@ -187,6 +200,16 @@ export function CommandPalette() {
           location.reload();
         },
       },
+      ...GLOBAL_APP_LINKS.map((app) => ({
+        id: `app:${app.id}`,
+        kind: "action" as const,
+        section: "Apps",
+        label: `Open ${app.label}`,
+        hint: "Switch app",
+        run: () => {
+          window.location.href = app.href;
+        },
+      })),
     ];
   }, [t, locale, setLocale, setCreateChannelOpen, setNewDmOpen]);
 

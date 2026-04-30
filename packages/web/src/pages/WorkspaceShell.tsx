@@ -17,6 +17,26 @@ import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
 import { ChannelPage } from "./ChannelPage.tsx";
 
+const HOF_SHELL_SIDEBAR_DEFAULT_WIDTH = 240;
+const HOF_SHELL_STORAGE_KEYS = {
+  sidebarWidth: "hof-shell-sidebar-width",
+  legacySidebarWidth: "hof-sidebar-width",
+} as const;
+
+function readSidebarWidth(): number {
+  try {
+    const raw =
+      localStorage.getItem(HOF_SHELL_STORAGE_KEYS.sidebarWidth) ??
+      localStorage.getItem(HOF_SHELL_STORAGE_KEYS.legacySidebarWidth);
+    const value = raw ? Number(raw) : NaN;
+    return Number.isFinite(value) && value >= 140 && value <= 480
+      ? value
+      : HOF_SHELL_SIDEBAR_DEFAULT_WIDTH;
+  } catch {
+    return HOF_SHELL_SIDEBAR_DEFAULT_WIDTH;
+  }
+}
+
 interface UnreadRow {
   channel_id: string;
   unread: number;
@@ -87,6 +107,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   const setSidebarOpen = useUi((s) => s.setSidebarOpen);
   const location = useLocation();
   const embedded = chrome === "content";
+  const sidebarWidth = readSidebarWidth();
 
   // Close the mobile drawer whenever the user navigates so tapping a
   // channel doesn't leave the sidebar covering the new pane.
@@ -143,11 +164,12 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
         <div
           className={
             embedded
-              ? "static z-auto w-64 shrink-0 translate-x-0 border-r border-border"
-              : `absolute inset-y-0 left-0 z-40 w-72 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
+              ? "static z-auto shrink-0 translate-x-0 border-r border-border"
+              : `absolute inset-y-0 left-0 z-40 w-[min(85vw,320px)] transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 ${
                   sidebarOpen ? "translate-x-0" : "-translate-x-full"
                 }`
           }
+          style={{ width: sidebarWidth }}
         >
           <Sidebar showCloseButton={!embedded} />
         </div>

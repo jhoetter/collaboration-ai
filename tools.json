@@ -8,6 +8,36 @@
       "command": "chat-agent status",
       "summary": "Return CollaborationAI status.",
       "args": []
+    },
+    {
+      "name": "channel list",
+      "command": "chat-agent channel list",
+      "summary": "List chat channels.",
+      "args": []
+    },
+    {
+      "name": "message post",
+      "command": "chat-agent message post",
+      "summary": "Post a message to a channel.",
+      "args": [
+        { "name": "channel", "type": "string", "required": true },
+        { "name": "text", "type": "string", "required": true }
+      ]
+    },
+    {
+      "name": "message search",
+      "command": "chat-agent message search",
+      "summary": "Search chat messages.",
+      "args": [{ "name": "query", "type": "string", "required": true }]
+    },
+    {
+      "name": "dm send",
+      "command": "chat-agent dm send",
+      "summary": "Send a direct message.",
+      "args": [
+        { "name": "to", "type": "string", "required": true },
+        { "name": "text", "type": "string", "required": true }
+      ]
     }
   ],
   "function_wrappers": [],

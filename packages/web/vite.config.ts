@@ -9,11 +9,19 @@ import { defineConfig, loadEnv } from "vite";
  * a deployment-time decision, not a runtime one. Light/dark within a
  * preset is a separate runtime toggle (see lib/theme/colorScheme.ts).
  */
-const DESIGN_SYSTEM_IDS = ["default", "conservative"] as const;
+const DESIGN_SYSTEM_IDS = ["default", "playful", "conservative"] as const;
 type DesignSystemId = (typeof DESIGN_SYSTEM_IDS)[number];
 
 function resolveDesignSystemId(env: Record<string, string>): DesignSystemId {
-  const raw = (env.VITE_DESIGN_SYSTEM ?? process.env.VITE_DESIGN_SYSTEM ?? "default").trim();
+  const raw = (
+    env.VITE_DESIGN_SYSTEM ??
+    env.DESIGN_SYSTEM ??
+    process.env.VITE_DESIGN_SYSTEM ??
+    process.env.DESIGN_SYSTEM ??
+    "default"
+  )
+    .trim()
+    .toLowerCase();
   if ((DESIGN_SYSTEM_IDS as readonly string[]).includes(raw)) {
     return raw as DesignSystemId;
   }

@@ -2,6 +2,9 @@
 # Builds the same standalone artifact as Dockerfile.subapp: Vite SPA + API.
 FROM node:20-bookworm-slim AS web-builder
 
+ARG DESIGN_SYSTEM=conservative
+ENV VITE_DESIGN_SYSTEM=${DESIGN_SYSTEM}
+
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
