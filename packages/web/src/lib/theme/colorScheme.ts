@@ -7,16 +7,30 @@
  * `@media (prefers-color-scheme)` rule inside the active preset wins.
  */
 
-export const COLOR_SCHEME_STORAGE_KEY = "collabai.theme";
+export const COLOR_SCHEME_STORAGE_KEY = "hof-color-scheme";
+const LEGACY_COLOR_SCHEME_STORAGE_KEY = "collabai.theme";
 
 export type ColorScheme = "light" | "dark" | "system";
 
 const VALID: ReadonlySet<string> = new Set(["light", "dark", "system"]);
 
+function readCookie(key: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${encodeURIComponent(key)}=`;
+  const entry = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return entry ? decodeURIComponent(entry.slice(prefix.length)) : null;
+}
+
 export function getStoredColorScheme(): ColorScheme {
   if (typeof window === "undefined") return "system";
   try {
-    const raw = window.localStorage.getItem(COLOR_SCHEME_STORAGE_KEY);
+    const raw =
+      readCookie(COLOR_SCHEME_STORAGE_KEY) ??
+      window.localStorage.getItem(COLOR_SCHEME_STORAGE_KEY) ??
+      window.localStorage.getItem(LEGACY_COLOR_SCHEME_STORAGE_KEY);
     if (raw && VALID.has(raw)) return raw as ColorScheme;
   } catch {
     /* localStorage may be disabled */
@@ -28,6 +42,7 @@ export function setStoredColorScheme(scheme: ColorScheme): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(COLOR_SCHEME_STORAGE_KEY, scheme);
+    window.localStorage.setItem(LEGACY_COLOR_SCHEME_STORAGE_KEY, scheme);
   } catch {
     /* localStorage may be disabled */
   }
@@ -35,6 +50,8 @@ export function setStoredColorScheme(scheme: ColorScheme): void {
 
 const LIGHT_CLASS = "collab-theme-light";
 const DARK_CLASS = "collab-theme-dark";
+const HOF_LIGHT_CLASS = "hof-theme-light";
+const HOF_DARK_CLASS = "hof-theme-dark";
 
 /**
  * Toggle the override class on `<html>`. `"system"` clears both so
@@ -44,9 +61,9 @@ const DARK_CLASS = "collab-theme-dark";
 export function applyColorScheme(scheme: ColorScheme): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.classList.remove(LIGHT_CLASS, DARK_CLASS);
-  if (scheme === "light") root.classList.add(LIGHT_CLASS);
-  else if (scheme === "dark") root.classList.add(DARK_CLASS);
+  root.classList.remove(LIGHT_CLASS, DARK_CLASS, HOF_LIGHT_CLASS, HOF_DARK_CLASS);
+  if (scheme === "light") root.classList.add(LIGHT_CLASS, HOF_LIGHT_CLASS);
+  else if (scheme === "dark") root.classList.add(DARK_CLASS, HOF_DARK_CLASS);
 }
 
 export function getEffectiveColorScheme(scheme: ColorScheme): "light" | "dark" {

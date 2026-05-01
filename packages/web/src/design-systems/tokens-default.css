@@ -88,7 +88,7 @@
  * Dark via system preference (no class set).
  */
 @media (prefers-color-scheme: dark) {
-  :root:not(.collab-theme-light):not(.collab-theme-dark) {
+  :root:not(.collab-theme-light):not(.collab-theme-dark):not(.hof-theme-light):not(.hof-theme-dark) {
     --background: #191919;
     --foreground: #e3e2e0;
     --surface: #202020;
@@ -141,7 +141,8 @@
 /*
  * Dark via explicit class (runtime toggle).
  */
-:root.collab-theme-dark {
+:root.collab-theme-dark,
+:root.hof-theme-dark {
   --background: #191919;
   --foreground: #e3e2e0;
   --surface: #202020;

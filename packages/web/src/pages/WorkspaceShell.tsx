@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { Route, Routes, useLocation, useParams } from "react-router";
+import { HofShellLayout, HOF_SHELL_APP_LINKS } from "@hofos/shell-ui";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
 import { SidebarPanel } from "../components/SidebarPanel.tsx";
 import { ThreadPane } from "../components/ThreadPane.tsx";
 import { ToastHost } from "../components/ToastHost.tsx";
-import { TopBar } from "../components/TopBar.tsx";
 import { useUi } from "../state/ui.ts";
 import { useEventStream } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
@@ -16,26 +16,6 @@ import { useSync } from "../state/sync.ts";
 import { useThread } from "../state/threads.ts";
 import { useUsers } from "../state/users.ts";
 import { ChannelPage } from "./ChannelPage.tsx";
-
-const HOF_SHELL_SIDEBAR_DEFAULT_WIDTH = 240;
-const HOF_SHELL_STORAGE_KEYS = {
-  sidebarWidth: "hof-shell-sidebar-width",
-  legacySidebarWidth: "hof-sidebar-width",
-} as const;
-
-function readSidebarWidth(): number {
-  try {
-    const raw =
-      localStorage.getItem(HOF_SHELL_STORAGE_KEYS.sidebarWidth) ??
-      localStorage.getItem(HOF_SHELL_STORAGE_KEYS.legacySidebarWidth);
-    const value = raw ? Number(raw) : NaN;
-    return Number.isFinite(value) && value >= 140 && value <= 480
-      ? value
-      : HOF_SHELL_SIDEBAR_DEFAULT_WIDTH;
-  } catch {
-    return HOF_SHELL_SIDEBAR_DEFAULT_WIDTH;
-  }
-}
 
 interface UnreadRow {
   channel_id: string;
@@ -47,13 +27,10 @@ interface UnreadRow {
 /**
  * Visual mode for the workspace shell.
  *
- * - `"full"` (default) — renders the standalone chrome (TopBar with
- *   workspace search). Used by the standalone web app and any host
- *   that wants the full collab-ai UI.
- * - `"content"` — drops the TopBar so a host (e.g. hof-os) can supply
- *   its own header without a duplicated search row. The channel-list
- *   Sidebar is preserved because hosts don't enumerate channels in
- *   their own nav. CommandPalette and ToastHost remain mounted.
+ * - `"full"` (default) — renders the standalone workspace shell.
+ * - `"content"` — lets a host (e.g. hof-os) supply outer chrome. The
+ *   channel-list Sidebar is preserved because hosts don't enumerate
+ *   channels in their own nav. CommandPalette and ToastHost remain mounted.
  */
 export type WorkspaceShellChrome = "full" | "content";
 
@@ -103,27 +80,15 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   }, [effectiveWorkspaceId, authStatus, hydrateUnread]);
 
   const threadOpen = useThread((s) => s.rootId !== null);
-  const sidebarOpen = useUi((s) => s.sidebarOpen);
   const setSidebarOpen = useUi((s) => s.setSidebarOpen);
   const location = useLocation();
   const embedded = chrome === "content";
-  const sidebarWidth = readSidebarWidth();
 
   // Close the mobile drawer whenever the user navigates so tapping a
   // channel doesn't leave the sidebar covering the new pane.
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname, setSidebarOpen]);
-
-  // Escape closes the drawer (desktop ignores the flag entirely).
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setSidebarOpen(false);
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [sidebarOpen, setSidebarOpen]);
 
   if (authStatus === "joining" || authStatus === "idle") {
     return (
@@ -150,29 +115,23 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
     // instead of always forcing 100dvh / 100vw. Standalone mounts
     // hand it a `h-screen` parent in `main.tsx` so behaviour is
     // unchanged there.
-    <div className="relative flex h-full min-h-0 w-full flex-col">
-      {chrome === "full" ? <TopBar /> : null}
+    <HofShellLayout
+      appId="collabai"
+      appLabel="Chat"
+      appIcon="message-circle"
+      currentPath={location.pathname}
+      primaryNavGroups={[]}
+      appLinks={HOF_SHELL_APP_LINKS.map((link) =>
+        link.id === "collabai" ? { ...link, href: "/" } : link,
+      )}
+      user={{ name: "Anonymous Wombat", initials: "AW", subtitle: "You are" }}
+      onCommand={() => window.dispatchEvent(new Event("collabai:open-command-palette"))}
+      onNavigate={(path) => {
+        window.location.href = path;
+      }}
+      navSlot={<Sidebar showCloseButton={!embedded} />}
+    >
       <div className="relative flex flex-1 min-h-0">
-        {!embedded && sidebarOpen && (
-          <button
-            type="button"
-            aria-label={t("common.close")}
-            onClick={() => setSidebarOpen(false)}
-            className="absolute inset-0 z-30 bg-foreground/40 backdrop-blur-sm lg:hidden"
-          />
-        )}
-        <div
-          className={
-            embedded
-              ? "static z-auto shrink-0 translate-x-0 border-r border-border"
-              : `absolute inset-y-0 left-0 z-40 w-[min(85vw,320px)] transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 ${
-                  sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                }`
-          }
-          style={{ width: sidebarWidth }}
-        >
-          <Sidebar showCloseButton={!embedded} />
-        </div>
         <main className="flex min-w-0 flex-1 flex-col">
           <Routes>
             <Route index element={<EmptyState />} />
@@ -185,7 +144,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
       </div>
       <CommandPalette />
       <ToastHost />
-    </div>
+    </HofShellLayout>
   );
 }
 

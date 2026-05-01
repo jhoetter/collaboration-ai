@@ -72,7 +72,7 @@ export function SidebarPanel() {
       ref={containerRef}
       role="dialog"
       aria-modal={false}
-      className="pointer-events-auto fixed inset-x-2 top-14 bottom-2 z-30 flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl sm:inset-x-3 sm:top-14 sm:bottom-3 lg:inset-x-auto lg:bottom-3 lg:left-[16.5rem] lg:top-14 lg:w-[24rem]"
+      className="pointer-events-auto fixed inset-x-2 top-14 bottom-2 z-30 flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl sm:inset-x-3 sm:top-14 sm:bottom-3 lg:inset-x-auto lg:bottom-3 lg:left-[calc(var(--hof-sidebar-width,240px)+0.75rem)] lg:top-14 lg:w-[24rem]"
     >
       <PanelBody panel={open} onClose={() => setOpen(null)} />
     </div>

@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 COPY infra ./infra
 COPY scripts ./scripts
 COPY packages ./packages
+COPY vendor ./vendor
 RUN pnpm install --frozen-lockfile --prefer-offline
 RUN pnpm --filter @collabai/web build
 

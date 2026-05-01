@@ -32,11 +32,11 @@ const SEARCH_DEBOUNCE_MS = 200;
 const SEARCH_MIN_CHARS = 2;
 const GLOBAL_APP_LINKS = [
   { id: "os", label: "App", href: "http://localhost:3000/" },
-  { id: "hofos", label: "hofOS", href: "http://localhost:3600/customers" },
-  { id: "mailai", label: "Mail", href: "http://localhost:3010/inbox" },
-  { id: "collabai", label: "Chat", href: "http://localhost:8010/" },
-  { id: "driveai", label: "Drive", href: "http://localhost:3520/drive/home" },
-  { id: "pagesai", label: "Pages", href: "http://localhost:3399/pages" },
+  { id: "hofos", label: "hofOS", href: "http://localhost:3000/__subapps/hofos/customers" },
+  { id: "mailai", label: "Mail", href: "http://localhost:3000/__subapps/mailai/inbox" },
+  { id: "collabai", label: "Chat", href: "/" },
+  { id: "driveai", label: "Drive", href: "http://localhost:3000/__subapps/driveai/drive/home" },
+  { id: "pagesai", label: "Pages", href: "http://localhost:3000/__subapps/pagesai/pages" },
 ] as const;
 
 type ItemKind = "action" | "channel" | "person" | "message";

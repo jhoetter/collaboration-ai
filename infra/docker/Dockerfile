@@ -8,6 +8,7 @@ ENV VITE_DESIGN_SYSTEM=${DESIGN_SYSTEM}
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
+COPY vendor ./vendor
 COPY infra ./infra
 COPY scripts ./scripts
 COPY packages ./packages

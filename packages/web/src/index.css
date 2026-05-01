@@ -5,6 +5,7 @@
  * (body type, scrollbars, focus, MessageList prose).
  */
 @import "@collabai-design-system.css";
+@import "@hofos/shell-ui/theme.css";
 
 @tailwind base;
 @tailwind components;

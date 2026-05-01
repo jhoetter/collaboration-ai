@@ -72,7 +72,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not(.collab-theme-light):not(.collab-theme-dark) {
+  :root:not(.collab-theme-light):not(.collab-theme-dark):not(.hof-theme-light):not(.hof-theme-dark) {
     --background: #0c0a09;
     --foreground: #fafaf9;
     --surface: #1c1917;
@@ -121,7 +121,8 @@
   }
 }
 
-:root.collab-theme-dark {
+:root.collab-theme-dark,
+:root.hof-theme-dark {
   --background: #0c0a09;
   --foreground: #fafaf9;
   --surface: #1c1917;
