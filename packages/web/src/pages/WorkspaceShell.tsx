@@ -1,6 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Route, Routes, useLocation, useParams } from "react-router";
-import { HofShellLayout, HOF_SHELL_APP_LINKS } from "@hofos/shell-ui";
+import {
+  HofShellLayout,
+  HOF_SHELL_APP_LINKS,
+  fetchHofShellUser,
+  normalizeHofShellUser,
+  type HofShellUser,
+} from "@hofos/shell-ui";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
@@ -37,6 +43,7 @@ export type WorkspaceShellChrome = "full" | "content";
 export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChrome } = {}) {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const authedWorkspaceId = useAuth((s) => s.workspaceId);
+  const identity = useAuth((s) => s.identity);
   const authStatus = useAuth((s) => s.status);
   const authError = useAuth((s) => s.error);
   const bootstrap = useAuth((s) => s.bootstrap);
@@ -83,6 +90,33 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   const setSidebarOpen = useUi((s) => s.setSidebarOpen);
   const location = useLocation();
   const embedded = chrome === "content";
+  const [remoteShellUser, setRemoteShellUser] = useState<HofShellUser | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void fetchHofShellUser({ endpoint: "/api/me", fallbackName: "Chat" }).then((user) => {
+      if (alive) setRemoteShellUser(user);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const shellUser = useMemo(
+    () =>
+      remoteShellUser ??
+      normalizeHofShellUser(
+        identity
+          ? {
+              userId: identity.user_id,
+              displayName: identity.display_name,
+              tenantId: effectiveWorkspaceId,
+            }
+          : null,
+        { fallbackName: "Chat" },
+      ),
+    [effectiveWorkspaceId, identity, remoteShellUser],
+  );
 
   // Close the mobile drawer whenever the user navigates so tapping a
   // channel doesn't leave the sidebar covering the new pane.
@@ -124,7 +158,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
       appLinks={HOF_SHELL_APP_LINKS.map((link) =>
         link.id === "collabai" ? { ...link, href: "/" } : link,
       )}
-      user={{ name: "Anonymous Wombat", initials: "AW", subtitle: "You are" }}
+      user={shellUser}
       onCommand={() => window.dispatchEvent(new Event("collabai:open-command-palette"))}
       onNavigate={(path) => {
         window.location.href = path;

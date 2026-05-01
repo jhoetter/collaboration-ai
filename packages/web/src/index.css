@@ -7,6 +7,24 @@
 @import "@collabai-design-system.css";
 @import "@hofos/shell-ui/theme.css";
 
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --surface: var(--color-surface);
+  --card: var(--color-card);
+  --hover: var(--color-hover);
+  --border: var(--color-border);
+  --divider: var(--color-divider);
+  --muted-foreground: var(--color-muted-foreground);
+  --secondary: var(--color-secondary);
+  --tertiary: var(--color-tertiary);
+  --accent: var(--color-accent);
+  --accent-light: color-mix(in srgb, var(--color-accent) 12%, var(--color-background));
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --ring: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

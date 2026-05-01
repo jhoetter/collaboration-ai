@@ -77,6 +77,8 @@ def _install_sync_router_hook() -> None:
     original_mount = _hof_server._mount_user_pages
 
     def patched_mount(app, project_root, config):  # type: ignore[no-untyped-def]
+        from fastapi import APIRouter, HTTPException, Request
+
         from domain.shared.runtime import get_session_factory
         from domain.shared.static_web import mount_static_web
         from domain.sync.bridge import get_fanout
@@ -84,6 +86,22 @@ def _install_sync_router_hook() -> None:
 
         router = build_router(fanout=get_fanout(), session_factory=get_session_factory())
         app.include_router(router, tags=["realtime-collab"])
+        me_router = APIRouter()
+
+        @me_router.get("/api/me")
+        async def me(request: Request) -> dict[str, str | None]:
+            identity = getattr(request.state, "hof_identity", None)
+            if identity is None:
+                raise HTTPException(status_code=401, detail="Missing hofOS identity")
+            return {
+                "userId": identity.user_id,
+                "actorId": identity.user_id,
+                "tenantId": identity.tenant_id,
+                "email": identity.email,
+                "displayName": identity.display_name or identity.email or identity.user_id,
+            }
+
+        app.include_router(me_router, tags=["identity"])
         mount_static_web(app)
         return original_mount(app, project_root, config)
 
