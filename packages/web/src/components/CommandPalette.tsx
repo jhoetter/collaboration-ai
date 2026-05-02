@@ -22,9 +22,9 @@ import {
   useShortcut,
   type CommandItem,
 } from "@hofos/ux";
-import { HOF_SHELL_APP_LINKS } from "@hofos/shell-ui";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
+import { createHandoffAppLinks, navigateHandoffHref } from "../lib/hofShellNavigation.ts";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
 import { useI18n, useTranslator } from "../lib/i18n/index.ts";
@@ -186,7 +186,8 @@ export function CommandPalette() {
         },
       },
       ...createAppLinkCommands(
-        HOF_SHELL_APP_LINKS.map((link) => (link.id === "collabai" ? { ...link, href: "/" } : link))
+        createHandoffAppLinks({ selfAppId: "collabai", selfHref: "/" }),
+        { navigate: (href) => navigateHandoffHref(href) }
       ).map((cmd) => ({
         id: cmd.id,
         kind: "action" as const,

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Route, Routes, useLocation, useNavigate, useParams } from "react-router";
 import {
   HofShellLayout,
-  HOF_SHELL_APP_LINKS,
   fetchHofShellUser,
   normalizeHofShellUser,
   type HofShellUser,
@@ -14,6 +13,7 @@ import { Sidebar } from "../components/Sidebar.tsx";
 import { SidebarPanel } from "../components/SidebarPanel.tsx";
 import { ThreadPane } from "../components/ThreadPane.tsx";
 import { ToastHost } from "../components/ToastHost.tsx";
+import { createHandoffAppLinks, navigateHandoffHref } from "../lib/hofShellNavigation.ts";
 import { useUi } from "../state/ui.ts";
 import { useEventStream } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
@@ -133,6 +133,10 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
       ),
     [effectiveWorkspaceId, identity, remoteShellUser]
   );
+  const appLinks = useMemo(
+    () => createHandoffAppLinks({ selfAppId: "collabai", selfHref: "/" }),
+    []
+  );
 
   // Close the mobile drawer whenever the user navigates so tapping a
   // channel doesn't leave the sidebar covering the new pane.
@@ -171,11 +175,12 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
       appIcon="message-circle"
       currentPath={location.pathname}
       primaryNavGroups={[]}
-      appLinks={HOF_SHELL_APP_LINKS.map((link) => (link.id === "collabai" ? { ...link, href: "/" } : link))}
+      appLinks={appLinks}
       user={shellUser}
       onCommand={() => window.dispatchEvent(new Event("collabai:open-command-palette"))}
       onNavigate={(path) => {
-        window.location.href = path;
+        if (path.startsWith("/") && !path.startsWith("/__subapps/")) navigate(path);
+        else navigateHandoffHref(path);
       }}
       navSlot={<Sidebar showCloseButton={!embedded} />}
     >
