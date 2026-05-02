@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from urllib.parse import quote
 
 from ..shared.decorators import function
 from ..shared.runtime import open_session
@@ -149,4 +150,8 @@ def download_url(workspace_id: str, file_id: str, *, actor_id: str) -> dict[str,
         Params={"Bucket": _bucket(), "Key": key},
         ExpiresIn=300,
     )
-    return {"file_id": file_id, "get_url": url}
+    data: dict[str, Any] = {"file_id": file_id, "object_key": key, "get_url": url}
+    hofos_public_url = (os.environ.get("HOF_DATA_APP_PUBLIC_URL") or "").strip().rstrip("/")
+    if hofos_public_url and (os.environ.get("S3_KEY_PREFIX") or "").strip():
+        data["hofos_bytes_url"] = f"{hofos_public_url}/api/files/bytes?key={quote(key, safe='')}"
+    return data
