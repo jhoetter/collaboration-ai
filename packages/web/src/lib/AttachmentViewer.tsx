@@ -17,39 +17,55 @@ interface OfficeEditorProps {
   readOnly?: boolean;
 }
 
-const PdfEditor = lazy(async () => {
+function OfficeEditorLoadError({ format, error }: { format: string; error: unknown }) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 rounded-md border border-border bg-card p-6 text-center">
+      <p className="text-sm font-medium text-foreground">{format} preview unavailable</p>
+      <p className="max-w-md text-xs text-secondary">
+        @officeai/react-editors could not be loaded. Run the OfficeAI staging step or use the download
+        action while the editor bundle is unavailable.
+      </p>
+      <code className="max-w-md break-all rounded bg-background px-2 py-1 text-[11px] text-tertiary">
+        {message}
+      </code>
+    </div>
+  );
+}
+
+const PdfEditor = lazy(async (): Promise<{ default: ComponentType<OfficeEditorProps> }> => {
   try {
     const mod = await import("@officeai/react-editors/components/pdf");
     return { default: mod.PdfEditor as ComponentType<OfficeEditorProps> };
-  } catch {
-    return { default: () => null };
+  } catch (error) {
+    return { default: () => <OfficeEditorLoadError format="PDF" error={error} /> };
   }
 });
 
-const DocxEditor = lazy(async () => {
+const DocxEditor = lazy(async (): Promise<{ default: ComponentType<OfficeEditorProps> }> => {
   try {
     const mod = await import("@officeai/react-editors/components/docx");
     return { default: mod.DocxEditor as ComponentType<OfficeEditorProps> };
-  } catch {
-    return { default: () => null };
+  } catch (error) {
+    return { default: () => <OfficeEditorLoadError format="DOCX" error={error} /> };
   }
 });
 
-const XlsxEditor = lazy(async () => {
+const XlsxEditor = lazy(async (): Promise<{ default: ComponentType<OfficeEditorProps> }> => {
   try {
     const mod = await import("@officeai/react-editors/components/xlsx");
     return { default: mod.XlsxEditor as ComponentType<OfficeEditorProps> };
-  } catch {
-    return { default: () => null };
+  } catch (error) {
+    return { default: () => <OfficeEditorLoadError format="XLSX" error={error} /> };
   }
 });
 
-const PptxEditor = lazy(async () => {
+const PptxEditor = lazy(async (): Promise<{ default: ComponentType<OfficeEditorProps> }> => {
   try {
     const mod = await import("@officeai/react-editors/components/pptx");
     return { default: mod.PptxEditor as ComponentType<OfficeEditorProps> };
-  } catch {
-    return { default: () => null };
+  } catch (error) {
+    return { default: () => <OfficeEditorLoadError format="PPTX" error={error} /> };
   }
 });
 
@@ -77,7 +93,7 @@ export interface AttachmentViewerProps {
 export function AttachmentViewer(props: AttachmentViewerProps) {
   const kind = attachmentKindFor(props.mime, props.filename);
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="min-h-[20rem] p-6 text-sm text-secondary">Loading preview...</div>}>
       {kind === "pdf" && <PdfEditor url={props.url} readOnly={props.readOnly ?? true} />}
       {kind === "docx" && <DocxEditor url={props.url} readOnly={props.readOnly ?? true} />}
       {kind === "xlsx" && <XlsxEditor url={props.url} readOnly={props.readOnly ?? true} />}
