@@ -60,7 +60,27 @@ services:
       - |
         mc alias set local http://minio:9000 collabai collabai-dev-password &&
         mc mb -p local/collabai-attachments || true &&
-        mc version enable local/collabai-attachments || true
+        mc version enable local/collabai-attachments || true &&
+        cat > /tmp/cors.json <<'JSON'
+        {
+          "CORSRules": [
+            {
+              "AllowedOrigins": [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://localhost:8010"
+              ],
+              "AllowedMethods": ["PUT", "GET", "HEAD", "POST"],
+              "AllowedHeaders": ["*"],
+              "ExposeHeaders": ["ETag", "x-amz-request-id", "x-amz-version-id"],
+              "MaxAgeSeconds": 3600
+            }
+          ]
+        }
+        JSON
+        mc cors set local/collabai-attachments /tmp/cors.json || true
 
   mailhog:
     image: mailhog/mailhog:latest

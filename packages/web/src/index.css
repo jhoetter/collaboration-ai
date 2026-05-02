@@ -4,7 +4,9 @@
  * It pulls in `tokens-<id>.css` (the variables) followed by `shell.css`
  * (body type, scrollbars, focus, MessageList prose).
  */
+@import "@hofos/shell-ui/fonts.css";
 @import "@hofos/shell-ui/theme.css";
+@import "@hofos/ux/styles.css";
 @import "@collabai-design-system.css";
 
 :root {

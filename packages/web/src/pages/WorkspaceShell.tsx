@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Route, Routes, useLocation, useParams } from "react-router";
+import { Route, Routes, useLocation, useNavigate, useParams } from "react-router";
 import {
   HofShellLayout,
   HOF_SHELL_APP_LINKS,
@@ -7,6 +7,7 @@ import {
   normalizeHofShellUser,
   type HofShellUser,
 } from "@hofos/shell-ui";
+import { useRegisteredSearchShortcut } from "@hofos/ux";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { MembersPanel } from "../components/MembersPanel.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
@@ -47,8 +48,11 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   const authStatus = useAuth((s) => s.status);
   const authError = useAuth((s) => s.error);
   const bootstrap = useAuth((s) => s.bootstrap);
+  const hydrateAuth = useAuth((s) => s.hydrate);
   const { t } = useTranslator();
-  const effectiveWorkspaceId = workspaceId ?? authedWorkspaceId ?? undefined;
+  const effectiveWorkspaceId = authedWorkspaceId ?? workspaceId ?? undefined;
+  const navigate = useNavigate();
+  useRegisteredSearchShortcut();
 
   // The `/` Bootstrap route also calls `bootstrap()`, but a direct hit
   // on `/w/:workspaceId/...` (refresh, deep link, second tab) skips
@@ -57,6 +61,18 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
   useEffect(() => {
     if (authStatus === "idle") void bootstrap();
   }, [authStatus, bootstrap]);
+
+  useEffect(() => {
+    if (!identity || !workspaceId || !authedWorkspaceId) return;
+    if (workspaceId !== authedWorkspaceId) {
+      navigate(`/w/${authedWorkspaceId}`, { replace: true });
+    }
+  }, [authedWorkspaceId, identity, navigate, workspaceId]);
+
+  useEffect(() => {
+    if (!identity || !workspaceId || authedWorkspaceId) return;
+    hydrateAuth({ identity, workspaceId });
+  }, [authedWorkspaceId, hydrateAuth, identity, workspaceId]);
 
   useEventStream(effectiveWorkspaceId);
 
@@ -113,9 +129,9 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
               tenantId: effectiveWorkspaceId,
             }
           : null,
-        { fallbackName: "Chat" },
+        { fallbackName: "Chat" }
       ),
-    [effectiveWorkspaceId, identity, remoteShellUser],
+    [effectiveWorkspaceId, identity, remoteShellUser]
   );
 
   // Close the mobile drawer whenever the user navigates so tapping a
@@ -155,9 +171,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
       appIcon="message-circle"
       currentPath={location.pathname}
       primaryNavGroups={[]}
-      appLinks={HOF_SHELL_APP_LINKS.map((link) =>
-        link.id === "collabai" ? { ...link, href: "/" } : link,
-      )}
+      appLinks={HOF_SHELL_APP_LINKS.map((link) => (link.id === "collabai" ? { ...link, href: "/" } : link))}
       user={shellUser}
       onCommand={() => window.dispatchEvent(new Event("collabai:open-command-palette"))}
       onNavigate={(path) => {

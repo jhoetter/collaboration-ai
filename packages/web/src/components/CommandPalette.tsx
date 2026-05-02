@@ -16,7 +16,14 @@
  * with no query — same UX trick the office-ai version uses.
  */
 import { Avatar } from "@collabai/ui";
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  CommandPalette as HofCommandPalette,
+  createAppLinkCommands,
+  useShortcut,
+  type CommandItem,
+} from "@hofos/ux";
+import { HOF_SHELL_APP_LINKS } from "@hofos/shell-ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
@@ -30,15 +37,6 @@ const RECENT_KEY = "collabai.palette.recent";
 const RECENT_LIMIT = 6;
 const SEARCH_DEBOUNCE_MS = 200;
 const SEARCH_MIN_CHARS = 2;
-const GLOBAL_APP_LINKS = [
-  { id: "os", label: "App", href: "http://localhost:3000/" },
-  { id: "hofos", label: "hofOS", href: "http://localhost:3000/__subapps/hofos/customers" },
-  { id: "mailai", label: "Mail", href: "http://localhost:3000/__subapps/mailai/inbox" },
-  { id: "collabai", label: "Chat", href: "/" },
-  { id: "driveai", label: "Drive", href: "http://localhost:3000/__subapps/driveai/drive/home" },
-  { id: "pagesai", label: "Pages", href: "http://localhost:3000/__subapps/pagesai/pages" },
-] as const;
-
 type ItemKind = "action" | "channel" | "person" | "message";
 
 interface PaletteItem {
@@ -63,9 +61,7 @@ interface MessageHit {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
   const [hits, setHits] = useState<MessageHit[]>([]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const debounceRef = useRef<number | null>(null);
 
   const { t } = useTranslator();
@@ -84,43 +80,35 @@ export function CommandPalette() {
 
   const close = useCallback(() => setOpen(false), []);
 
-  // ── ⌘K / Ctrl-K toggle ────────────────────────────────────────────
+  useShortcut(
+    useMemo(
+      () => [
+        {
+          key: "k",
+          meta: true,
+          capture: true,
+          stopPropagation: true,
+          stopImmediatePropagation: true,
+          description: "Open command palette",
+          run: () => setOpen((value) => !value),
+        },
+      ],
+      []
+    )
+  );
+
   useEffect(() => {
-    function onKey(e: KeyboardEvent | globalThis.KeyboardEvent) {
-      const ke = e as globalThis.KeyboardEvent;
-      if ((ke.metaKey || ke.ctrlKey) && ke.key.toLowerCase() === "k") {
-        ke.preventDefault();
-        ke.stopPropagation();
-        ke.stopImmediatePropagation();
-        setOpen((v) => !v);
-      } else if (ke.key === "Escape" && open) {
-        ke.preventDefault();
-        close();
-      }
-    }
-    window.addEventListener("keydown", onKey as EventListener, { capture: true });
     const onOpenPalette = () => setOpen(true);
     window.addEventListener("collabai:open-command-palette", onOpenPalette);
-    return () => {
-      window.removeEventListener("keydown", onKey as EventListener, { capture: true });
-      window.removeEventListener("collabai:open-command-palette", onOpenPalette);
-    };
-  }, [open, close]);
+    return () => window.removeEventListener("collabai:open-command-palette", onOpenPalette);
+  }, []);
 
-  // ── focus + reset on open ────────────────────────────────────────
   useEffect(() => {
     if (!open) {
       setQuery("");
-      setActive(0);
       setHits([]);
-      return;
     }
-    requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
-
-  useEffect(() => {
-    setActive(0);
-  }, [query]);
 
   // ── Build items ──────────────────────────────────────────────────
   const channelPath = useCallback(
@@ -200,15 +188,15 @@ export function CommandPalette() {
           location.reload();
         },
       },
-      ...GLOBAL_APP_LINKS.map((app) => ({
-        id: `app:${app.id}`,
+      ...createAppLinkCommands(
+        HOF_SHELL_APP_LINKS.map((link) => (link.id === "collabai" ? { ...link, href: "/" } : link))
+      ).map((cmd) => ({
+        id: cmd.id,
         kind: "action" as const,
-        section: "Apps",
-        label: `Open ${app.label}`,
+        section: cmd.group,
+        label: String(cmd.label),
         hint: "Switch app",
-        run: () => {
-          window.location.href = app.href;
-        },
+        run: cmd.perform ?? (() => undefined),
       })),
     ];
   }, [t, locale, setLocale, setCreateChannelOpen, setNewDmOpen]);
@@ -300,104 +288,48 @@ export function CommandPalette() {
       .map((r) => r.i);
   }, [open, query, allItems, recents]);
 
-  if (!open) return null;
-
   function pick(item: PaletteItem) {
     rememberRecent(item.id);
     close();
     void item.run();
   }
 
-  function onInputKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((i) => Math.min(filtered.length - 1, i + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((i) => Math.max(0, i - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const item = filtered[active];
-      if (item) pick(item);
-    }
-  }
-
-  // Group items by section to show small headers — but keep the
-  // global keyboard cursor flat so ↑/↓ ignores section boundaries.
-  let lastSection: string | null = null;
+  const commands = filtered.map<CommandItem>((item) => ({
+    id: item.id,
+    group: item.section,
+    label: item.label,
+    hint: item.hint,
+    shortcut: item.shortcut,
+    perform: () => pick(item),
+    keywords: [item.label, item.hint ?? "", item.section, item.id],
+  }));
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("palette.title")}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 px-3 pt-[10vh] backdrop-blur-sm sm:px-4 sm:pt-[18vh]"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close();
+    <HofCommandPalette
+      open={open}
+      onOpenChange={setOpen}
+      commands={commands}
+      placeholder={t("palette.placeholder")}
+      inputValue={query}
+      onInputValueChange={setQuery}
+      shouldFilter={false}
+      emptyLabel={t("palette.empty")}
+      renderCommand={(command) => {
+        const item = filtered.find((candidate) => candidate.id === command.id);
+        return (
+          <>
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-tertiary">
+              {item?.icon ?? (item ? iconForKind(item.kind) : "")}
+            </span>
+            <span className="hof-ux-command-item-main">
+              <span>{command.label}</span>
+              {command.hint ? <span className="hof-ux-command-item-hint">{command.hint}</span> : null}
+            </span>
+            {command.shortcut ? <span className="hof-ux-kbd">{command.shortcut}</span> : null}
+          </>
+        );
       }}
-      data-testid="command-palette"
-    >
-      <div className="w-full max-w-xl overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
-        <div className="border-b border-border px-2 py-2">
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onInputKey}
-            placeholder={t("palette.placeholder")}
-            className="h-8 w-full rounded-md bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-tertiary"
-            data-testid="command-palette-input"
-            aria-label={t("palette.search")}
-          />
-        </div>
-        <div className="max-h-[60dvh] overflow-y-auto p-1 sm:max-h-[55vh]">
-          {filtered.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-tertiary">{t("palette.empty")}</div>
-          ) : (
-            filtered.map((item, idx) => {
-              const showHeader = item.section !== lastSection;
-              lastSection = item.section;
-              return (
-                <div key={item.id}>
-                  {showHeader && (
-                    <p className="px-2 pb-0.5 pt-2 text-[10px] uppercase tracking-wider text-tertiary">
-                      {item.section}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => pick(item)}
-                    onMouseEnter={() => setActive(idx)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                      active === idx ? "bg-accent-light text-accent" : "text-foreground hover:bg-hover"
-                    }`}
-                    data-testid={`palette-cmd-${item.id}`}
-                  >
-                    {item.icon ? (
-                      <span className="flex-shrink-0">{item.icon}</span>
-                    ) : (
-                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-tertiary">
-                        {iconForKind(item.kind)}
-                      </span>
-                    )}
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate">{item.label}</span>
-                      {item.hint ? <span className="truncate text-xs text-tertiary">{item.hint}</span> : null}
-                    </span>
-                    {item.shortcut ? (
-                      <span className="text-xs tabular-nums text-tertiary">{item.shortcut}</span>
-                    ) : null}
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <div className="border-t border-border px-3 py-1.5 text-[10px] text-tertiary">
-          ↑↓ · ↵ · Esc · {t("palette.shortcutCmdK")}
-        </div>
-      </div>
-    </div>
+    />
   );
 }
 

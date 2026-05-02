@@ -49,6 +49,7 @@ export interface AuthState {
   workspaceId: string | null;
   defaultChannelId: string | null;
   bootstrap(): Promise<void>;
+  bootstrapFromSession(): Promise<boolean>;
   /**
    * Host-driven identity injection. The hof-os embed mints a JWT with
    * `sub` (user id), `tid` (workspace id) and a display name and
@@ -72,7 +73,33 @@ interface OnboardResponse {
   error?: string;
 }
 
+interface SessionIdentityResponse {
+  userId?: string | null;
+  actorId?: string | null;
+  tenantId?: string | null;
+  workspaceId?: string | null;
+  email?: string | null;
+  displayName?: string | null;
+  name?: string | null;
+}
+
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+async function fetchSessionIdentity(): Promise<SessionIdentityResponse | null> {
+  const base = runtimeApiBase();
+  const auth = await runtimeAuthHeaders();
+  const res = await fetch(`${base}/api/me`, {
+    credentials: "include",
+    headers: { Accept: "application/json", ...auth },
+  });
+  if (!res.ok) return null;
+  return (await res.json().catch(() => null)) as SessionIdentityResponse | null;
+}
+
 let bootstrapPromise: Promise<void> | null = null;
+let sessionBootstrapPromise: Promise<boolean> | null = null;
 
 export const useAuth = create<AuthState>((set, get) => ({
   status: "idle",
@@ -91,6 +118,37 @@ export const useAuth = create<AuthState>((set, get) => ({
     });
   },
 
+  async bootstrapFromSession() {
+    if (get().status === "ready") return true;
+    if (sessionBootstrapPromise) return sessionBootstrapPromise;
+
+    set({ status: "joining", error: null });
+    sessionBootstrapPromise = (async () => {
+      try {
+        const session = await fetchSessionIdentity();
+        const userId = text(session?.userId) ?? text(session?.actorId);
+        const workspaceId = text(session?.tenantId) ?? text(session?.workspaceId);
+        if (!userId || !workspaceId) return false;
+
+        const displayName =
+          text(session?.displayName) ?? text(session?.name) ?? text(session?.email) ?? userId;
+        set({
+          identity: { user_id: userId, display_name: displayName },
+          workspaceId,
+          defaultChannelId: null,
+          status: "ready",
+          error: null,
+        });
+        return true;
+      } catch {
+        return false;
+      } finally {
+        sessionBootstrapPromise = null;
+      }
+    })();
+    return sessionBootstrapPromise;
+  },
+
   async bootstrap() {
     if (get().status === "ready") return;
     if (bootstrapPromise) return bootstrapPromise;
@@ -98,6 +156,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ status: "joining", error: null });
     bootstrapPromise = (async () => {
       try {
+        if (await get().bootstrapFromSession()) return;
         const identity = getOrCreateIdentity();
         const result = await rawCall<OnboardResponse>("demo:onboard", {
           user_id: identity.user_id,

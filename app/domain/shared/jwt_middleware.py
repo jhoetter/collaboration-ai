@@ -23,10 +23,9 @@ This middleware:
    channel CRUD, presence) can rely on those rows existing.
 4. Sets ``request.scope["state"]["actor_id"]`` and
    ``["workspace_id"]`` so handlers can read the caller's identity
-   without re-parsing the token. ``demo:onboard`` and any function
-   that explicitly takes ``actor_id`` / ``workspace_id`` in the body
-   continue to win over these scope values — the middleware is
-   strictly additive.
+   without re-parsing the token, and normalises JSON function bodies to
+   the verified JWT identity so a stale browser store cannot spoof or
+   drift away from the session workspace.
 
 The upsert path is wrapped in a tiny in-process LRU so steady-state
 traffic (one JWT per user/page-load, reused for every API call until
@@ -35,6 +34,7 @@ expiry) costs a single dict lookup per request.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
@@ -115,6 +115,9 @@ class HofSubappJwtMiddleware:
         state["actor_id"] = identity.user_id
         state["workspace_id"] = identity.tenant_id
         state["hof_identity"] = identity
+
+        if scope["type"] == "http" and self._should_normalize_function_body(scope):
+            receive = await self._normalize_function_body(scope, receive, identity)
 
         await self.app(scope, receive, send)
 
@@ -270,11 +273,49 @@ class HofSubappJwtMiddleware:
         # very first `channel:create` from a freshly-JIT'd user fails
         # with "Actor is not a workspace member" even though the SQL
         # row exists. See ``handlers._require_workspace_membership``.
-        self._bootstrap_projection_events(identity)
+        if self._bootstrap_projection_events(identity):
+            self._upsert_cache[cache_key] = time.time()
 
-        self._upsert_cache[cache_key] = time.time()
+    @staticmethod
+    def _should_normalize_function_body(scope: Scope) -> bool:
+        path = str(scope.get("path") or "")
+        if not path.startswith("/api/functions/"):
+            return False
+        for key, value in scope.get("headers", []):
+            if key == b"content-type" and b"application/json" in value.lower():
+                return True
+        return False
 
-    def _bootstrap_projection_events(self, identity: HofIdentity) -> None:
+    async def _normalize_function_body(
+        self,
+        scope: Scope,
+        receive: Receive,
+        identity: HofIdentity,
+    ) -> Receive:
+        body = b""
+        more_body = True
+        while more_body:
+            message = await receive()
+            if message["type"] != "http.request":
+                return receive
+            body += message.get("body", b"")
+            more_body = bool(message.get("more_body"))
+
+        try:
+            payload = json.loads(body.decode("utf-8") or "{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return _single_body_receive(body)
+
+        if not isinstance(payload, dict):
+            return _single_body_receive(body)
+
+        payload["actor_id"] = identity.user_id
+        payload["workspace_id"] = identity.tenant_id
+        normalized = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        _replace_content_length(scope, len(normalized))
+        return _single_body_receive(normalized)
+
+    def _bootstrap_projection_events(self, identity: HofIdentity) -> bool:
         """Append `workspace.create` + `workspace.member.add` to the log.
 
         Idempotent in two layers:
@@ -300,13 +341,13 @@ class HofSubappJwtMiddleware:
                 identity.user_id,
                 identity.tenant_id,
             )
-            return
+            return False
 
         state = bus.projector_state
         if state is not None:
             members = state.workspace_members.get(identity.tenant_id, {})
             if identity.user_id in members:
-                return  # already in the event-projection — nothing to emit
+                return True  # already in the event-projection — nothing to emit
 
         envelopes: list[EventEnvelope] = []
         workspace_known = state is not None and identity.tenant_id in state.workspaces
@@ -351,14 +392,14 @@ class HofSubappJwtMiddleware:
                 # importing a private helper from the bus module).
                 committed = _fabricate_local_events(envelopes, state)
             else:
-                return
+                return False
         except Exception:  # noqa: BLE001 — observability over correctness
             logger.exception(
                 "bootstrap projection events failed (user=%s tenant=%s)",
                 identity.user_id,
                 identity.tenant_id,
             )
-            return
+            return False
 
         # Project synchronously so subsequent commands in this very
         # request (e.g. the channel:create that triggered the JWT
@@ -367,6 +408,9 @@ class HofSubappJwtMiddleware:
         if state is not None:
             for evt in committed:
                 project_event(state, evt)
+            members = state.workspace_members.get(identity.tenant_id, {})
+            return identity.user_id in members
+        return True
 
 
 def _fabricate_local_events(
@@ -403,6 +447,29 @@ def _fabricate_local_events(
             )
         )
     return out
+
+
+def _single_body_receive(body: bytes) -> Receive:
+    sent = False
+
+    async def receive() -> dict:
+        nonlocal sent
+        if sent:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        sent = True
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return receive
+
+
+def _replace_content_length(scope: Scope, size: int) -> None:
+    headers = [
+        (key, value)
+        for key, value in scope.get("headers", [])
+        if key.lower() != b"content-length"
+    ]
+    headers.append((b"content-length", str(size).encode("ascii")))
+    scope["headers"] = headers
 
 
 __all__ = ["HofSubappJwtMiddleware"]
