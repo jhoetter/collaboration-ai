@@ -39,6 +39,7 @@ class HofIdentity:
     tenant_id: str
     email: str | None = None
     display_name: str | None = None
+    exp: int | None = None
 
 
 def _secrets() -> list[bytes]:
@@ -94,6 +95,7 @@ def verify_hof_jwt(token: str, *, audience: str = DEFAULT_AUDIENCE) -> HofIdenti
         tenant_id=tid,
         email=email if isinstance(email, str) else None,
         display_name=display_name if isinstance(display_name, str) else None,
+        exp=int(exp) if isinstance(exp, (int, float)) else None,
     )
 
 

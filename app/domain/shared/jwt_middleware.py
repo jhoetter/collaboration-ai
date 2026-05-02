@@ -39,6 +39,7 @@ import logging
 import os
 import time
 from http.cookies import SimpleCookie
+from urllib import request as urllib_request
 from urllib.parse import parse_qs, urlencode
 
 from sqlalchemy import text
@@ -52,6 +53,7 @@ from .runtime import get_command_bus, open_session
 
 logger = logging.getLogger("collabai.jwt_middleware")
 HANDOFF_QUERY_PARAM = "__hof_jwt"
+HANDOFF_CODE_QUERY_PARAM = "__hof_handoff"
 SESSION_COOKIE = "hof_subapp_session"
 SESSION_TTL_SECONDS = 8 * 60 * 60
 
@@ -77,6 +79,10 @@ class HofSubappJwtMiddleware:
             return
 
         if scope["type"] == "http":
+            handoff_code = self._extract_handoff_code(scope)
+            if handoff_code:
+                await self._handle_handoff_code(scope, send, handoff_code)
+                return
             handoff_token = self._extract_handoff_token(scope)
             if handoff_token:
                 await self._handle_handoff(scope, send, handoff_token)
@@ -129,18 +135,62 @@ class HofSubappJwtMiddleware:
         vals = params.get(HANDOFF_QUERY_PARAM) or []
         return vals[0] if vals else None
 
+    def _extract_handoff_code(self, scope: Scope) -> str | None:
+        qs = scope.get("query_string", b"")
+        if not qs:
+            return None
+        params = parse_qs(qs.decode("latin-1", errors="ignore"))
+        vals = params.get(HANDOFF_CODE_QUERY_PARAM) or []
+        return vals[0] if vals else None
+
+    async def _handle_handoff_code(self, scope: Scope, send: Send, code: str) -> None:
+        try:
+            token = self._exchange_handoff_code(code)
+        except Exception as err:  # noqa: BLE001 - exact urllib errors vary
+            logger.debug("rejected hof handoff code: %s", err)
+            token = None
+        await self._redirect_with_optional_session(scope, send, token)
+
+    def _exchange_handoff_code(self, code: str) -> str:
+        base_url = _data_app_base_url()
+        payload = json.dumps({"audience": self.audience, "code": code}).encode("utf-8")
+        req = urllib_request.Request(
+            f"{base_url}/api/subapp-handoff/exchange",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib_request.urlopen(req, timeout=5) as res:
+            body = json.loads(res.read().decode("utf-8"))
+        if body.get("audience") != self.audience:
+            raise ValueError("handoff audience mismatch")
+        token = body.get("token")
+        if not isinstance(token, str) or not token:
+            raise ValueError("handoff response missing token")
+        return token
+
     async def _handle_handoff(self, scope: Scope, send: Send, token: str) -> None:
+        await self._redirect_with_optional_session(scope, send, token)
+
+    async def _redirect_with_optional_session(
+        self,
+        scope: Scope,
+        send: Send,
+        token: str | None,
+    ) -> None:
         cookie: str | None = None
         try:
-            verify_hof_jwt(token, audience=self.audience)
+            identity = verify_hof_jwt(token, audience=self.audience) if token else None
         except ValueError as err:
             logger.debug("rejected hof JWT handoff: %s", err)
         else:
-            secure = "; Secure" if (os.environ.get("HOF_ENV") or "dev").lower() == "production" else ""
-            cookie = (
-                f"{SESSION_COOKIE}={token}; HttpOnly; SameSite=Lax; Path=/; "
-                f"Max-Age={SESSION_TTL_SECONDS}{secure}"
-            )
+            if identity and token:
+                secure = "; Secure" if (os.environ.get("HOF_ENV") or "dev").lower() == "production" else ""
+                max_age = _session_max_age(identity)
+                cookie = (
+                    f"{SESSION_COOKIE}={token}; HttpOnly; SameSite=Lax; Path=/; "
+                    f"Max-Age={max_age}{secure}"
+                )
 
         headers: list[tuple[bytes, bytes]] = [(b"location", self._clean_handoff_path(scope).encode())]
         if cookie:
@@ -154,7 +204,7 @@ class HofSubappJwtMiddleware:
         filtered = [
             (key, value)
             for key, values in parse_qs(raw_qs, keep_blank_values=True).items()
-            if key != HANDOFF_QUERY_PARAM
+            if key not in {HANDOFF_QUERY_PARAM, HANDOFF_CODE_QUERY_PARAM}
             for value in values
         ]
         query = urlencode(filtered)
@@ -411,6 +461,21 @@ class HofSubappJwtMiddleware:
             members = state.workspace_members.get(identity.tenant_id, {})
             return identity.user_id in members
         return True
+
+
+def _data_app_base_url() -> str:
+    return (
+        os.environ.get("HOF_DATA_APP_INTERNAL_URL")
+        or os.environ.get("HOF_DATA_APP_PUBLIC_URL")
+        or os.environ.get("HOF_OS_PUBLIC_URL")
+        or "http://localhost:3000"
+    ).rstrip("/")
+
+
+def _session_max_age(identity: HofIdentity | None) -> int:
+    if identity and identity.exp:
+        return max(1, min(SESSION_TTL_SECONDS, identity.exp - int(time.time())))
+    return SESSION_TTL_SECONDS
 
 
 def _fabricate_local_events(

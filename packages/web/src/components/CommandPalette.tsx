@@ -296,6 +296,7 @@ export function CommandPalette() {
     id: item.id,
     group: item.section,
     label: item.label,
+    icon: item.icon ?? iconForKind(item.kind),
     hint: item.hint,
     shortcut: item.shortcut,
     perform: () => pick(item),
@@ -307,26 +308,10 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       commands={commands}
-      placeholder={t("palette.placeholder")}
       inputValue={query}
       onInputValueChange={setQuery}
       shouldFilter={false}
       emptyLabel={t("palette.empty")}
-      renderCommand={(command) => {
-        const item = filtered.find((candidate) => candidate.id === command.id);
-        return (
-          <>
-            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-tertiary">
-              {item?.icon ?? (item ? iconForKind(item.kind) : "")}
-            </span>
-            <span className="hof-ux-command-item-main">
-              <span>{command.label}</span>
-              {command.hint ? <span className="hof-ux-command-item-hint">{command.hint}</span> : null}
-            </span>
-            {command.shortcut ? <span className="hof-ux-kbd">{command.shortcut}</span> : null}
-          </>
-        );
-      }}
     />
   );
 }

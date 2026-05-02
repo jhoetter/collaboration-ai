@@ -23,6 +23,11 @@ These tests pin the fix in place:
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
+import time
 from unittest.mock import patch
 
 from domain.events.projector import ProjectedState, project_event
@@ -30,6 +35,9 @@ from domain.shared.command_bus import Command, CommandBus
 from domain.shared.handlers import register_default_handlers
 from domain.shared.hof_jwt import HofIdentity
 from domain.shared.jwt_middleware import HofSubappJwtMiddleware
+from domain.shared import runtime
+from starlette.testclient import TestClient
+from starlette.types import Receive, Scope, Send
 
 
 def _make_bus() -> CommandBus:
@@ -53,6 +61,55 @@ def _identity(user_id: str = "usr_johannes", tenant_id: str = "ws_hofos") -> Hof
         email=f"{user_id}@example.com",
         display_name=user_id.replace("usr_", "").title(),
     )
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _mint(secret: str, identity: HofIdentity) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {
+        "aud": "collabai",
+        "sub": identity.user_id,
+        "tid": identity.tenant_id,
+        "email": identity.email,
+        "displayName": identity.display_name,
+        "exp": int(time.time()) + 120,
+    }
+    h = _b64url(json.dumps(header, separators=(",", ":")).encode())
+    p = _b64url(json.dumps(payload, separators=(",", ":")).encode())
+    sig = hmac.new(secret.encode(), f"{h}.{p}".encode("ascii"), hashlib.sha256).digest()
+    return f"{h}.{p}.{_b64url(sig)}"
+
+
+async def _channel_create_app(scope: Scope, receive: Receive, send: Send) -> None:
+    body = b""
+    more = True
+    while more:
+        message = await receive()
+        body += message.get("body", b"")
+        more = bool(message.get("more_body"))
+    payload = json.loads(body.decode("utf-8"))
+    bus = runtime.get_command_bus()
+    result = bus.dispatch(
+        Command(
+            type="channel:create",
+            payload={"name": payload["name"], "member_ids": [payload["actor_id"]]},
+            source="human",
+            actor_id=payload["actor_id"],
+            workspace_id=payload["workspace_id"],
+            room_id="ch_first",
+        )
+    ).to_dict()
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": json.dumps(result).encode()})
 
 
 def test_first_jwt_verify_populates_projection() -> None:
@@ -95,6 +152,45 @@ def test_channel_create_succeeds_after_bootstrap() -> None:
     state = bus.projector_state
     assert state is not None
     assert "ch_general" in state.channels
+
+
+def test_first_inherited_auth_channel_create_normalizes_identity_and_succeeds(
+    monkeypatch,
+) -> None:
+    bus = _make_bus()
+    identity = _identity(user_id="usr_os", tenant_id="ws_os")
+    token = _mint("current-secret", identity)
+
+    monkeypatch.setenv("HOF_ENV", "dev")
+    monkeypatch.setenv("HOF_SUBAPP_JWT_SECRET", "current-secret")
+
+    def bootstrap_only(self: HofSubappJwtMiddleware, verified: HofIdentity) -> None:
+        self._bootstrap_projection_events(verified)
+
+    with (
+        patch("domain.shared.jwt_middleware.get_command_bus", return_value=bus),
+        patch("domain.shared.runtime.get_command_bus", return_value=bus),
+        patch.object(HofSubappJwtMiddleware, "_ensure_identity_persisted", bootstrap_only),
+    ):
+        client = TestClient(HofSubappJwtMiddleware(_channel_create_app, audience="collabai"))
+        response = client.post(
+            "/api/functions/channel:create",
+            headers={"authorization": f"Bearer {token}", "content-type": "application/json"},
+            json={
+                "workspace_id": "stale_workspace",
+                "actor_id": "stale_actor",
+                "name": "first-channel",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "applied", body
+    state = bus.projector_state
+    assert state is not None
+    assert "ch_first" in state.channels
+    assert state.channels["ch_first"]["workspace_id"] == identity.tenant_id
+    assert identity.user_id in state.channel_members["ch_first"]
 
 
 def test_bootstrap_is_idempotent() -> None:

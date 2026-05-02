@@ -4,6 +4,7 @@ import {
   HofShellLayout,
   fetchHofShellUser,
   normalizeHofShellUser,
+  signOutOfHofShell,
   type HofShellUser,
 } from "@hofos/shell-ui";
 import { useRegisteredSearchShortcut } from "@hofos/ux";
@@ -18,6 +19,7 @@ import { useUi } from "../state/ui.ts";
 import { useEventStream } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
 import { useTranslator } from "../lib/i18n/index.ts";
+import { clearIdentity } from "../lib/identity.ts";
 import { useAuth } from "../state/auth.ts";
 import { useSync } from "../state/sync.ts";
 import { useThread } from "../state/threads.ts";
@@ -172,11 +174,15 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
     <HofShellLayout
       appId="collabai"
       appLabel="Chat"
-      appIcon="message-circle"
+      appIcon="message-square"
       currentPath={location.pathname}
       primaryNavGroups={[]}
       appLinks={appLinks}
       user={shellUser}
+      onSignOut={() => {
+        clearIdentity();
+        signOutOfHofShell({ redirectTo: null, reload: true });
+      }}
       onCommand={() => window.dispatchEvent(new Event("collabai:open-command-palette"))}
       onNavigate={(path) => {
         if (path.startsWith("/") && !path.startsWith("/__subapps/")) navigate(path);

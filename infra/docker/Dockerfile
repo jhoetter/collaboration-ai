@@ -12,7 +12,12 @@ COPY vendor ./vendor
 COPY infra ./infra
 COPY scripts ./scripts
 COPY packages ./packages
-RUN pnpm install --frozen-lockfile --prefer-offline
+RUN if [ -f vendor/hofos/use-local-hofos-packages.mjs ]; then \
+      node vendor/hofos/use-local-hofos-packages.mjs \
+      && pnpm install --no-frozen-lockfile --prefer-offline; \
+    else \
+      pnpm install --frozen-lockfile --prefer-offline; \
+    fi
 RUN pnpm --filter @collabai/web build
 
 FROM python:3.13-slim

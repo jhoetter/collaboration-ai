@@ -85,6 +85,7 @@ coverage/
 .tmp/
 scratch/
 release-out/
+vendor/hofos/
 
 # Playwright artifacts
 playwright-report/

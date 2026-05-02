@@ -78,7 +78,47 @@ def test_handoff_sets_session_cookie_and_strips_query(client: TestClient) -> Non
     assert response.status_code == 302
     assert response.headers["location"] == "/?next=chat"
     assert "hof_subapp_session=" in response.headers["set-cookie"]
+    assert "Max-Age=" in response.headers["set-cookie"]
     assert "__hof_jwt" not in response.headers["location"]
+
+
+def test_handoff_code_exchanges_token_sets_session_and_strips_query(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = _mint("current-secret")
+    exchanged: list[str] = []
+
+    def fake_exchange(self: HofSubappJwtMiddleware, code: str) -> str:
+        exchanged.append(f"{self.audience}:{code}")
+        return token
+
+    monkeypatch.setattr(HofSubappJwtMiddleware, "_exchange_handoff_code", fake_exchange)
+
+    response = client.get("/?__hof_handoff=opaque-code&next=chat", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/?next=chat"
+    assert "hof_subapp_session=" in response.headers["set-cookie"]
+    assert "__hof_handoff" not in response.headers["location"]
+    assert exchanged == ["collabai:opaque-code"]
+
+
+def test_invalid_handoff_code_redirects_without_session(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_exchange(self: HofSubappJwtMiddleware, code: str) -> str:
+        raise RuntimeError("nope")
+
+    monkeypatch.setattr(HofSubappJwtMiddleware, "_exchange_handoff_code", fail_exchange)
+
+    response = client.get("/?__hof_handoff=bad-code&next=chat", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/?next=chat"
+    assert "set-cookie" not in response.headers
+    assert "__hof_handoff" not in response.headers["location"]
 
 
 def test_session_cookie_authenticates_follow_up_request(client: TestClient) -> None:
