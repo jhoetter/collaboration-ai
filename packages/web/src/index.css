@@ -24,6 +24,15 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-surface: var(--surface);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-on-accent: var(--accent-foreground);
+  --hof-body-font-features: var(--body-font-features);
+  --hof-radius-sm: var(--radius-sm);
+  --hof-radius-md: var(--radius-md);
+  --hof-radius-lg: var(--radius-lg);
+  --hof-radius-xl: var(--radius-xl);
   --ring: color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 

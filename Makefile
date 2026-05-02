@@ -1,6 +1,20 @@
 # collaboration-ai monorepo Makefile.
 # Mirrors the office-ai / hof-os shape (`make verify` is the merge gate).
 
+# Preserved when hof-os `make dev-native` exports DATABASE_URL / REDIS_URL for the
+# shared stack before `make dev`. (Adds optional `.env` later without stomping these.)
+_HOF_OS_IMPORT_DB := $(DATABASE_URL)
+_HOF_OS_IMPORT_REDIS := $(REDIS_URL)
+_HOF_OS_IMPORT_JWT := $(HOF_SUBAPP_JWT_SECRET)
+ifneq ($(and $(strip $(_HOF_OS_IMPORT_JWT)),$(strip $(_HOF_OS_IMPORT_DB))),)
+DATABASE_URL := $(_HOF_OS_IMPORT_DB)
+HOF_SUBAPP_JWT_SECRET := $(_HOF_OS_IMPORT_JWT)
+ifneq ($(strip $(_HOF_OS_IMPORT_REDIS)),)
+REDIS_URL := $(_HOF_OS_IMPORT_REDIS)
+endif
+HOFOS_SUBAPP_NATIVE := 1
+endif
+
 PYTHON ?= python3.13
 APP_DIR := app
 PNPM := pnpm
@@ -115,7 +129,11 @@ kill-ports:
 	echo "kill-ports: still in use after retries:$$busy" >&2; \
 	exit 1
 
+ifeq ($(HOFOS_SUBAPP_NATIVE),1)
+dev: kill-ports seed
+else
 dev: db-up kill-ports seed
+endif
 	@echo "→ API   http://localhost:$(API_PORT)"
 	@echo "→ Web   http://localhost:$(WEB_PORT)"
 	$(PNPM) -w exec concurrently -k -n api,web -c blue,magenta \
