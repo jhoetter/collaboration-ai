@@ -86,10 +86,7 @@ export function CommandPalette() {
         {
           key: "k",
           meta: true,
-          capture: true,
-          stopPropagation: true,
-          stopImmediatePropagation: true,
-          description: "Open command palette",
+          description: "Toggle command palette",
           run: () => setOpen((value) => !value),
         },
       ],
