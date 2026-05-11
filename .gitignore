@@ -61,6 +61,8 @@ celerybeat.pid
 # --- IDE ---
 .vscode/
 .idea/
+.claude/
+.entire/
 *.swp
 *.swo
 *~
