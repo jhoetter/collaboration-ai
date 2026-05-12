@@ -14,7 +14,7 @@ import { Sidebar } from "../components/Sidebar.tsx";
 import { SidebarPanel } from "../components/SidebarPanel.tsx";
 import { ThreadPane } from "../components/ThreadPane.tsx";
 import { ToastHost } from "../components/ToastHost.tsx";
-import { createHandoffAppLinks, navigateHandoffHref } from "../lib/hofShellNavigation.ts";
+import { navigateHandoffHref, useHandoffAppLinks } from "../lib/hofShellNavigation.ts";
 import { useUi } from "../state/ui.ts";
 import { useEventStream } from "../hooks/useEventStream.ts";
 import { callFunction } from "../lib/api.ts";
@@ -135,10 +135,7 @@ export function WorkspaceShell({ chrome = "full" }: { chrome?: WorkspaceShellChr
       ),
     [effectiveWorkspaceId, identity, remoteShellUser]
   );
-  const appLinks = useMemo(
-    () => createHandoffAppLinks({ selfAppId: "collabai", selfHref: "/" }),
-    []
-  );
+  const appLinks = useHandoffAppLinks({ selfAppId: "collabai", selfHref: "/" });
 
   // Close the mobile drawer whenever the user navigates so tapping a
   // channel doesn't leave the sidebar covering the new pane.

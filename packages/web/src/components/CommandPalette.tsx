@@ -24,7 +24,7 @@ import {
 } from "@hofos/ux";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { createHandoffAppLinks, navigateHandoffHref } from "../lib/hofShellNavigation.ts";
+import { navigateHandoffHref, useHandoffAppLinks } from "../lib/hofShellNavigation.ts";
 import { callFunction } from "../lib/api.ts";
 import { clearIdentity } from "../lib/identity.ts";
 import { useI18n, useTranslator } from "../lib/i18n/index.ts";
@@ -67,6 +67,7 @@ export function CommandPalette() {
   const { t } = useTranslator();
   const { locale, setLocale } = useI18n();
   const navigate = useNavigate();
+  const appLinks = useHandoffAppLinks({ selfAppId: "collabai", selfHref: "/" });
   // See packages/web/src/lib/route-prefix.ts.
   const routePrefix = useChannelRoutePrefix();
 
@@ -185,10 +186,7 @@ export function CommandPalette() {
           location.reload();
         },
       },
-      ...createAppLinkCommands(
-        createHandoffAppLinks({ selfAppId: "collabai", selfHref: "/" }),
-        { navigate: (href) => navigateHandoffHref(href) }
-      ).map((cmd) => ({
+      ...createAppLinkCommands(appLinks, { navigate: (href) => navigateHandoffHref(href) }).map((cmd) => ({
         id: cmd.id,
         kind: "action" as const,
         section: cmd.group,
@@ -197,7 +195,7 @@ export function CommandPalette() {
         run: cmd.perform ?? (() => undefined),
       })),
     ];
-  }, [t, locale, setLocale, setCreateChannelOpen, setNewDmOpen]);
+  }, [appLinks, t, locale, setLocale, setCreateChannelOpen, setNewDmOpen]);
 
   const channelItems = useMemo<PaletteItem[]>(() => {
     const sectionLabel = t("palette.sectionChannels");
